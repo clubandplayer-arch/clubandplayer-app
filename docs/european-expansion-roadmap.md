@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C — P+B READ-ONLY AUTORIZZATO / ESECUZIONE BLOCCATA SENZA CREDENZIALI** |
-| Next safe action | **Eseguire il report P+B read-only su Production e fornire gli output; nessun apply / nessuna 5D** |
+| Current active phase | **FASE 5C — P+B v1 ESEGUITO USER-REPORTED / OUTPUT PARZIALE; REPORT JSON v2 PRONTO** |
+| Next safe action | **Rieseguire P+B v2 read-only e fornire l’unico JSON; nessun apply / nessuna 5D** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -525,6 +525,8 @@ Correzione raccomandata: baseline pre-`20250221090000` ricostruita da evidenza s
 Test audit: `git diff --check`, 296 unit test, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Production: **NON INTERROGATA E NON MODIFICATA**. La 5C resta condizionatamente applicabile a Production indipendentemente dal repair Preview perché non usa `opportunities`, ma soltanto dopo preflight read-only su foundation, collisioni, ACL/history e con autorizzazione mutativa separata; post-apply obbligatori 19 tabelle, conteggi zero, RLS 19/19, 76 policy, tre trigger e smoke senza HTTP 500. 5D resta **NOT STARTED / NON AUTORIZZATA**.
 
 **P+B READ-ONLY AUTORIZZATO — ESECUZIONE BLOCCATA DALL'AMBIENTE.** È stato predisposto `scripts/sports/reports/phase-5c-production-preflight-and-baseline-audit-read-only.sql`, protetto da transazione read-only e rollback, con test fail-closed. L'ambiente non dispone di Supabase CLI/`psql`, variabili di connessione o password utilizzabile: Production e migration history **NON SONO STATE INTERROGATE**, quindi preflight/collisioni/dipendenze restano **NOT EXECUTED**, non PASS/FAIL. Test aggiornati: 299 unit test PASS. È richiesta l'esecuzione umana del report nel SQL Editor Production o una connessione autenticata fornita fuori banda; nessun output va confuso con autorizzazione all'apply.
+
+**P+B v1 ESEGUITO IN PRODUCTION — USER-REPORTED READ-ONLY / OUTPUT PARZIALE.** L'esecuzione è terminata senza errori, ma SQL Editor ha restituito per la copia soltanto il result set finale con cinque view; ciò non consente ancora PASS/FAIL. Il report è ora `phase-5c-pb-v2` e restituisce un unico JSON consolidato con classification, blocking reasons, history, prerequisiti, collisioni e baseline evidence. Validazione PostgreSQL 16.15 sintetica e 300 unit test PASS. Production modificata: **NO**. Verifica umana richiesta: rerun integrale v2 e copia dell'unica cella JSON.
 
 Suddivisione confermata dopo l'audit:
 

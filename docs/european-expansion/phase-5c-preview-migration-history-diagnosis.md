@@ -212,3 +212,29 @@ psql "$PRODUCTION_DATABASE_URL" \
 ```
 
 Il file di output può contenere metadata di schema e non deve essere committato automaticamente. Dopo aver ricevuto gli output, classificare preflight PASS/FAIL e collisioni; l'eventuale apply resta un'autorizzazione separata.
+
+## 12. Primo run Production e report consolidato v2
+
+L'utente ha eseguito integralmente il report P+B v1 nel SQL Editor Production: **USER-REPORTED SUCCESS, nessun errore e nessuna write**. Il client ha però consentito di copiare soltanto l'ultimo result set, quindi l'unica evidenza restituita riguarda cinque view dipendenti (`athletes_view`, `cities`, `clubs_view`, `players_view`, `public_institutional_entities`). Questa evidenza conferma dipendenze reali da `profiles`, `players_view`, `regions`, `provinces`, `municipalities` e institutional verification, ma non contiene history, prerequisite, tipi o collisioni necessari a classificare 5C.
+
+Il report è stato quindi sostituito dalla versione consolidata `phase-5c-pb-v2`: una singola query restituisce una sola cella JSON con:
+
+- `classification.status` (`PASS`, `FAIL` o `ALREADY_APPLIED_OR_HISTORY_COLLISION`), count e blocking reasons;
+- target e migration history completa;
+- dipendenze, colonne, candidate key, ruoli e collisioni 5C;
+- metadata baseline essenziali per tabelle, colonne, constraint, indici, policy, grant, trigger/function e view.
+
+Le collisioni sono fail-closed e richiedono confronto prima dell'apply. Il report resta racchiuso tra `BEGIN TRANSACTION READ ONLY` e `ROLLBACK`, senza DDL/DML. È stato eseguito con successo su PostgreSQL 16.15 locale contro uno schema sintetico con migration history: un solo result set JSON, report version e classification presenti. Test repository: **300/300 unit test PASS**.
+
+### Stato dopo il primo run
+
+| Voce | Stato |
+| --- | --- |
+| Production interrogata | **SÌ — USER-REPORTED, read-only v1** |
+| Production modificata | **NO** |
+| Evidenza view baseline | **RICEVUTA / PARZIALE** |
+| Preflight 5C | **NON CLASSIFICABILE — atteso rerun v2** |
+| Collisioni/dipendenze/history | **NON DISPONIBILI dal result set copiato** |
+| Migration 5C applicata | **NO** |
+| Baseline migration | **NON CREATA** |
+| Verifica umana richiesta | rieseguire v2 e copiare l'unico JSON |

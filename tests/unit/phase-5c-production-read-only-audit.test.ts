@@ -14,6 +14,17 @@ test('5C Production preflight is transactionally read-only', () => {
   assert.doesNotMatch(sql, /\b(call|copy|vacuum|analyze|refresh)\s+/);
 });
 
+test('5C report returns one consolidated, copyable JSON result set', () => {
+  assert.match(sql, /select jsonb_build_object\(/);
+  assert.match(sql, /as phase_5c_production_preflight_and_baseline_audit;/);
+  assert.match(sql, /'classification'/);
+  assert.match(sql, /'blockingreasons'/);
+  assert.match(sql, /'migrationhistory'/);
+  assert.match(sql, /'phase5cpreflight'/);
+  assert.match(sql, /'baselineevidence'/);
+  assert.equal((sql.match(/;\s*select\s/gi) ?? []).length, 0);
+});
+
 test('5C Production preflight checks history, dependencies and collisions', () => {
   assert.match(sql, /supabase_migrations\.schema_migrations/);
   assert.match(sql, /20261206120000/);
@@ -21,10 +32,13 @@ test('5C Production preflight checks history, dependencies and collisions', () =
     assert.match(sql, new RegExp(`'${dependency}'`));
   }
   assert.match(sql, /phase_5c_history_rows/);
-  assert.match(sql, /collision/);
+  assert.match(sql, /table_collision:/);
+  assert.match(sql, /function_collision:/);
+  assert.match(sql, /trigger_collision:/);
+  assert.match(sql, /index_collision:/);
 });
 
-test('baseline audit inventories schema and security without function bodies', () => {
+test('baseline audit inventories essential schema and security without function bodies', () => {
   for (const table of ['profiles', 'opportunities', 'clubs', 'saved_views', 'notifications', 'follows', 'posts', 'applications', 'regions', 'provinces', 'municipalities']) {
     assert.match(sql, new RegExp(`'${table}'`));
   }
