@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 5A — audit Sports / Disciplines / Competitions** |
-| Current active phase | **FASE 5A — COMPLETATA / AUDIT repository-only** |
-| Next safe action | **Attendere autorizzazione esplicita per FASE 5B — contratto canonico e compatibilità** |
+| Last completed subphase | **COMPLETATA — FASE 5B — contratto canonico e compatibilità** |
+| Current active phase | **FASE 5B — IMPLEMENTATA E TESTATA / documentale repository-only** |
+| Next safe action | **Attendere autorizzazione esplicita per FASE 5C — schema additivo e migration** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A COMPLETATA / AUDIT repository-only; 5B–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5B COMPLETATE; 5C–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -496,12 +496,22 @@ L'audit conferma che la foundation è soltanto parziale: `sports`, `sport_discip
 
 Codice/schema/API/UI: **NON MODIFICATI**. Migration 5A: **NON CREATA, NON TESTATA, NON APPLICATA**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS, grant, ownership e Applications: **NON MODIFICATI**. Web/API: nessun impatto comportamentale. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**; la replica Mobile fino alla FASE 4 è registrata come **USER-REPORTED**, non verificata da questa repository. Verifica manuale/visiva: **NON APPLICABILE**. Test automatici: `git diff --check` PASS, 293 unit test PASS, lint PASS e typecheck PASS; build bloccata esclusivamente dal mancato fetch esterno di Inter/Righteous da Google Fonts, senza errore applicativo osservato. Rischi principali: mismatch sport/ruolo, categorie italiane non generalizzabili, label localizzata scambiata per valore persistito, legacy unknown, Staff trasversale, catene discipline incoerenti, competizioni omonime, season format diversi, filtri testuali e compatibilità Mobile/Italia.
 
-Prossimo passaggio autorizzabile: **5B — contratto canonico e regole di compatibilità**, esclusivamente documentale e senza DDL/DML/runtime; attendere autorizzazione esplicita.
+Prossimo passaggio autorizzabile: **5B — contratto canonico e regole di compatibilità**, esclusivamente documentale e senza DDL/DML/runtime; autorizzata successivamente dall'utente e completata come riportato sotto.
+
+### FASE 5B — Contratto canonico e regole di compatibilità
+
+**Stato: COMPLETATA — IMPLEMENTATA E TESTATA come contratto documentale repository-only.** Deliverable: `docs/european-expansion/phase-5b-canonical-sports-competition-contract.md`.
+
+5B separa identity UUID/code language-neutral dalle label; distingue Sport/Discipline/Variant, PlayerPosition, StaffRole e applicability, SportsOrganization, Competition, CompetitionEdition, CompetitionLevel/Group, Season, AgeClass, GenderCategory, CompetitionFormat e TerritorialScope. Fissa catene coerenti e country-aware, inclusi scope multi-country, season annuali/cross-year/split e ruoli Staff trasversali.
+
+Compatibility: read `canonical → legacy mapping univoco → raw legacy`; riferimenti canonicali invalidi restano osservabili. Write field-aware `absent/legacy/canonical/reset`, senza reset impliciti, default Italia/Calcio, traduzioni persistite o mapping euristici. Payload futuri esclusivamente additivi; campi legacy, ownership/visibility Opportunity, Applications, RLS e privacy Maps restano invariati.
+
+Codice/schema/API/UI: **NON MODIFICATI**. Migration 5B: **NON CREATA, NON TESTATA, NON APPLICATA**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS, grant, ownership e Applications: **NON MODIFICATI**. Web/API: nessun impatto comportamentale. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**; replica fino a FASE 4 soltanto user-reported. Verifica manuale/visiva: **NON APPLICABILE**. Test: `git diff --check`, 293 unit test, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Prossimo passaggio autorizzabile: **5C**, con schema minimo additivo, zero seed/backfill e harness PostgreSQL locale; non avviare senza autorizzazione esplicita.
 
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
-- 5B — contratto canonico e regole di compatibilità — **NOT STARTED**;
+- 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **NOT STARTED**;
 - 5D — cataloghi e seed controllati — **NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
