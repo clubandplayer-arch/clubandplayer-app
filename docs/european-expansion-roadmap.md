@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 5D-C-R2 — REVIEW UMANA PASS** |
-| Current active phase | **FASE 5D-D — SOURCE REGISTRY AUDIT IMPLEMENTATO E TESTATO; REVIEW FONTI PENDING** |
-| Next safe action | **Review umana del discovery registry 5D-D; nessun import e nessun avvio automatico di 5D-E** |
+| Last completed subphase | **COMPLETATA — FASE 5D-D — DISCOVERY REGISTRY PASS USER-REPORTED** |
+| Current active phase | **FASE 5D-E-A — SOURCE READINESS GATE IMPLEMENTATO E TESTATO; 0/7 FONTI READY** |
+| Next safe action | **Conferma del gate e scelta di una sola authority per 5D-E-B evidence pack; nessun import** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C e 5D-A–5D-C COMPLETATE; 5D-D AUDIT IMPLEMENTATO/TESTATO CON REVIEW FONTI PENDING; 5D-E–5D-F e 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C e 5D-A–5D-D COMPLETATE; 5D-E-A IMPLEMENTATA/TESTATA CON 0/7 FONTI READY; 5D-E-B–5D-F e 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A–5D-C COMPLETATE; 5D-D AUDIT IMPLEMENTATO E TESTATO, REVIEW FONTI PENDING; 5D-E–5D-F NOT STARTED.**
+**Stato: IN CORSO — 5D-A–5D-D COMPLETATE; 5D-E-A IMPLEMENTATA E TESTATA, CATALOG TRANCHE BLOCCATA DAL SOURCE GATE; 5D-E-B–5D-F NOT STARTED.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -580,14 +580,18 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 #### FASE 5D-D — Source registry organizations/competitions
 
-**Stato: AUDIT IMPLEMENTATO E TESTATO — REVIEW UMANA DELLE FONTI PENDING; NESSUN IMPORT.** Deliverable: `docs/european-expansion/phase-5d-d-sports-organization-competition-source-registry.md`; registry: `data/sports/phase-5d-d-source-registry.json`. La discovery football copre authority candidate ufficiali per IT/FR/ES/CH/SI/PL e UEFA, ma nessuna fonte è approvata: licenza/riuso, endpoint dataset, stable ID, coverage/versione e checksum non sono dimostrati. Migration/seed/import/backfill: **NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications: **NON MODIFICATI**. Web/API: **NESSUN IMPATTO**. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale: review dei sette URL e della policy nomi propri nazionali; UI/Console/Network/Supabase non applicabili. 5D-E non è iniziata e richiede evidence pack più nuova autorizzazione.
+**Stato: COMPLETATA — PASS USER-REPORTED; NESSUN IMPORT.** Deliverable: `docs/european-expansion/phase-5d-d-sports-organization-competition-source-registry.md`; registry: `data/sports/phase-5d-d-source-registry.json`. La discovery football copre authority candidate ufficiali per IT/FR/ES/CH/SI/PL e UEFA, ma nessuna fonte è approvata: licenza/riuso, endpoint dataset, stable ID, coverage/versione e checksum non sono dimostrati. Migration/seed/import/backfill: **NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications: **NON MODIFICATI**. Web/API: **NESSUN IMPATTO**. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale: review dei sette URL e della policy nomi propri nazionali; UI/Console/Network/Supabase non applicabili. 5D-E non è iniziata e richiede evidence pack più nuova autorizzazione.
+
+#### FASE 5D-E-A — Source evidence readiness gate
+
+**Stato: IMPLEMENTATA E TESTATA — 0/7 FONTI READY; NESSUN MANIFEST, MIGRATION O IMPORT.** Il gate puro `lib/taxonomy/sportsSourceReadiness.ts` richiede authority, dataset URL, stable ID, version/effective date, termini di riuso, licenza, attribution, coverage e checksum. Tutte le fonti 5D-D restano bloccate prima del manifest. Le ricerche read-only su portali open data IT/FR/CH non hanno prodotto un dataset federale pertinente approvabile. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications: **NON MODIFICATI**. Web/API: **NESSUN IMPATTO**. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale UI/Console/Network/Supabase: **NON APPLICABILE**; è richiesta conferma del gate e scelta di una authority per un evidence pack separato. Deliverable: `docs/european-expansion/phase-5d-e-a-source-readiness-gate.md`. 5D-E-B e qualunque import non sono avviati.
 
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-C COMPLETATE; 5D-D AUDIT IMPLEMENTATO/TESTATO CON REVIEW FONTI PENDING; 5D-E–5D-F NOT STARTED**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-D COMPLETATE; 5D-E-A IMPLEMENTATA/TESTATA, 0/7 FONTI READY; 5D-E-B–5D-F NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
