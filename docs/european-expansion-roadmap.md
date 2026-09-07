@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5D-E-A — SOURCE READINESS GATE PASS USER-REPORTED** |
-| Current active phase | **FASE 5D-E-B — FIGC/IT EVIDENCE PACK AUDIT IMPLEMENTATO E TESTATO; SOURCE BLOCKED** |
-| Next safe action | **Review umana evidence pack FIGC; nessun manifest/import finché licenza, dataset e stable ID restano mancanti** |
+| Current active phase | **FASE 5D-E-R-FR — RICERCA DOCUMENTALE FRANCIA COMPLETATA CON COPERTURA PARZIALE DICHIARATA; REVIEW UMANA PENDING** |
+| Next safe action | **Review del livello di dettaglio Francia; non iniziare la Spagna prima del feedback e nessun manifest/import** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; 5D-E-B FIGC AUDIT IMPLEMENTATO/TESTATO MA SOURCE BLOCKED; 5D-E-C–5D-F e 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; 5D-E-B FIGC AUDIT SOURCE BLOCKED; RICERCA DOCUMENTALE 5D-E-R-FR COMPLETATA/REVIEW PENDING; ALTRI PAESI E 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; 5D-E-B FIGC AUDIT IMPLEMENTATO E TESTATO, SOURCE BLOCKED; 5D-E-C–5D-F NOT STARTED.**
+**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; 5D-E-B FIGC SOURCE BLOCKED; 5D-E-R-FR COMPLETATA CON COPERTURA PARZIALE DICHIARATA/REVIEW PENDING; ES/CH/SI/PL NON INIZIATI.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -590,12 +590,16 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 **Stato: AUDIT IMPLEMENTATO E TESTATO — FIGC SOURCE BLOCKED; NESSUN MANIFEST O IMPORT.** Homepage, pagina Campionati Nazionali, sitemap e condizioni di utilizzo FIGC sono state verificate via GET pubbliche read-only e registrate con checksum nel pack `data/sports/evidence/phase-5d-e-b-figc-it-evidence-pack.json`. La pagina competizioni e la sitemap non sono dataset; non risultano dataset/API catalogo, stable record ID, versione, coverage o una concessione esplicita al riuso del database. Il gate restituisce `BLOCKED_NOT_READY_FOR_LOCAL_MANIFEST`. Migration/seed/import/backfill: **NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications: **NON MODIFICATI**. Web/API: **NESSUN IMPATTO**. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Review manuale documentale PENDING; 5D-E-C e qualunque import non sono avviati. Deliverable: `docs/european-expansion/phase-5d-e-b-figc-it-evidence-pack.md`.
 
+#### FASE 5D-E-R-FR — Ricerca documentale Francia per i selettori
+
+**Stato: COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Dopo il riallineamento con FASE 1/5A/5B e con le categorie legacy, è stata autorizzata una ricerca documentale country-by-country distinta dal source-readiness automatico. La tranche Francia copre tutti i 14 valori Sport realmente esposti dall'app, censendo federation/organizer, denominazioni ufficiali, genere, senior/giovani, scope e livello soltanto quando sostenuto da pagine, portali, regolamenti o comunicati ufficiali. Non censisce squadre, risultati, calendari o ogni singolo girone territoriale; dichiara esplicitamente le lacune, soprattutto per Pallanuoto, Hockey su prato, Lacrosse e Football americano. L'assenza di dataset/licenza/stable ID blocca soltanto manifest/seed/import automatici e non invalida la conoscenza documentale o le categorie legacy. Applicazione/API/UI, migration/seed/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-france-competition-selector-research.md`. **Stop gate:** review Francia prima di iniziare la Spagna.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; 5D-E-B FIGC AUDIT IMPLEMENTATO/TESTATO MA SOURCE BLOCKED; 5D-E-C–5D-F NOT STARTED**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; RICERCA DOCUMENTALE FRANCIA COMPLETATA/REVIEW PENDING; ES/CH/SI/PL NON INIZIATI**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
