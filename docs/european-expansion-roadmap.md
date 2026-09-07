@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 5D-A — audit cataloghi e seed controllati** |
-| Current active phase | **FASE 5D — IN CORSO; 5D-A COMPLETATA, 5D-B NON AUTORIZZATA** |
-| Next safe action | **Attendere autorizzazione esplicita per 5D-B — manifest contract e validator repository-only** |
+| Last completed subphase | **COMPLETATA — FASE 5D-B — manifest contract e validator** |
+| Current active phase | **FASE 5D — IN CORSO; 5D-A/5D-B COMPLETATE, 5D-C NON AUTORIZZATA** |
+| Next safe action | **Attendere autorizzazione esplicita per 5D-C — controlled vocabulary e compatibility tranche** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5C APPLICATA E REGISTRATA IN PRODUCTION; 5D-A COMPLETATA; 5D-B–5D-F e 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5C APPLICATA E REGISTRATA IN PRODUCTION; 5D-A/5D-B COMPLETATE; 5D-C–5D-F e 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A COMPLETATA; 5D-B–5D-F NOT STARTED / NON AUTORIZZATE.**
+**Stato: IN CORSO — 5D-A/5D-B COMPLETATE; 5D-C–5D-F NOT STARTED / NON AUTORIZZATE.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -560,12 +560,20 @@ Codice/schema/API/UI: **NON MODIFICATI**. Migration e seed 5D-A: **NON CREATI, N
 
 Sottofasi prudenziali proposte: 5D-B manifest contract/validator; 5D-C controlled vocabulary e compatibility tranche; 5D-D registry fonti/licenze organizations/competitions; 5D-E catalog tranche locale per country/organizer; 5D-F rollout remoto separatamente autorizzato. Prossimo passaggio autorizzabile: **5D-B**, repository-only e senza seed Production.
 
+#### FASE 5D-B — Manifest contract e validator
+
+**Stato: COMPLETATA — IMPLEMENTATA E TESTATA repository-only; NESSUN SEED O MANIFEST DATI REALE.** Deliverable: `docs/european-expansion/phase-5d-b-sports-catalog-manifest-contract.md`.
+
+È disponibile un contratto TypeScript versionato per tutte le 19 entity kind 5C con provenance, Paesi, conteggi, reference simboliche e checksum SHA-256 deterministico. Il validator fallisce su placeholder/licenza non confermata, URL/date/ISO invalidi, key/code/source identity duplicate, dipendenze mancanti o forward, ordine errato, conteggi e checksum drift. Le reference foundation sono allowlisted per code; nessun UUID ambientale, fuzzy mapping o conversione delle categorie italiane è consentito.
+
+Codice modificato: **SÌ — tooling isolato e unit test**. API/UI/runtime: **NON MODIFICATI**. Migration/seed/backfill: **NON CREATI / NON ESEGUITI**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS/grant/ownership/Applications: **NON MODIFICATI**. Web/API e Mobile: **NESSUN IMPATTO / MOBILE FASE 5 NOT STARTED-NON MODIFICATO**. Verifiche manuali: **NON APPLICABILI**; nessuna UI, Preview, Console, Network o Supabase da controllare. Prossimo passaggio autorizzabile: **5D-C**, con revisione umana del contenuto proposto prima di qualunque apply remoto.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A COMPLETATA; 5D-B–5D-F NOT STARTED**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A/5D-B COMPLETATE; 5D-C–5D-F NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
