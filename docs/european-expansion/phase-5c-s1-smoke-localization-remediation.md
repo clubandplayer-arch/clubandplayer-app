@@ -32,7 +32,7 @@ La presenza di tutti i Paesi non è un difetto 5C: il campo legacy accetta una m
 | Applications modificata | no |
 | Impatto Web/API | presentazione Web localizzata; API invariata |
 | Mobile FASE 5 | NOT STARTED / NON MODIFICATO |
-| Test automatici | 304 unit PASS; typecheck/lint/diff-check PASS; build bloccata dal fetch Google Fonts |
+| Test automatici | 305 unit PASS; typecheck/lint/diff-check PASS; build bloccata dal fetch Google Fonts |
 | Verifica manuale | Preview IT/EN richiesta; Console e Network ancora PENDING su dichiarazione utente |
 | Blocker | recheck visuale e Console/Network |
 | FASE 5D | NOT STARTED / NON AUTORIZZATA |
@@ -61,3 +61,7 @@ Il primo deploy S1 ha mostrato `invalid_argument` entrando in Profile Edit: `Int
 Il secondo smoke ha confermato il fix Player Edit e ha rilevato residui in Institution Edit e profilo Player pubblico. Institution Edit ora usa il nome account localizzato nelle interpolazioni e rimuove gli override italiani del map picker; Player header, bio fallback ed esperienze localizzano controlled vocabulary e fallback senza mutare i dati. La mini-card riusa inoltre il singleton Supabase browser invece di creare un ulteriore client Auth.
 
 La diagnostica fornita mostra richieste applicative HTTP 200/204 e nessun 4xx/5xx visibile. `ZERO_PHISHING`, `content_script.js` e “Failed to get cached verdict” provengono da un'estensione browser e non dall'applicazione. Il warning “Multiple GoTrueClient instances” è invece applicativo: la rimozione del client diretto dalla mini-card riduce la duplicazione, ma deve essere ricontrollato in una finestra Incognito senza estensioni prima di dichiararlo risolto.
+
+## Follow-up S1.3 — profilo Club pubblico
+
+Il terzo smoke ha isolato l'ultimo residuo sul profilo Club: sport e category erano presentati come raw legacy. Ora usano il controlled vocabulary, mentre la geografia applica la lingua soltanto al nome del Paese. Città, regione/provincia, nome impianto e indirizzo restano nella forma ufficiale o inserita dall'utente e non vengono tradotti automaticamente. Questo evita di trasformare toponimi e contenuto utente, ma rende `IT` come `Italy`, `Italie`, `Italia` secondo la lingua attiva.
