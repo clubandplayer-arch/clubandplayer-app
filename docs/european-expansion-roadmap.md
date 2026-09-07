@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C-S1.3 — CLUB PUBLIC PROFILE FIX IMPLEMENTATA; RECHECK FINALE PENDING** |
-| Next safe action | **Recheck Club FR/ES e Console/Network; 5D autorizzabile soltanto dopo PASS** |
+| Last completed subphase | **COMPLETATA — FASE 5D-A — audit cataloghi e seed controllati** |
+| Current active phase | **FASE 5D — IN CORSO; 5D-A COMPLETATA, 5D-B NON AUTORIZZATA** |
+| Next safe action | **Attendere autorizzazione esplicita per 5D-B — manifest contract e validator repository-only** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE nel repository; 5C NON APPLICATA remotamente; 5D–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5C APPLICATA E REGISTRATA IN PRODUCTION; 5D-A COMPLETATA; 5D-B–5D-F e 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -510,13 +510,13 @@ Codice/schema/API/UI: **NON MODIFICATI**. Migration 5B: **NON CREATA, NON TESTAT
 
 ### FASE 5C — Schema additivo e migration
 
-**Stato: COMPLETATA NEL REPOSITORY — IMPLEMENTATA E TESTATA SU POSTGRESQL 16.15 LOCALE; NON APPLICATA A PREVIEW/PRODUCTION.** Migration: `supabase/migrations/20261206120000_canonical_sports_competition_schema.sql`. Deliverable: `docs/european-expansion/phase-5c-additive-sports-competition-migration.md`.
+**Stato: COMPLETATA — IMPLEMENTATA E TESTATA SU POSTGRESQL 16.15 LOCALE; APPLICATA E REGISTRATA IN PRODUCTION CON POST-APPLY PASS.** Migration: `supabase/migrations/20261206120000_canonical_sports_competition_schema.sql`. Deliverable: `docs/european-expansion/phase-5c-additive-sports-competition-migration.md`.
 
 Lo schema additivo crea 19 oggetti per posizioni/ruoli e applicability, organizzazioni/membership country, gender/format/territorial scope, level, age class, season, competition, edition, group, scope geografici e mapping legacy. FK composite preservano Sport→Discipline→Variant e organization/sport/season; tre trigger `SECURITY INVOKER` bloccano cicli. Non sono aggiunte colonne a profili, esperienze, Opportunities o Applications.
 
-Migration creata: **SÌ**. Testata: **SÌ — due apply reali e fixture su PostgreSQL 16.15 locale, PASS**. Applicata Preview/Production: **NO/NO**. Production: **NON INTERROGATA E NON MODIFICATA**. Seed/backfill: **NO/NO**. RLS/grant: **MODIFICATI soltanto sui nuovi oggetti 5C**, con read anon/authenticated, write admin-scoped e service role; policy/grant esistenti invariati. Ownership e Applications: **NON MODIFICATI**. Web/API/UI: nessun comportamento modificato. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Test: runtime PostgreSQL locale PASS, `git diff --check` PASS, 296 unit test PASS, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Verifica manuale/visiva: **NON APPLICABILE**.
+Migration creata: **SÌ**. Testata: **SÌ — due apply reali e fixture su PostgreSQL 16.15 locale, PASS**. Applicata Preview/Production: **NON CERTIFICATA / SÌ, user-executed**. Production: **INTERROGATA E MODIFICATA**, limitatamente ai 19 oggetti 5C e alla relativa riga history, con post-apply PASS. Seed/backfill: **NO/NO**. RLS/grant: **MODIFICATI soltanto sui nuovi oggetti 5C**, con read anon/authenticated, write admin-scoped e service role; policy/grant esistenti invariati. Ownership e Applications: **NON MODIFICATI**. Web/API/UI: remediation presentation-only completata e smoke user-reported PASS. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Test repository 5C: runtime PostgreSQL locale PASS, unit test/lint/typecheck/diff-check PASS; il build storico è stato bloccato esclusivamente dal fetch esterno Google Fonts.
 
-Prossimo passaggio autorizzabile: apply remoto 5C controllato oppure **5D — cataloghi e seed controllati**; entrambi richiedono autorizzazione esplicita e l'apply non è implicito.
+Il successivo apply remoto 5C è stato autorizzato ed eseguito con i gate documentati sotto. Il passaggio successivo è **5D — cataloghi e seed controllati**, avviato con l'audit 5D-A dopo autorizzazione esplicita.
 
 **FOLLOW-UP PREVIEW MIGRATION HISTORY — AUDIT COMPLETATO / BLOCKED.** Il Preview branch `phase-5c-validation` fallisce user-reported con PostgreSQL `42P01` nella prima migration repository `20250221090000_add_club_id_to_opportunities.sql`: esegue `ALTER TABLE public.opportunities` ma nessuna migration versionata crea prima o dopo la tabella base. L'audit completo rileva inoltre altre baseline entity assenti o create dopo il primo utilizzo (`profiles`, `clubs`, `saved_views`, `posts`, geografia legacy; `notifications`, `follows` e `applications` fuori ordine). Il sorter Preview è corretto; è la history a dipendere da uno schema pre-repository.
 
@@ -544,12 +544,28 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 **5C-S1.3 CLUB PUBLIC PROFILE REMEDIATION — IMPLEMENTATA / RECHECK FINALE PENDING.** Il profilo Club localizza ora sport e category legacy tramite controlled vocabulary e il solo nome del Paese tramite locale. Città, regione/provincia, impianto e indirizzo restano toponimi/contenuto utente e non vengono tradotti. Nessuna migration o modifica Production/API/RLS/grant/ownership/Applications/Mobile. Dopo PASS del recheck Club e Console/Network la 5C-S1 potrà essere chiusa e 5D proposta per autorizzazione separata.
 
+**5C-S1 CHIUSA — PASS USER-REPORTED.** L'utente ha confermato il recheck finale dopo la localizzazione del profilo Club e ha autorizzato esplicitamente la FASE 5D. I toponimi e gli indirizzi restano contenuto proprio e non vengono tradotti; sport, category e Paese sono presentation-only localizzati. Nessuna ulteriore migration o modifica Production è stata richiesta dalla remediation.
+
+### FASE 5D — Cataloghi e seed controllati
+
+**Stato: IN CORSO — 5D-A COMPLETATA; 5D-B–5D-F NOT STARTED / NON AUTORIZZATE.**
+
+#### FASE 5D-A — Audit fonti, cataloghi e strategia seed
+
+**Stato: COMPLETATA — AUDIT repository-only; NESSUNA MODIFICA COMPORTAMENTALE.** Deliverable: `docs/european-expansion/phase-5d-a-controlled-catalog-seed-audit.md`.
+
+L'audit distingue la foundation FASE 1 già seedata, i candidate interni (posizioni Player, ruoli Staff e piccoli controlled vocabulary) e i cataloghi che richiedono fonti primarie/versionate (organizzazioni, livelli, classi d'età, stagioni, competizioni, edizioni e gruppi). `CATEGORIES_BY_SPORT` non è importabile: mescola competition, level, age class, organizer e fallback ed è prevalentemente italiano. È richiesto un manifest fail-closed con provider, source identity/version, licenza, attribuzione, validità, checksum, conteggi e relazioni per code; nessun UUID ambientale o mapping fuzzy.
+
+Codice/schema/API/UI: **NON MODIFICATI**. Migration e seed 5D-A: **NON CREATI, NON TESTATI, NON APPLICATI**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS, grant, ownership e Applications: **NON MODIFICATI**. Web/API: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifiche manuali/visive: **NON APPLICABILI**. Rischi residui: fonti/licenze non ancora approvate, ambiguità delle liste italiane e migration history generale incompleta; `supabase db push` resta vietato.
+
+Sottofasi prudenziali proposte: 5D-B manifest contract/validator; 5D-C controlled vocabulary e compatibility tranche; 5D-D registry fonti/licenze organizations/competitions; 5D-E catalog tranche locale per country/organizer; 5D-F rollout remoto separatamente autorizzato. Prossimo passaggio autorizzabile: **5D-B**, repository-only e senza seed Production.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
-- 5C — schema additivo e migration — **APPLICATA IN PRODUCTION / DATABASE PASS; SMOKE WEB/API PENDING**;
-- 5D — cataloghi e seed controllati — **NOT STARTED**;
+- 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A COMPLETATA; 5D-B–5D-F NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
