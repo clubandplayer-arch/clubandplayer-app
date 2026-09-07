@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5D-E-A — SOURCE READINESS GATE PASS USER-REPORTED** |
-| Current active phase | **FASE 5D-E-R-FR — RICERCA DOCUMENTALE FRANCIA COMPLETATA CON COPERTURA PARZIALE DICHIARATA; REVIEW UMANA PENDING** |
-| Next safe action | **Review del livello di dettaglio Francia; non iniziare la Spagna prima del feedback e nessun manifest/import** |
+| Current active phase | **FASE 5D-E-R-ES — PRIMA RICOGNIZIONE DOCUMENTALE SPAGNA COMPLETATA CON COPERTURA PARZIALE; REVIEW PENDING** |
+| Next safe action | **Review Spagna; non iniziare la Svizzera prima del feedback e nessun manifest/import** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; 5D-E-B FIGC AUDIT SOURCE BLOCKED; RICERCA DOCUMENTALE 5D-E-R-FR COMPLETATA/REVIEW PENDING; ALTRI PAESI E 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA PASS METODOLOGICO; SPAGNA RICOGNIZIONE COMPLETATA/REVIEW PENDING; CH/SI/PL E 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; 5D-E-B FIGC SOURCE BLOCKED; 5D-E-R-FR COMPLETATA CON COPERTURA PARZIALE DICHIARATA/REVIEW PENDING; ES/CH/SI/PL NON INIZIATI.**
+**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; 5D-E-R-FR PASS METODOLOGICO; 5D-E-R-ES COMPLETATA/REVIEW PENDING; CH/SI/PL NON INIZIATI.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -594,12 +594,18 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 **Stato: COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Dopo il riallineamento con FASE 1/5A/5B e con le categorie legacy, è stata autorizzata una ricerca documentale country-by-country distinta dal source-readiness automatico. La tranche Francia copre tutti i 14 valori Sport realmente esposti dall'app, censendo federation/organizer, denominazioni ufficiali, genere, senior/giovani, scope e livello soltanto quando sostenuto da pagine, portali, regolamenti o comunicati ufficiali. Non censisce squadre, risultati, calendari o ogni singolo girone territoriale; dichiara esplicitamente le lacune, soprattutto per Pallanuoto, Hockey su prato, Lacrosse e Football americano. L'assenza di dataset/licenza/stable ID blocca soltanto manifest/seed/import automatici e non invalida la conoscenza documentale o le categorie legacy. Applicazione/API/UI, migration/seed/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-france-competition-selector-research.md`. **Stop gate:** review Francia prima di iniziare la Spagna.
 
+**Review Francia: PASS USER-REPORTED sul metodo e livello iniziale; non certifica ogni denominazione e non autorizza population dei selector.** Le lacune restano registrate per una successiva integrazione senza riaprire ora l'intera ricerca Francia.
+
+#### FASE 5D-E-R-ES — Ricerca documentale Spagna per i selettori
+
+**Stato: PRIMA RICOGNIZIONE COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Coperti i 14 Sport UI con priorità ai senior maschili/femminili dilettantistici, organismi nazionali/territoriali/circuiti esterni verificabili e principali giovani nazionali; coppe escluse dal primo elenco selector. Le fonti non accessibili o le denominazioni stagionali deboli sono marcate da ricontrollare, senza dichiararle inesistenti. Fútbol 8 non eredita il fútbol 11 e le label omonime restano scoped a sport/organizer. Applicazione/API/UI, migration/seed/import/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-spain-competition-selector-research.md`. **Stop gate:** review Spagna prima della Svizzera.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; RICERCA DOCUMENTALE FRANCIA COMPLETATA/REVIEW PENDING; ES/CH/SI/PL NON INIZIATI**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA PASS METODOLOGICO; SPAGNA COMPLETATA/REVIEW PENDING; CH/SI/PL NON INIZIATI**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
