@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C — APPLICATA IN PRODUCTION E HISTORY VERIFICATA; SMOKE WEB/API PENDING** |
-| Next safe action | **Smoke umano Web/API 5C; vietato db push / nessuna 5D senza nuova autorizzazione** |
+| Current active phase | **FASE 5C-S1 — REMEDIATION LOCALIZZAZIONE IMPLEMENTATA; PREVIEW/CONSOLE/NETWORK RECHECK PENDING** |
+| Next safe action | **Recheck umano 5C-S1; vietato db push / nessuna 5D senza PASS e nuova autorizzazione** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -535,6 +535,8 @@ Test audit: `git diff --check`, 296 unit test, lint e typecheck PASS; build bloc
 **5C PRODUCTION APPLICATA — DATABASE PASS / SMOKE WEB/API PENDING.** L'utente ha applicato esclusivamente il file con SHA-256 `28a396be4616ea6dba57482946af5c15ec8df579ebb4ad4ca6947309e8d60bf7` tramite `psql`; esecuzione conclusa con `COMMIT`. Il controllo read-only post-apply ha restituito 19 tabelle, RLS 19/19, 76 policy, tre funzioni, tre trigger abilitati, grant attesi e zero righe catalogo. È stato quindi eseguito esclusivamente `migration repair 20261206120000 --status applied --db-url ...`; il controllo finale read-only ha restituito `PASS_PHASE_5C_HISTORY_REGISTERED`, due righe history totali e una sola occorrenza per `20250221090000` e `20261206120000`, seguito da `ROLLBACK` e rimozione delle variabili di connessione.
 
 Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed**. Production interrogata/modificata: **SÌ / SÌ, limitatamente ai 19 nuovi oggetti 5C e alla singola riga history autorizzata**. RLS/grant: **APPLICATI soltanto ai nuovi oggetti 5C**. Ownership, Applications, tabelle runtime e backfill: **NON MODIFICATI**. Web/API/UI: nessuna modifica repository o comportamento intenzionale; smoke umano ancora **PENDING**. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. `db push` resta vietato e le 120 versioni intermedie non sono state riparate. Baseline repair e FASE 5D: **NOT STARTED / NON AUTORIZZATI**. È sicuro chiudere la sessione e riprendere dallo smoke in una giornata successiva.
+
+**5C-S1 SMOKE LOCALIZATION REMEDIATION — IMPLEMENTATA / RECHECK PENDING.** Lo smoke utente ha rilevato copy strutturale non localizzato in mini-card Player, preferred side, eventi Institution, Opportunities e Discover/Following. Le correzioni sono presentation-only, preservano i valori persistiti e non cambiano API o dati. I Paesi globali della zona d'interesse Staff restano disponibili per compatibilità legacy, ma le label seguono ora la lingua; un eventuale restringimento canonicale è rinviato alla 5F. Deliverable: `docs/european-expansion/phase-5c-s1-smoke-localization-remediation.md`. Migration/Production/RLS/grant/ownership/Applications/Mobile: **NON MODIFICATI** in S1. Console e Network non sono stati verificati dall'utente e restano un gate esplicito. FASE 5D resta **NOT STARTED / NON AUTORIZZATA**.
 
 Suddivisione confermata dopo l'audit:
 

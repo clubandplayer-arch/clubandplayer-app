@@ -12,6 +12,7 @@ import { MentionText } from '@/components/feed/MentionText';
 import { FeedLinkCard } from '@/components/feed/FeedLinkCard';
 import { Lightbox } from '@/components/media/Lightbox';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
+import { useI18n } from '@/components/i18n/I18nProvider';
 import {
   type FeedPost,
   firstUrl,
@@ -24,6 +25,7 @@ type ReadOnlyPostCardProps = {
 };
 
 export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
+  const { locale } = useI18n();
   const [avatarOpen, setAvatarOpen] = useState(false);
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
@@ -65,7 +67,7 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
   const linkTitle = post.link_title ?? null;
   const linkDescription = post.link_description ?? null;
   const linkImage = post.link_image ?? null;
-  const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
+  const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date, locale) : null;
 
   return (
     <article

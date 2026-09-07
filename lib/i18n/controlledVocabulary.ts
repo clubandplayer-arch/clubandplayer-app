@@ -27,6 +27,12 @@ const genderKeys: Record<string, VocabularyMessageKey> = {
   mixed: 'vocabulary.gender.mixed', misto: 'vocabulary.gender.mixed', coed: 'vocabulary.gender.mixed',
 };
 
+const preferredSideKeys: Record<string, VocabularyMessageKey> = {
+  destro: 'vocabulary.preferredSide.right', right: 'vocabulary.preferredSide.right',
+  sinistro: 'vocabulary.preferredSide.left', left: 'vocabulary.preferredSide.left',
+  ambidestro: 'vocabulary.preferredSide.both', ambidextrous: 'vocabulary.preferredSide.both', both: 'vocabulary.preferredSide.both',
+};
+
 const categoryKeys: Record<string, VocabularyMessageKey> = {
   'prima categoria': 'vocabulary.category.first', 'seconda categoria': 'vocabulary.category.second', 'terza categoria': 'vocabulary.category.third',
   amatoriale: 'vocabulary.category.amateur', giovanili: 'vocabulary.category.youth', altro: 'vocabulary.category.other',
@@ -67,5 +73,6 @@ export const localizeAccountType = (value: string | null | undefined, t: Vocabul
 export const localizeSport = (value: string | null | undefined, t: VocabularyTranslator) => display(value, sportKeys, t);
 export const localizeSportRole = (value: string | null | undefined, t: VocabularyTranslator) => display(value, roleKeys, t);
 export const localizeOpportunityGender = (value: string | null | undefined, t: VocabularyTranslator) => display(value, genderKeys, t);
+export const localizePreferredSide = (value: string | null | undefined, t: VocabularyTranslator) => display(value, preferredSideKeys, t);
 export const localizeOpportunityCategory = (value: string | null | undefined, t: VocabularyTranslator) => display(value, categoryKeys, t);
 export const localizeControlledStatus = (value: string | null | undefined, t: VocabularyTranslator) => display(value, statusKeys, t);

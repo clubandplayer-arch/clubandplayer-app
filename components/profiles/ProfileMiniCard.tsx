@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
@@ -388,12 +388,12 @@ export default function ProfileMiniCard() {
               <dd className="font-medium text-gray-900">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Piede</dt>
-              <dd className="font-medium text-gray-900">{p?.foot || '—'}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.preferredSide')}</dt>
+              <dd className="font-medium text-gray-900">{localizePreferredSide(p?.foot, t) || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('opportunities.sport')}</dt>
-              <dd className="font-medium text-gray-900">{p?.sport || '—'}</dd>
+              <dd className="font-medium text-gray-900">{localizeSport(p?.sport, t) || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.role')}</dt>

@@ -22,7 +22,7 @@ import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
-import { localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { isCanonicalProfileResidenceUiEnabled } from '@/lib/env/features';
 import {
   ensurePastExperienceCategory,
@@ -210,8 +210,9 @@ function normalizeCountryCode(v?: string | null) {
 /* ------------------------------ */
 
 export default function ProfileEditForm() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
+  const countryDisplayNames = useMemo(() => new Intl.DisplayNames(locale, { type: 'region' }), [locale]);
   const canonicalResidenceUiEnabled = isCanonicalProfileResidenceUiEnabled();
 
   // Profile
@@ -969,7 +970,7 @@ export default function ProfileEditForm() {
                     <option value="">— {t('profile.select')} —</option>
                     {WORLD_COUNTRY_OPTIONS.map((c) => (
                       <option key={c.code} value={c.code}>
-                        {c.name}
+                        {countryDisplayNames.of(c.code) || c.name}
                       </option>
                     ))}
                   </select>
@@ -1177,7 +1178,7 @@ export default function ProfileEditForm() {
                   <option value="">— {t('profile.select')} —</option>
                   {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.name}
+                      {countryDisplayNames.of(c.code) || c.name}
                     </option>
                   ))}
                 </select>
@@ -1253,9 +1254,9 @@ export default function ProfileEditForm() {
                     onChange={(e) => setFoot(e.target.value)}
                   >
                     <option value="">— {t('profile.select')} —</option>
-                    <option value="Destro">Destro</option>
-                    <option value="Sinistro">Sinistro</option>
-                    <option value="Ambidestro">Ambidestro</option>
+                    {['Destro', 'Sinistro', 'Ambidestro'].map((value) => (
+                      <option key={value} value={value}>{localizePreferredSide(value, t)}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex min-w-0 flex-col gap-1">
@@ -1452,7 +1453,7 @@ export default function ProfileEditForm() {
                   <option value="">— {t('profile.select')} —</option>
                   {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.name}
+                      {countryDisplayNames.of(c.code) || c.name}
                     </option>
                   ))}
                 </select>

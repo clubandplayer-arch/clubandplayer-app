@@ -89,6 +89,9 @@ const vocabulary = {
   'vocabulary.status.following': 'Seguo',
   'vocabulary.status.active': 'Attivo',
   'vocabulary.status.suspended': 'Sospeso',
+  'vocabulary.preferredSide.right': 'Destra',
+  'vocabulary.preferredSide.left': 'Sinistra',
+  'vocabulary.preferredSide.both': 'Entrambi',
 } as const;
 
 export default vocabulary;

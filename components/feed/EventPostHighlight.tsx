@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type EventPostHighlightProps = {
   title?: string | null;
@@ -7,12 +8,13 @@ type EventPostHighlightProps = {
 };
 
 export function EventPostHighlight({ title, dateLabel, location }: EventPostHighlightProps) {
+  const { t } = useI18n();
   return (
     <div className="mt-4 rounded-2xl border border-amber-200 bg-white/85 p-3 shadow-sm ring-1 ring-white/70">
       <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wide">
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-white shadow-sm">
           <span aria-hidden>✨</span>
-          Evento club
+          {t('feed.clubEvent')}
         </span>
         {dateLabel ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-sky-800 ring-1 ring-sky-100">
@@ -27,9 +29,9 @@ export function EventPostHighlight({ title, dateLabel, location }: EventPostHigh
           </span>
         ) : null}
       </div>
-      <div className="mt-2 text-lg font-black leading-tight text-slate-950">{title || 'Evento del club'}</div>
+      <div className="mt-2 text-lg font-black leading-tight text-slate-950">{title || t('feed.clubEventFallback')}</div>
       <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
-        Da non perdere: questo non è un post standard, è un evento ufficiale del club.
+        {t('feed.clubEventHighlight')}
       </p>
     </div>
   );

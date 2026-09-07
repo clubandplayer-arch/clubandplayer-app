@@ -12,6 +12,7 @@ import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type FollowedProfile = {
   id: string;
@@ -46,13 +47,6 @@ type ApiResponse = {
 
 type AccountType = 'institution' | 'club' | 'athlete' | 'staff';
 type TabKey = 'institution' | 'club' | 'player' | 'staff';
-
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'institution', label: 'ENTE' },
-  { key: 'club', label: 'Club' },
-  { key: 'player', label: 'Player' },
-  { key: 'staff', label: 'Staff' },
-];
 
 function mapAccountType(value: string | null | undefined): AccountType {
   if (value === 'institution' || value === 'ente') return 'institution';
@@ -106,7 +100,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   const { t } = useI18n();
   const [avatarOpen, setAvatarOpen] = useState(false);
   const href = type === 'club' ? `/clubs/${profile.id}` : type === 'institution' ? `/institutions/${profile.id}` : `/players/${profile.id}`;
-  const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
+  const meta = [profile.city, localizeSport(profile.sport, t), localizeSportRole(normalizeRoleLabel(profile.role), t)].filter(Boolean).join(' · ');
   const playerIso2 = type !== 'club' && type !== 'institution' ? extractIso2(profile.country) : null;
   const playerCountryLabel = type !== 'club' && type !== 'institution' ? getCountryLabel(profile.country, playerIso2) : '';
   const initials = getInitials(profile.name || 'Profilo');
@@ -201,6 +195,12 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
 
 export default function FollowingPage() {
   const { t } = useI18n();
+  const tabs: Array<{ key: TabKey; label: string }> = [
+    { key: 'institution', label: localizeAccountType('institution', t) || 'Institution' },
+    { key: 'club', label: localizeAccountType('club', t) || 'Club' },
+    { key: 'player', label: localizeAccountType('player', t) || 'Player' },
+    { key: 'staff', label: localizeAccountType('staff', t) || 'Staff' },
+  ];
   const [items, setItems] = useState<FollowedProfile[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('club');
   const [loading, setLoading] = useState(true);
@@ -372,7 +372,7 @@ export default function FollowingPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
