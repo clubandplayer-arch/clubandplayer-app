@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5D-B — manifest contract e validator** |
-| Current active phase | **FASE 5D-C — IMPLEMENTATA E TESTATA LOCALMENTE; REVIEW UMANA PENDING** |
-| Next safe action | **Review umana del manifest 5D-C; non applicare migration e non iniziare 5D-D** |
+| Current active phase | **FASE 5D-C-R1 — REMEDIATION IMPLEMENTATA E TESTATA; RECHECK MANUALE PENDING** |
+| Next safe action | **Recheck Preview della card Registry e dei ruoli multi-sport; non applicare migration e non iniziare 5D-D** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -575,6 +575,8 @@ Codice modificato: **SÌ — tooling isolato e unit test**. API/UI/runtime: **NO
 Il manifest controllato contiene 356 record: 3 gender category, 4 format, 6 territorial scope, 97 posizioni Player scoped, 26 ruoli Staff trasversali, 97 applicability Player e 123 mapping legacy esatti. Non contiene organization, competition, level, age class, season, edition, group o categorie italiane reinterpretate. La migration `20261207120000_seed_controlled_sports_vocabulary.sql` è stata applicata due volte su PostgreSQL 16.15 locale con conteggi invarianti; un conflitto sintetico divergente è stato rifiutato con rollback.
 
 Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Production interrogata/modificata: **NO / NO**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web/API/UI: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale: **OBBLIGATORIA sul contenuto del manifest**, non UI; non applicare ancora la migration. 5D-D non è autorizzata.
+
+**5D-C-R1 — IMPLEMENTATA E TESTATA; RECHECK MANUALE PENDING.** La review umana è passata solo parzialmente: la card Registro società era ancora italiana e i ruoli Player non calcistici mostravano valori legacy italiani. La remediation localizza la card in IT/EN/ES/FR, dichiara il limite operativo “solo organizzazioni registrate in Italia” e l’estensione internazionale in lavorazione, e completa le label di tutti i ruoli presenti in `SPORTS_ROLES`. Valori persistiti, manifest e migration 5D-C restano invariati. Migration creata/testata/applicata in R1: **NO / NO / NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web: **presentation-only**; API: **NESSUN IMPATTO**; Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Deliverable: `docs/european-expansion/phase-5d-c-r1-human-review-remediation.md`. Prima di chiudere 5D-C è obbligatorio il recheck Preview di Club/Profile, Player/Profile, Console e Network; 5D-D non è autorizzata.
 
 Suddivisione confermata dopo l'audit:
 

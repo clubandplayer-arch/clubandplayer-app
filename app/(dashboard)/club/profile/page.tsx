@@ -58,15 +58,16 @@ type RegistryState =
     };
 
 function RegistryNationalCard({ state }: { state: RegistryState }) {
+  const { t } = useI18n();
   if (state.status === 'loading') {
     return (
       <section className="glass-panel border border-emerald-100 bg-emerald-50/60 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-          Nostro Registro Nazionale
+          {t('club.registry.eyebrow')}
         </p>
-        <h2 className="heading-h2 mt-1 mb-2">Controllo stato verifica...</h2>
+        <h2 className="heading-h2 mt-1 mb-2">{t('club.registry.loadingTitle')}</h2>
         <p className="text-sm text-emerald-950">
-          Stiamo verificando se la tua società è già collegata al profilo Club.
+          {t('club.registry.loadingBody')}
         </p>
       </section>
     );
@@ -76,19 +77,19 @@ function RegistryNationalCard({ state }: { state: RegistryState }) {
     return (
       <section className="glass-panel border border-emerald-200 bg-emerald-50/80 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-          Nostro Registro Nazionale
+          {t('club.registry.eyebrow')}
         </p>
-        <h2 className="heading-h2 mt-1 mb-2">Società verificata</h2>
+        <h2 className="heading-h2 mt-1 mb-2">{t('club.registry.verifiedTitle')}</h2>
         <p className="mb-4 text-sm text-emerald-950">
-          La tua società è già stata verificata e collegata al profilo Club.
+          {t('club.registry.verifiedBody')}
         </p>
 
         <div className="rounded-xl border border-emerald-200 bg-white p-4 text-sm text-emerald-950">
-          <p className="font-semibold">{state.club.denominazione || 'Società collegata'}</p>
+          <p className="font-semibold">{state.club.denominazione || t('club.registry.linkedFallback')}</p>
           <p className="mt-1 text-xs text-emerald-800">
             {[state.club.regione, state.club.provincia, state.club.comune]
               .filter(Boolean)
-              .join(' · ') || 'Località —'}
+              .join(' · ') || t('club.registry.locationFallback')}
           </p>
         </div>
       </section>
@@ -101,19 +102,19 @@ function RegistryNationalCard({ state }: { state: RegistryState }) {
     return (
       <section className="glass-panel border border-yellow-200 bg-yellow-50/80 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-yellow-700">
-          Nostro Registro Nazionale
+          {t('club.registry.eyebrow')}
         </p>
-        <h2 className="heading-h2 mt-1 mb-2">Verifica in corso</h2>
+        <h2 className="heading-h2 mt-1 mb-2">{t('club.registry.pendingTitle')}</h2>
         <p className="mb-4 text-sm text-yellow-950">
-          Hai già inviato una richiesta di collegamento. La richiesta è in attesa di approvazione admin.
+          {t('club.registry.pendingBody')}
         </p>
 
         <div className="rounded-xl border border-yellow-200 bg-white p-4 text-sm text-yellow-950">
-          <p className="font-semibold">{club?.denominazione || 'Società in verifica'}</p>
+          <p className="font-semibold">{club?.denominazione || t('club.registry.pendingFallback')}</p>
           <p className="mt-1 text-xs text-yellow-800">
             {[club?.regione, club?.provincia, club?.comune]
               .filter(Boolean)
-              .join(' · ') || 'Località —'}
+              .join(' · ') || t('club.registry.locationFallback')}
           </p>
         </div>
       </section>
@@ -124,15 +125,15 @@ function RegistryNationalCard({ state }: { state: RegistryState }) {
     return (
       <section className="glass-panel border border-red-200 bg-red-50/80 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-red-700">
-          Nostro Registro Nazionale
+          {t('club.registry.eyebrow')}
         </p>
-        <h2 className="heading-h2 mt-1 mb-2">Stato non disponibile</h2>
+        <h2 className="heading-h2 mt-1 mb-2">{t('club.registry.errorTitle')}</h2>
         <p className="mb-4 text-sm text-red-950">{state.error}</p>
         <Link
           href="/club/registry-claim"
           className="inline-flex rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
         >
-          Vai alla pagina di rivendicazione
+          {t('club.registry.errorAction')}
         </Link>
       </section>
     );
@@ -141,17 +142,17 @@ function RegistryNationalCard({ state }: { state: RegistryState }) {
   return (
     <section className="glass-panel border border-emerald-100 bg-emerald-50/60 p-5 md:p-6">
       <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-        Nostro Registro Nazionale
+        {t('club.registry.eyebrow')}
       </p>
-      <h2 className="heading-h2 mt-1 mb-2">Rivendica la tua società</h2>
+      <h2 className="heading-h2 mt-1 mb-2">{t('club.registry.claimTitle')}</h2>
       <p className="mb-4 text-sm text-emerald-950">
-        Cerca la tua ASD/SSD nel nostro Registro Nazionale e collegala al profilo Club. Dopo l’approvazione admin, il tuo Club risulterà verificato.
+        {t('club.registry.claimBody')}
       </p>
       <Link
         href="/club/registry-claim"
         className="inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
       >
-        Rivendica società
+        {t('club.registry.claimAction')}
       </Link>
     </section>
   );
@@ -291,7 +292,7 @@ export default function ProfilePage() {
           status: 'error',
           club: null,
           claim: null,
-          error: 'Non è stato possibile recuperare lo stato della verifica società.',
+          error: t('club.registry.errorBody'),
         });
       }
     }
@@ -301,7 +302,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [supabase]);
+  }, [supabase, t]);
 
   return (
     <main className="container mx-auto space-y-6 py-6">
