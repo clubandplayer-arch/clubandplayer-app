@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 5D-B — manifest contract e validator** |
-| Current active phase | **FASE 5D-C-R1 — REMEDIATION IMPLEMENTATA E TESTATA; RECHECK MANUALE PENDING** |
-| Next safe action | **Recheck Preview della card Registry, dei ruoli multi-sport e dello sport nel widget Profili che segui; non applicare migration e non iniziare 5D-D** |
+| Last completed subphase | **COMPLETATA — FASE 5D-C-R2 — REVIEW UMANA PASS** |
+| Current active phase | **FASE 5D-D — SOURCE REGISTRY AUDIT IMPLEMENTATO E TESTATO; REVIEW FONTI PENDING** |
+| Next safe action | **Review umana del discovery registry 5D-D; nessun import e nessun avvio automatico di 5D-E** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C e 5D-A/5D-B COMPLETATE; 5D-C IMPLEMENTATA/TESTATA LOCALMENTE CON REVIEW PENDING; 5D-D–5D-F e 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C e 5D-A–5D-C COMPLETATE; 5D-D AUDIT IMPLEMENTATO/TESTATO CON REVIEW FONTI PENDING; 5D-E–5D-F e 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A/5D-B COMPLETATE; 5D-C IMPLEMENTATA E TESTATA LOCALMENTE, REVIEW PENDING; 5D-D–5D-F NOT STARTED.**
+**Stato: IN CORSO — 5D-A–5D-C COMPLETATE; 5D-D AUDIT IMPLEMENTATO E TESTATO, REVIEW FONTI PENDING; 5D-E–5D-F NOT STARTED.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -574,16 +574,20 @@ Codice modificato: **SÌ — tooling isolato e unit test**. API/UI/runtime: **NO
 
 Il manifest controllato contiene 356 record: 3 gender category, 4 format, 6 territorial scope, 97 posizioni Player scoped, 26 ruoli Staff trasversali, 97 applicability Player e 123 mapping legacy esatti. Non contiene organization, competition, level, age class, season, edition, group o categorie italiane reinterpretate. La migration `20261207120000_seed_controlled_sports_vocabulary.sql` è stata applicata due volte su PostgreSQL 16.15 locale con conteggi invarianti; un conflitto sintetico divergente è stato rifiutato con rollback.
 
-Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Production interrogata/modificata: **NO / NO**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web/API/UI: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale: **OBBLIGATORIA sul contenuto del manifest**, non UI; non applicare ancora la migration. 5D-D non è autorizzata.
+Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Production interrogata/modificata: **NO / NO**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web/API/UI: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale 5D-C: **PASS USER-REPORTED**; non applicare ancora la migration. 5D-D è stata autorizzata e resta separata da qualunque import.
 
-**5D-C-R1 — IMPLEMENTATA E TESTATA; RECHECK MANUALE PENDING.** La review umana è passata solo parzialmente: la card Registro società era ancora italiana e i ruoli Player non calcistici mostravano valori legacy italiani. La remediation localizza la card in IT/EN/ES/FR, dichiara il limite operativo “solo organizzazioni registrate in Italia” e l’estensione internazionale in lavorazione, e completa le label di tutti i ruoli presenti in `SPORTS_ROLES`. Valori persistiti, manifest e migration 5D-C restano invariati. Migration creata/testata/applicata in R1: **NO / NO / NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web: **presentation-only**; API: **NESSUN IMPATTO**; Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Deliverable: `docs/european-expansion/phase-5d-c-r1-human-review-remediation.md`. Prima di chiudere 5D-C è obbligatorio il recheck Preview di Club/Profile, Player/Profile, Console e Network; 5D-D non è autorizzata. Il recheck R2 localizza inoltre lo sport nel widget “Profili che segui”. È confermato che categorie, federazioni e competizioni sono nomi propri nazionali: quelle italiane restano in italiano in ogni lingua UI e i futuri cataloghi esteri manterranno la rispettiva denominazione nazionale.
+**5D-C-R2 — COMPLETATA / PASS USER-REPORTED.** La review umana è passata solo parzialmente: la card Registro società era ancora italiana e i ruoli Player non calcistici mostravano valori legacy italiani. La remediation localizza la card in IT/EN/ES/FR, dichiara il limite operativo “solo organizzazioni registrate in Italia” e l’estensione internazionale in lavorazione, e completa le label di tutti i ruoli presenti in `SPORTS_ROLES`. Valori persistiti, manifest e migration 5D-C restano invariati. Migration creata/testata/applicata in R1: **NO / NO / NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web: **presentation-only**; API: **NESSUN IMPATTO**; Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Deliverable: `docs/european-expansion/phase-5d-c-r1-human-review-remediation.md`. Il recheck Preview di Club/Profile, Player/Profile, widget laterale, Console e Network è stato confermato PASS dall’utente; 5D-D è stata successivamente autorizzata. Il recheck R2 localizza inoltre lo sport nel widget “Profili che segui”. È confermato che categorie, federazioni e competizioni sono nomi propri nazionali: quelle italiane restano in italiano in ogni lingua UI e i futuri cataloghi esteri manterranno la rispettiva denominazione nazionale.
+
+#### FASE 5D-D — Source registry organizations/competitions
+
+**Stato: AUDIT IMPLEMENTATO E TESTATO — REVIEW UMANA DELLE FONTI PENDING; NESSUN IMPORT.** Deliverable: `docs/european-expansion/phase-5d-d-sports-organization-competition-source-registry.md`; registry: `data/sports/phase-5d-d-source-registry.json`. La discovery football copre authority candidate ufficiali per IT/FR/ES/CH/SI/PL e UEFA, ma nessuna fonte è approvata: licenza/riuso, endpoint dataset, stable ID, coverage/versione e checksum non sono dimostrati. Migration/seed/import/backfill: **NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications: **NON MODIFICATI**. Web/API: **NESSUN IMPATTO**. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale: review dei sette URL e della policy nomi propri nazionali; UI/Console/Network/Supabase non applicabili. 5D-E non è iniziata e richiede evidence pack più nuova autorizzazione.
 
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A/5D-B COMPLETATE; 5D-C IMPLEMENTATA/TESTATA LOCALE, REVIEW PENDING; 5D-D–5D-F NOT STARTED**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-C COMPLETATE; 5D-D AUDIT IMPLEMENTATO/TESTATO CON REVIEW FONTI PENDING; 5D-E–5D-F NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
