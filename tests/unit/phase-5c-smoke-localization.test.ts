@@ -38,3 +38,18 @@ test('Phase 5C smoke localizes Discover and Following controlled values', () => 
     assert.match(source, /localizeAccountType/);
   }
 });
+
+test('Phase 5C smoke localizes Institution edit and public Player details', () => {
+  const form = read('components/profiles/ProfileEditForm.tsx');
+  const player = read('app/(dashboard)/players/[id]/page.tsx');
+  const experiences = read('components/athletes/AthleteExperiencesSection.tsx');
+  const miniCard = read('components/profiles/ProfileMiniCard.tsx');
+  assert.match(form, /isInstitution \? t\('profile\.institution'\) : 'Club'/);
+  assert.match(form, /searchLabel: t\('stadium\.search'\)/);
+  assert.match(player, /localizeSportRole\(profile\.role, t\)/);
+  assert.match(player, /localizeSport\(normalizeSport/);
+  assert.match(experiences, /localizeOpportunityCategory\(exp\.category, t\)/);
+  assert.match(experiences, /localizeSport\(exp\.sport, t\)/);
+  assert.doesNotMatch(miniCard, /createClient as createSupabaseClient/);
+  assert.match(miniCard, /supabaseBrowser\(\)/);
+});

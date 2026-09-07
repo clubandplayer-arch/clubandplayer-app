@@ -4,7 +4,6 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from 'react';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
@@ -15,6 +14,7 @@ import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryState
 import { normalizeSport } from '@/lib/opps/constants';
 import { getCountryDisplay } from '@/lib/utils/countryDisplay';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type P = {
   id?: string | null;
@@ -81,10 +81,7 @@ type P = {
 
 type Row = { id: number; name: string };
 
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = supabaseBrowser();
 
 type InterestGeo = {
   city: string;

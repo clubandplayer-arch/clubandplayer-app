@@ -226,8 +226,8 @@ export default function ProfileEditForm() {
   const isClub = profile?.account_type === 'club';
   const isInstitution = profile?.account_type === 'institution';
   const isOrganization = isClub || isInstitution;
-  const organizationLabel = isInstitution ? 'ente' : 'club';
-  const organizationTitle = isInstitution ? 'Ente' : 'Club';
+  const organizationLabel = isInstitution ? t('profile.institution') : 'Club';
+  const organizationTitle = organizationLabel;
   const isFan = profile?.account_type === 'fan';
   const isStaff = profile?.account_type === 'staff';
 
@@ -1068,11 +1068,11 @@ export default function ProfileEditForm() {
                   <ClubStadiumMapPicker
                     value={{ name: stadium, address: stadiumAddress, lat: stadiumLat, lng: stadiumLng }}
                     labels={isInstitution ? {
-                      searchLabel: 'Cerca sede o indirizzo',
-                      placeholder: 'Digita nome sede o indirizzo',
-                      defaultName: 'Sede ente',
-                      markerFallback: 'Sede ente',
-                      helperText: 'Clicca sulla mappa oppure usa la posizione del dispositivo per impostare dove mostrare il logo dell’Ente sulla mappa nazionale.',
+                      searchLabel: t('stadium.search'),
+                      placeholder: t('stadium.placeholder'),
+                      defaultName: t('profile.venueName'),
+                      markerFallback: t('profile.venueName'),
+                      helperText: t('profile.institutionMarkerHelp'),
                     } : undefined}
                     onChange={(val) => {
                       setStadium(val.name || '');

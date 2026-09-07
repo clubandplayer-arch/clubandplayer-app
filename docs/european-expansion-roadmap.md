@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C-S1.1 — PROFILE EDIT RUNTIME FIX IMPLEMENTATA; RECHECK PENDING** |
-| Next safe action | **Rieseguire il punto 2 Player Profile; vietato db push / nessuna 5D senza PASS** |
+| Current active phase | **FASE 5C-S1.2 — INSTITUTION/PLAYER/CLIENT FIX IMPLEMENTATA; RECHECK PENDING** |
+| Next safe action | **Recheck punti 4, 8 e Console/Network in Incognito; nessuna 5D senza PASS** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -539,6 +539,8 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 **5C-S1 SMOKE LOCALIZATION REMEDIATION — IMPLEMENTATA / RECHECK PENDING.** Lo smoke utente ha rilevato copy strutturale non localizzato in mini-card Player, preferred side, eventi Institution, Opportunities e Discover/Following. Le correzioni sono presentation-only, preservano i valori persistiti e non cambiano API o dati. I Paesi globali della zona d'interesse Staff restano disponibili per compatibilità legacy, ma le label seguono ora la lingua; un eventuale restringimento canonicale è rinviato alla 5F. Deliverable: `docs/european-expansion/phase-5c-s1-smoke-localization-remediation.md`. Migration/Production/RLS/grant/ownership/Applications/Mobile: **NON MODIFICATI** in S1. Console e Network non sono stati verificati dall'utente e restano un gate esplicito. FASE 5D resta **NOT STARTED / NON AUTORIZZATA**.
 
 **5C-S1.1 PROFILE EDIT RUNTIME FIX — IMPLEMENTATA / RECHECK PENDING.** Il primo recheck Player si è fermato con `invalid_argument`: la causa riprodotta è il pseudo-country applicativo `OTHER` passato a `Intl.DisplayNames.of()`, che accetta soltanto codici regione validi. È stato introdotto un resolver fail-safe che localizza `OTHER`, usa DisplayNames per gli ISO e preserva il fallback per legacy unknown. Nessuna migration, query/write Production, modifica API/RLS/grant/ownership/Applications/Mobile. Riprendere lo smoke dal punto 2 dopo il nuovo deploy; 5D resta non autorizzata.
+
+**5C-S1.2 INSTITUTION/PLAYER/CLIENT REMEDIATION — IMPLEMENTATA / RECHECK PENDING.** Il secondo smoke conferma Player Edit ma rileva interpolazioni/map helper italiani in Institution Edit e controlled vocabulary/fallback italiani nel Player pubblico. Sono stati localizzati senza modificare valori persistiti; ProfileMiniCard riusa il singleton Supabase browser per evitare un client Auth diretto aggiuntivo. Network user-reported: richieste applicative osservate 200/204, nessun 4xx/5xx visibile. Gli errori `ZERO_PHISHING/content_script.js` appartengono a un'estensione browser; il warning GoTrue è applicativo e richiede recheck Incognito dopo deploy. Migration/Production/API/RLS/grant/ownership/Applications/Mobile: non modificati. 5D resta non autorizzata.
 
 Suddivisione confermata dopo l'audit:
 
