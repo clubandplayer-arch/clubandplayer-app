@@ -55,3 +55,9 @@
 - Network: nessuna richiesta fallita generata dai dropdown; il cambio lingua e il caricamento profilo devono restare 2xx.
 
 Non è richiesto alcun controllo Supabase e la migration `20261207120000_seed_controlled_sports_vocabulary.sql` **non deve ancora essere applicata**.
+
+## Recheck R2 — sport nel widget laterale e nomi nazionali
+
+La review successiva ha individuato la stringa legacy `Calcio` nel widget “Profili che segui” del feed. Il sottotitolo usa ora `localizeSport` e mantiene invariati payload e valore persistito.
+
+È inoltre confermata la regola semantica richiesta per categorie, federazioni e competizioni: i **nomi propri nazionali non devono essere tradotti**. Le categorie italiane (`Serie D`, `Eccellenza`, `Promozione`, sigle federali e associative) restano quindi in italiano anche con interfaccia francese, spagnola o inglese. In futuro i nomi propri dei cataloghi esteri resteranno nella rispettiva forma nazionale. Soltanto concetti realmente controllati e transnazionali possono ricevere una label localizzata; non viene riscritto alcun valore persistito.

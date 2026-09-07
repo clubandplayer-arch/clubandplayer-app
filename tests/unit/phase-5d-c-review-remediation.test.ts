@@ -44,3 +44,9 @@ test('Club Registry card uses localized copy and declares its Italy-only availab
   assert.match(completionEs['club.registry.claimBody'], /solo.*Italia|Italia.*solo/i);
   assert.match(completionFr['club.registry.claimBody'], /uniquement.*Italie|Italie.*uniquement/i);
 });
+
+test('followed profiles sidebar localizes sport without changing the stored value', () => {
+  const source = readFileSync(resolve('components/feed/FollowedClubs.tsx'), 'utf8');
+  assert.match(source, /localizeSport\(item\.sport, t\)/);
+  assert.match(source, /subtitle\(item, role, t\)/);
+});
