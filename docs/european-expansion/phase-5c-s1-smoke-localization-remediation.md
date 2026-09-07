@@ -51,3 +51,7 @@ In Preview, con account Player, Staff, Club e Institution e lingua EN, verificar
 7. Console senza errori e Network senza nuovi 4xx/5xx.
 
 Ripetere rapidamente in italiano per confermare assenza di regressioni. Non eseguire una cancellazione reale: aprire e chiudere il dialog è sufficiente.
+
+## Follow-up S1.1 — pseudo-country `OTHER`
+
+Il primo deploy S1 ha mostrato `invalid_argument` entrando in Profile Edit: `Intl.DisplayNames.of()` rifiuta il valore applicativo `OTHER`, che non è un codice regione ISO. La localizzazione Paese è ora fail-safe: `OTHER` usa la label controllata “Other/Altro/Autre/Otro”, i codici ISO usano `Intl.DisplayNames` e qualsiasi valore storico non riconosciuto conserva il fallback senza interrompere il rendering. Recheck Player Profile richiesto prima di riprendere gli altri smoke.

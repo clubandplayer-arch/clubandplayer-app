@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { localizeCountryOption } from '../../lib/i18n/countryDisplayName';
 
 const read = (path: string) => readFileSync(path, 'utf8');
 
@@ -13,8 +14,9 @@ test('Phase 5C smoke fixes localize preferred side without changing persisted va
   assert.match(card, /t\('profile\.preferredSide'\)/);
   assert.match(card, /localizePreferredSide\(p\?\.foot, t\)/);
   assert.match(vocabulary, /destro: 'vocabulary\.preferredSide\.right'/);
-  assert.match(form, /new Intl\.DisplayNames\(locale, \{ type: 'region' \}\)/);
-  assert.match(form, /countryDisplayNames\.of\(c\.code\) \|\| c\.name/);
+  assert.match(form, /localizeCountryOption\(c\.code, c\.name, locale/);
+  assert.equal(localizeCountryOption('IT', 'Italia', 'en', 'Other'), 'Italy');
+  assert.equal(localizeCountryOption('OTHER', 'Altro…', 'en', 'Other'), 'Other');
 });
 
 test('Phase 5C smoke fixes structural event and opportunity copy', () => {

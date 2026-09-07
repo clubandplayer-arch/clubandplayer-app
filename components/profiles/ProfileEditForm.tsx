@@ -23,6 +23,7 @@ import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import { localizeOpportunityCategory, localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
 import { isCanonicalProfileResidenceUiEnabled } from '@/lib/env/features';
 import {
   ensurePastExperienceCategory,
@@ -212,7 +213,6 @@ function normalizeCountryCode(v?: string | null) {
 export default function ProfileEditForm() {
   const { t, locale } = useI18n();
   const router = useRouter();
-  const countryDisplayNames = useMemo(() => new Intl.DisplayNames(locale, { type: 'region' }), [locale]);
   const canonicalResidenceUiEnabled = isCanonicalProfileResidenceUiEnabled();
 
   // Profile
@@ -970,7 +970,7 @@ export default function ProfileEditForm() {
                     <option value="">— {t('profile.select')} —</option>
                     {WORLD_COUNTRY_OPTIONS.map((c) => (
                       <option key={c.code} value={c.code}>
-                        {countryDisplayNames.of(c.code) || c.name}
+                        {localizeCountryOption(c.code, c.name, locale, t('vocabulary.category.other'))}
                       </option>
                     ))}
                   </select>
@@ -1178,7 +1178,7 @@ export default function ProfileEditForm() {
                   <option value="">— {t('profile.select')} —</option>
                   {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {countryDisplayNames.of(c.code) || c.name}
+                      {localizeCountryOption(c.code, c.name, locale, t('vocabulary.category.other'))}
                     </option>
                   ))}
                 </select>
@@ -1453,7 +1453,7 @@ export default function ProfileEditForm() {
                   <option value="">— {t('profile.select')} —</option>
                   {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {countryDisplayNames.of(c.code) || c.name}
+                      {localizeCountryOption(c.code, c.name, locale, t('vocabulary.category.other'))}
                     </option>
                   ))}
                 </select>
