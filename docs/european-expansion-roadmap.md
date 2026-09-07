@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5D-B — manifest contract e validator** |
-| Current active phase | **FASE 5D — IN CORSO; 5D-A/5D-B COMPLETATE, 5D-C NON AUTORIZZATA** |
-| Next safe action | **Attendere autorizzazione esplicita per 5D-C — controlled vocabulary e compatibility tranche** |
+| Current active phase | **FASE 5D-C — IMPLEMENTATA E TESTATA LOCALMENTE; REVIEW UMANA PENDING** |
+| Next safe action | **Review umana del manifest 5D-C; non applicare migration e non iniziare 5D-D** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5C APPLICATA E REGISTRATA IN PRODUCTION; 5D-A/5D-B COMPLETATE; 5D-C–5D-F e 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C e 5D-A/5D-B COMPLETATE; 5D-C IMPLEMENTATA/TESTATA LOCALMENTE CON REVIEW PENDING; 5D-D–5D-F e 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A/5D-B COMPLETATE; 5D-C–5D-F NOT STARTED / NON AUTORIZZATE.**
+**Stato: IN CORSO — 5D-A/5D-B COMPLETATE; 5D-C IMPLEMENTATA E TESTATA LOCALMENTE, REVIEW PENDING; 5D-D–5D-F NOT STARTED.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -568,12 +568,20 @@ Sottofasi prudenziali proposte: 5D-B manifest contract/validator; 5D-C controlle
 
 Codice modificato: **SÌ — tooling isolato e unit test**. API/UI/runtime: **NON MODIFICATI**. Migration/seed/backfill: **NON CREATI / NON ESEGUITI**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS/grant/ownership/Applications: **NON MODIFICATI**. Web/API e Mobile: **NESSUN IMPATTO / MOBILE FASE 5 NOT STARTED-NON MODIFICATO**. Verifiche manuali: **NON APPLICABILI**; nessuna UI, Preview, Console, Network o Supabase da controllare. Prossimo passaggio autorizzabile: **5D-C**, con revisione umana del contenuto proposto prima di qualunque apply remoto.
 
+#### FASE 5D-C — Controlled vocabulary e compatibility tranche
+
+**Stato: IMPLEMENTATA E TESTATA LOCALMENTE — REVIEW UMANA PENDING; MIGRATION NON APPLICATA REMOTAMENTE.** Deliverable: `docs/european-expansion/phase-5d-c-controlled-vocabulary-compatibility-tranche.md`.
+
+Il manifest controllato contiene 356 record: 3 gender category, 4 format, 6 territorial scope, 97 posizioni Player scoped, 26 ruoli Staff trasversali, 97 applicability Player e 123 mapping legacy esatti. Non contiene organization, competition, level, age class, season, edition, group o categorie italiane reinterpretate. La migration `20261207120000_seed_controlled_sports_vocabulary.sql` è stata applicata due volte su PostgreSQL 16.15 locale con conteggi invarianti; un conflitto sintetico divergente è stato rifiutato con rollback.
+
+Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Production interrogata/modificata: **NO / NO**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web/API/UI: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale: **OBBLIGATORIA sul contenuto del manifest**, non UI; non applicare ancora la migration. 5D-D non è autorizzata.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A/5D-B COMPLETATE; 5D-C–5D-F NOT STARTED**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A/5D-B COMPLETATE; 5D-C IMPLEMENTATA/TESTATA LOCALE, REVIEW PENDING; 5D-D–5D-F NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;

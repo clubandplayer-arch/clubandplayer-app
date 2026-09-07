@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -85,6 +86,13 @@ function validManifest(): SportsCatalogManifest {
 
 const foundation = new Set(['sport:football', 'country:IT']);
 
+const controlledFoundation = new Set([
+  'sport:football', 'sport:volleyball', 'sport:basketball', 'sport:water_polo', 'sport:handball',
+  'sport:rugby', 'sport:field_hockey', 'sport:ice_hockey', 'sport:baseball', 'sport:softball',
+  'sport:lacrosse', 'sport:american_football', 'discipline:association_football', 'discipline:futsal',
+  'variant:eleven_a_side', 'variant:eight_a_side',
+]);
+
 test('5D-B accepts a versioned, checksummed manifest with provenance and ordered stable references', () => {
   const report = validateSportsCatalogManifest(validManifest(), { knownReferences: foundation });
   assert.equal(report.valid, true, report.errors.join('\n'));
@@ -139,4 +147,50 @@ test('5D-B never guesses Italian categories or accepts environment UUIDs as unre
   const report = validateSportsCatalogManifest(manifest, { knownReferences: foundation });
   assert.equal(report.valid, false);
   assert.ok(report.errors.some((error) => error.endsWith('missing_or_forward:uuid:1234')));
+});
+
+test('5D-C controlled manifest validates with fixed checksum and contains no organization or competition claims', () => {
+  const manifest = JSON.parse(
+    readFileSync('data/sports/phase-5d-c-controlled-vocabulary.json', 'utf8'),
+  ) as SportsCatalogManifest;
+  const report = validateSportsCatalogManifest(manifest, { knownReferences: controlledFoundation });
+  assert.equal(report.valid, true, report.errors.join('\n'));
+  assert.equal(manifest.payloadChecksum, 'sha256:cff8258b19c1ec73ee075227c402535e2648328cf699baf22e492ec8a4c6d5a0');
+  assert.equal(report.recordCounts.player_position, 97);
+  assert.equal(report.recordCounts.staff_role, 26);
+  assert.equal(report.recordCounts.sports_organization, 0);
+  assert.equal(report.recordCounts.competition, 0);
+});
+
+test('5D-C maps every current legacy player and staff option exactly once without category inference', async () => {
+  const manifest = JSON.parse(
+    readFileSync('data/sports/phase-5d-c-controlled-vocabulary.json', 'utf8'),
+  ) as SportsCatalogManifest;
+  const { SPORTS_ROLES, STAFF_ROLES } = await import('../../lib/opps/constants');
+  const playerSourceValues = manifest.records
+    .filter((record) => record.kind === 'legacy_player_position_mapping')
+    .map((record) => String(record.attributes?.sourceValue));
+  const expectedPlayerValues = Object.values(SPORTS_ROLES).flat();
+  assert.deepEqual(playerSourceValues.sort(), expectedPlayerValues.sort());
+  const staffSourceValues = manifest.records
+    .filter((record) => record.kind === 'legacy_staff_role_mapping')
+    .map((record) => String(record.attributes?.sourceValue));
+  assert.deepEqual(staffSourceValues.sort(), [...STAFF_ROLES].sort());
+  assert.equal(manifest.records.some((record) => record.key.includes('prima_categoria')), false);
+});
+
+test('5D-C seed migration is additive, fail-closed and does not touch runtime or security contracts', () => {
+  const sql = readFileSync(
+    'supabase/migrations/20261207120000_seed_controlled_sports_vocabulary.sql',
+    'utf8',
+  ).toLowerCase();
+  for (const table of [
+    'gender_categories', 'competition_formats', 'territorial_scopes', 'player_positions', 'staff_roles',
+    'player_position_applicability', 'legacy_player_position_mappings', 'legacy_staff_role_mappings',
+  ]) assert.match(sql, new RegExp(`insert into public\\.${table}\\b`));
+  assert.doesNotMatch(sql, /(?:insert into|update|delete from|alter table)\s+public\.(?:profiles|athlete_experiences|opportunities|applications)\b/);
+  assert.doesNotMatch(sql, /create\s+(?:policy|table|function|trigger)|\bgrant\b|\brevoke\b/);
+  assert.doesNotMatch(sql, /insert into public\.(?:sports_organizations|competitions|competition_levels|age_classes|seasons)\b/);
+  assert.match(sql, /on conflict[\s\S]*do nothing/);
+  assert.match(sql, /raise exception '5d-c player legacy mapping payload mismatch'/);
 });
