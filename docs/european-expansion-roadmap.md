@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F-F — PIANO CANARY PRIMARY SPORT PREPARATO LOCALMENTE; NON ESEGUITO** |
+| Last completed subphase | **FASE 5F-F — REVIEW PIANO CANARY PASS; PROCEDURA PRONTA, NON ESEGUITA** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Review piano 5F-F e scelta del rollback: profilo disposable o ripristino atomico; nessun deploy/write autorizzato** |
+| Next safe action | **Raccogliere dati minimi del disposable/deploy e chiedere autorizzazioni remote distinte; nessun deploy/write autorizzato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -728,13 +728,13 @@ La differenza nove trigger Production/quattro nel runtime locale non ha bloccato
 
 ### FASE 5F-F — Piano canary primary sport Profile
 
-**Stato: PREPARATO LOCALMENTE; NON ESEGUITO.** Definisce prerequisiti fail-closed, snapshot, matrice owner-scoped, read-after-write e ripristino atomico per un futuro singolo canary. Evidenzia che il reset non ripristina una baseline `sport="Calcio"` con ID null: servirà un profilo disposable oppure un ripristino amministrativo atomico separatamente approvato. Deliverable: `docs/european-expansion/phase-5f-f-profile-primary-sport-canary-plan.md`. Nessun merge, deploy, PATCH remoto o backfill è stato eseguito.
+**Stato: REVIEW PASS; PROCEDURA PRONTA MA NON ESEGUITA.** È stato scelto un profilo dedicato e disposable; il profilo reale `sport="Calcio"` è escluso e non è previsto un suo ripristino amministrativo. La procedura identifica Production come ambiente proposto perché 5F-A è verificata solo lì, fissa la revisione runtime, richiede autorizzazioni remote distinte e rende osservabili `updated_at`, visibilità, notifiche e gli altri possibili effetti dei nove trigger. Deliverable: `docs/european-expansion/phase-5f-f-profile-primary-sport-canary-plan.md`. Nessun merge, deploy, account remoto, PATCH o backfill è stato eseguito.
 
-**Prossimo controllo concreto:** review del piano e scelta del metodo di ripristino; solo dopo si potranno preparare comandi eseguibili e chiedere autorizzazione separata.
+**Prossimo controllo concreto:** raccogliere identificatore non sensibile del disposable, secret sessione nel Codespace, URL/deploy SHA, mapping attivo e procedura di teardown; quindi chiedere autorizzazioni distinte per le operazioni remote.
 
 #### Cosa manca per concludere la FASE 5
 
-1. **Completare 5F oltre il repository:** revisionare il piano 5F-F, scegliere un profilo canary disposable oppure un ripristino amministrativo atomico e, soltanto con nuove autorizzazioni distinte, eseguire deploy e canary del primary sport; restano inoltre gli altri ambiti Profile/esperienze previsti dalla fase. Nessun catalogo Competition estero è necessario per il primo flusso Sport/Discipline/Variant.
+1. **Completare 5F oltre il repository:** fornire i dati minimi elencati in 5F-F e, soltanto con nuove autorizzazioni distinte, eseguire deploy, canary sul disposable e teardown verificato; restano inoltre gli altri ambiti Profile/esperienze previsti dalla fase. Nessun catalogo Competition estero è necessario per il primo flusso Sport/Discipline/Variant.
 2. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
 3. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
 4. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.
