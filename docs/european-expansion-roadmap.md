@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5D-E-A — SOURCE READINESS GATE PASS USER-REPORTED** |
-| Current active phase | **FASE 5D-E-R-SI — PRIMA RICOGNIZIONE DOCUMENTALE SLOVENIA COMPLETATA CON COPERTURA PARZIALE; REVIEW PENDING** |
-| Next safe action | **Review Slovenia; non iniziare la Polonia prima del feedback e nessun manifest/import** |
+| Current active phase | **FASE 5D-E-R-PL — PRIMA RICOGNIZIONE DOCUMENTALE POLONIA COMPLETATA CON COPERTURA PARZIALE; REVIEW PENDING** |
+| Next safe action | **Review Polonia, quindi 5D-E-I sulle sole lacune P0; nessuna approvazione dati, manifest o import** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA, SPAGNA E SVIZZERA PASS METODOLOGICO; SLOVENIA RICOGNIZIONE COMPLETATA/REVIEW PENDING; PL E 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH/SI PASS METODOLOGICO; POLONIA RICOGNIZIONE COMPLETATA/REVIEW PENDING; 5D-E-I E 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH PASS METODOLOGICO; 5D-E-R-SI COMPLETATA/REVIEW PENDING; PL NON INIZIATA.**
+**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH/SI PASS METODOLOGICO; 5D-E-R-PL COMPLETATA/REVIEW PENDING; 5D-E-I NON INIZIATA.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -612,12 +612,22 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 **Stato: PRIMA RICOGNIZIONE COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Coperti i 14 Sport UI con denominazioni originali slovene, priorità ai campionati senior maschili/femminili dilettantistici, principali competizioni giovanili nazionali, organizzatori nazionali/territoriali e circuiti esterni quando documentabili. Le voci sono distinte in verificate, candidate e mancanti; livelli e rapporti gerarchici sono riportati soltanto quando sostenuti dalle fonti. Calcio a 8, varianti ridotte e discipline omonime non ereditano categorie da altri sport. Coppe e selezioni territoriali restano fuori dal primo elenco Club. Per pallanuoto, rugby, hockey su prato, baseball/softball e football americano permangono lacune concrete, senza inferire denominazioni non dimostrate. Applicazione/API/UI, migration/seed/import/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-slovenia-competition-selector-research.md`. **Stop gate:** review Slovenia prima della Polonia.
 
+**Review Slovenia: PASS USER-REPORTED sulla prima ricognizione parziale; non certifica ogni denominazione, non promuove le candidate e non autorizza population dei selector.** Le lacune confluiscono nel backlog 5D-E-I.
+
+#### FASE 5D-E-R-PL — Ricerca documentale Polonia per i selettori
+
+**Stato: PRIMA RICOGNIZIONE COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Coperti i 14 Sport UI con fonti federation/circuito, denominazioni polacche originali, priorità senior dilettantistica M/F, strutture WZPN/territoriali e principali giovani nazionali. Le categorie omonime (`I liga`, `II liga`, `Ekstraliga`) restano scoped a sport, genere e organizer; Calcio a 8, rugby 7, indoor hockey, flag e PFL9 non ereditano categorie della disciplina principale. Le fonti bloccate o prive di indice competition corrente producono candidate/lacune, non assenze. Applicazione/API/UI, migration/seed/import/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-poland-competition-selector-research.md`.
+
+#### FASE 5D-E-I — Integrazione lacune per la prima copertura utile
+
+**Stato: BACKLOG CREATO / ATTIVITÀ NON INIZIATA.** Passaggio obbligatorio dopo la review Polonia e prima di approvare dati destinati ai selector. Il registro `docs/european-expansion/phase-5d-e-i-selector-coverage-gap-backlog.md` collega per FR/ES/CH/SI/PL Paese, Sport, informazione mancante, ricerca/fonti esistenti, priorità P0/P1/P2 e criterio verificabile di chiusura. P0 copre senior dilettantistici M/F, categorie territoriali e circuiti esterni rilevanti; P1 principali giovani nazionali; P2 gironi locali, giovani territoriali, coppe, selezioni, veterani e storico rinviabili. Il PASS metodologico non cambia lo stato delle candidate. **Primo intervento circoscritto proposto:** chiudere soltanto le P0 calcio/futsal dei cinque Paesi riusando fonti e ricerche già raccolte, senza ripetere i censimenti e senza ancora creare manifest, seed o import.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA/SPAGNA/SVIZZERA PASS METODOLOGICO; SLOVENIA COMPLETATA/REVIEW PENDING; POLONIA NON INIZIATA**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH/SI PASS METODOLOGICO; POLONIA COMPLETATA/REVIEW PENDING; 5D-E-I BACKLOG CREATO/NON INIZIATA**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
