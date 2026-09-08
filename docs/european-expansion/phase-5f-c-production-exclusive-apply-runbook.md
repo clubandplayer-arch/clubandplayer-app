@@ -168,22 +168,22 @@ Apply, registrazione history, post-check finale e 5F-B finale sono conclusi con 
 
 Preview, 5D-C, 5D-E-I, route/planner, UI, selector, seed, backfill e ogni altra migration restano esclusi.
 
-## 10. Estensione 5F esperienze — apply esclusivo Production non ancora autorizzato
+## 10. Estensione 5F esperienze — rollout schema Production completato
 
-Il preflight Production eseguito dall'utente il `2026-09-08 14:35:59 UTC` ha restituito `PASS_READY_EXCLUSIVE_APPLY_WITH_5D_C_PENDING`, `transactionReadOnly=on`, `ROLLBACK` ed exit code 0. History: 5C=1, 5F-A=1, 5D-C=0, esperienze=0; colonne, constraint e RPC target assenti. La migration esperienze resta non applicata.
+Il preflight Production eseguito dall'utente il `2026-09-08 14:35:59 UTC` ha restituito `PASS_READY_EXCLUSIVE_APPLY_WITH_5D_C_PENDING`, `transactionReadOnly=on`, `ROLLBACK` ed exit code 0. History iniziale: 5C=1, 5F-A=1, 5D-C=0, esperienze=0; colonne, constraint e RPC target assenti. Un secondo preflight immediato sul commit `6d03abaeb0bfde6c638c54f5fbfd287adfb75f00` ha riconfermato lo stesso stato e il checksum atteso.
 
 Migration esclusiva: `supabase/migrations/20261209120000_athlete_experience_sport_context.sql`.
 SHA-256: `cd5782787ab63035cf22628fb0ea2e4949a478a8ac12129f37ebc35676feb375`.
 
 La policy `athlete_experiences_select_public` consente SELECT sulle esperienze dei profili attivi, ma non concede DELETE/INSERT/UPDATE. La RPC è `security invoker`, non accetta un profile ID e deriva il target da `auth.uid()`; per le scritture resta quindi applicabile `athlete_experiences_manage_own`. La lettura pubblica non è una violazione dell'isolamento delle scritture e nessuna policy deve essere modificata.
 
-### 10.1 Apply DDL — solo dopo nuova autorizzazione esplicita
+### 10.1 Apply DDL — eseguito con autorizzazione esplicita
 
 Eseguire da Codespace autorizzato, in finestra a basso traffico. La migration include `BEGIN/COMMIT`; `ACCESS EXCLUSIVE` sulla tabella è limitato da `lock_timeout` e qualsiasi errore arresta `psql`. Non usare `db push`, migration repair o `--single-transaction`.
 
 ```bash
-cd /workspace/clubandplayer-app
-set -euo pipefail
+cd /workspaces/clubandplayer-app
+set -eo pipefail
 MIGRATION='supabase/migrations/20261209120000_athlete_experience_sport_context.sql'
 EXPECTED_SHA256='cd5782787ab63035cf22628fb0ea2e4949a478a8ac12129f37ebc35676feb375'
 printf '%s  %s\n' "$EXPECTED_SHA256" "$MIGRATION" | sha256sum --check --strict
@@ -228,4 +228,10 @@ commit;
 
 Il conteggio deve essere 1. Quindi rieseguire il post-check (`schemaReady=true`, history=1) e il preflight (`PASS_ALREADY_APPLIED`), conservare JSON ed exit code, infine rimuovere `/tmp/phase-5f-experience-production-apply.txt` e fare unset del secret. La registrazione diretta evita di applicare implicitamente la 5D-C precedente, ma richiede la stessa autorizzazione esplicita dell'apply DDL.
 
-**Prossimo singolo passaggio operativo:** autorizzare esplicitamente l'apply esclusivo Production della sola `20261209120000`, il post-check e, condizionatamente al PASS, la registrazione della sola versione. Fino a tale autorizzazione non eseguire alcun comando mutativo.
+### 10.4 Evidenza finale Production — 2026-09-08
+
+L'apply esclusivo della sola migration ha restituito checksum OK, `COMMIT`, `APPLY_EXIT_CODE=0` e `TEE_EXIT_CODE=0`. Il post-check pre-history read-only ha restituito `schemaReady=true`, tre colonne compatibili, quattro constraint compatibili e validati, RLS enabled+forced, RPC e grant conformi, trigger invariato, `owner_write_present=true`, `public_read_present=true`, `canonicalNonNullRows=0`, history 0, `ROLLBACK` ed exit code 0. La SELECT pubblica consentita dalla policy `athlete_experiences_select_public` non ha modificato l'isolamento owner-only delle scritture effettuate dalla RPC `security invoker`.
+
+Soltanto dopo quel PASS è stata registrata la versione `20261209120000`: lock acquisito, `INSERT 0 1`, conteggio history 1, `COMMIT`, history/tee exit 0. Post-check e preflight finali hanno restituito tutti gli exit code 0, history 1, `PASS_ALREADY_APPLIED` e marker `PHASE_5F_EXPERIENCE_PRODUCTION_SCHEMA_ROLLOUT_COMPLETE`. Non sono stati eseguiti 5D-C, altre migration, deploy, seed o backfill.
+
+**Stop gate finale:** rollout schema esperienze Production concluso; non rieseguire migration né registrazione history. Preview resta non verificato. Il prossimo lavoro 5F è il gate runtime separato (deploy e canary Profile/esperienze), che richiede autorizzazione propria.
