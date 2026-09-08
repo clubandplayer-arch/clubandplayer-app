@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F — SPORT CANONICO ESPERIENZE IMPLEMENTATO; TEST POSTGRES BLOCCATO DALL'AMBIENTE** |
+| Last completed subphase | **FASE 5F — SPORT CANONICO ESPERIENZE IMPLEMENTATO E POSTGRESQL 16 LOCALE PASS** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Eseguire l'harness esperienze su PostgreSQL 16 locale; solo dopo preparare il preflight read-only** |
+| Next safe action | **Eseguire il preflight read-only esperienze su un ambiente scelto esplicitamente; nessun apply** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -498,7 +498,7 @@ Gli stati remoti non si deducono dai file repository. `USER-REPORTED` indica evi
 | `20261206120000_canonical_sports_competition_schema.sql` / 5C | PostgreSQL 16.15 locale PASS | **NON VERIFICATO in 5F-B** | **USER-REPORTED APPLICATA + post-check PASS; non riconfermata in 5F-B** | Preview solo dopo riconciliazione history; nessun apply richiesto qui | Candidate key composite richieste da 5F-A; cataloghi Position/Role/Competition |
 | `20261207120000_seed_controlled_sports_vocabulary.sql` / 5D-C | PostgreSQL 16.15 locale double-apply/drift PASS | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | Sì, ma soltanto dopo gate separato; non dipendenza di 5F-A | Vocabulary canonica Position/StaffRole e mapping legacy; non primary Sport FK |
 | `20261208120000_profile_primary_sport.sql` / 5F-A | PostgreSQL 16.15 locale, trigger/atomicità/rollback PASS | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | **APPLICATA E REGISTRATA USER-REPORTED; HISTORY 1; POST-CHECK 12:12:54 E 5F-B 12:14:07 PASS** | Nessuna in Production; non rieseguire. Preview non decidibile | Persistenza canonical primary sport Profile disponibile; futuro dual-write route non ancora collegato |
-| `20261209120000_athlete_experience_sport_context.sql` / 5F esperienze | Double-apply PostgreSQL 16 **USER-REPORTED PASS**; prima esecuzione test bloccata da asserzione che leggeva la riga altrui sotto RLS; asserzione corretta, rerun completo pendente | **NON VERIFICATO / NON APPLICATO** | **NON VERIFICATO / NON APPLICATO** | Rieseguire harness Docker locale, poi preflight read-only e autorizzazione separata | Sport/Discipline/Variant canonici sulle esperienze e sostituzione atomica della lista |
+| `20261209120000_athlete_experience_sport_context.sql` / 5F esperienze | PostgreSQL 16 **USER-REPORTED PASS** su `79bff7da`: double-apply, rollback, isolamento proprietari e reset; marker `PHASE_5F_EXPERIENCE_SPORT_PASS`, exit 0 | **NON VERIFICATO / NON APPLICATO** | **NON VERIFICATO / NON APPLICATO** | Preflight read-only sull'ambiente scelto, poi autorizzazione separata | Sport/Discipline/Variant canonici sulle esperienze e sostituzione atomica della lista |
 
 Prima di attivare codice dipendente da una migration, l'agente deve segnalare la migration pendente, distinguere test locale da apply condiviso, guidare preflight/apply/post-check per ambiente e chiedere autorizzazione esplicita. Nessun rollout è completato dai soli test locali.
 
@@ -735,11 +735,13 @@ La differenza nove trigger Production/quattro nel runtime locale non ha bloccato
 
 ### FASE 5F — Sport canonico delle esperienze atleta
 
-**Stato: IMPLEMENTATO; DOUBLE-APPLY POSTGRESQL 16 USER-REPORTED PASS, RERUN TEST CORRETTO PENDENTE.** `athlete_experiences` riceve tre riferimenti UUID nullable con la stessa coerenza Sport → Discipline → Variant del Profile. La route esistente preserva gli array legacy, accetta l'oggetto additivo `primarySport`, risolve ogni elemento con il planner comune e sostituisce l'intera lista mediante un'unica RPC PostgreSQL owner-derived e atomica. GET mantiene i campi legacy e aggiunge `primarySport` nullable. Il fallimento comunicato alla riga 19 non indicava una cancellazione cross-owner: l'asserzione privilegiata veniva eseguita ancora come `authenticated` e la policy della fixture nascondeva la riga. Il test ora separa il tentativo di DELETE altrui (zero righe per RLS) dall'ispezione fisica come postgres, poi verifica nuovamente il reset owner-only. Nessuna UI o write remota è inclusa.
+**Stato: IMPLEMENTATO E VERIFICATO SU POSTGRESQL 16 LOCALE; REMOTE NON APPLICATO.** Sul commit `79bff7da` il runner corretto ha restituito `PHASE_5F_EXPERIENCE_SPORT_PASS` ed exit 0, verificando double-apply, rollback della sostituzione fallita, isolamento tra proprietari e reset del solo proprietario. `athlete_experiences` riceve tre riferimenti UUID nullable; la route preserva gli array legacy, accetta `primarySport`, usa il planner comune e sostituisce la lista con una RPC owner-derived atomica. GET mantiene i campi legacy e aggiunge `primarySport` nullable. Nessuna UI o write remota è inclusa.
 
-La canonicalizzazione di `role`/position e `category` non è attivata: dipende dalla vocabulary 5D-C ancora non applicata e dai contratti di applicabilità, quindi i due campi restano legacy. Competition/season canoniche richiedono cataloghi ulteriori e restano fuori da questo flusso indipendente. Il prossimo controllo concreto è eseguire `scripts/test-athlete-experience-sport-runtime-docker.sh` in un Codespace con Docker; soltanto dopo un PASS completo si potrà preparare un preflight remoto.
+La canonicalizzazione di `role`/position e `category` non è attivata: dipende dalla vocabulary 5D-C ancora non applicata e dai contratti di applicabilità, quindi i due campi restano legacy. Competition/season canoniche richiedono cataloghi ulteriori e restano fuori da questo flusso indipendente. Il preflight read-only mirato è ora `scripts/sports/reports/phase-5f-experience-sport-preflight-read-only.sql`; deve essere eseguito sull'ambiente scelto esplicitamente dall'operatore.
 
 La migration esperienze non dipende dai dati seed 5D-C per le FK Sport/Discipline/Variant, ma la sua versione `20261209120000` è successiva alla 5D-C pendente `20261207120000`: un futuro comando di apply automatico non deve trascinare il seed. Il preflight dovrà quindi riconciliare esplicitamente l'ordine della history e proporre una procedura esclusiva autorizzabile; non sono ammessi `db push`, repair o apply impliciti per aggirare questa dipendenza operativa.
+
+Il preflight passa come `PASS_READY_EXCLUSIVE_APPLY_WITH_5D_C_PENDING` quando 5C e 5F-A hanno history singola, 5D-C e la migration esperienze sono assenti, le candidate key esistono, RLS/policy sono attive e non esistono colonne, constraint o RPC target. Passa come `PASS_READY_TO_APPLY` con gli stessi requisiti e 5D-C presente una volta; `PASS_ALREADY_APPLIED` richiede invece tre colonne e quattro constraint compatibili, RPC `security invoker` eseguibile da `authenticated` ma non da `public`, e history esperienze singola. Ogni stato parziale, collisione, history duplicata o requisito RLS/schema mancante è bloccante.
 
 #### Cosa manca per concludere la FASE 5
 
