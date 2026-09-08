@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 5D-E-A — SOURCE READINESS GATE PASS USER-REPORTED** |
-| Current active phase | **FASE 5D-E-R-PL — PRIMA RICOGNIZIONE DOCUMENTALE POLONIA COMPLETATA CON COPERTURA PARZIALE; REVIEW PENDING** |
-| Next safe action | **Review Polonia, quindi 5D-E-I sulle sole lacune P0; nessuna approvazione dati, manifest o import** |
+| Last completed subphase | **FASE 5E-A — RESOLVER/PLANNER CANONICAL-FIRST REPOSITORY-ONLY IMPLEMENTATO E TESTATO** |
+| Current active phase | **FASE 5E — AVVIATA; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
+| Next safe action | **Autorizzazione 5E-B adapter repository read-only Sport/Discipline/Variant; nessuna UI/write remoto** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH/SI PASS METODOLOGICO; POLONIA RICOGNIZIONE COMPLETATA/REVIEW PENDING; 5D-E-I E 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A IMPLEMENTATA/TESTATA; 5E-B–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH/SI PASS METODOLOGICO; 5D-E-R-PL COMPLETATA/REVIEW PENDING; 5D-E-I NON INIZIATA.**
+**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I APERTA/NON INIZIATA.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -618,17 +618,29 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 **Stato: PRIMA RICOGNIZIONE COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Coperti i 14 Sport UI con fonti federation/circuito, denominazioni polacche originali, priorità senior dilettantistica M/F, strutture WZPN/territoriali e principali giovani nazionali. Le categorie omonime (`I liga`, `II liga`, `Ekstraliga`) restano scoped a sport, genere e organizer; Calcio a 8, rugby 7, indoor hockey, flag e PFL9 non ereditano categorie della disciplina principale. Le fonti bloccate o prive di indice competition corrente producono candidate/lacune, non assenze. Applicazione/API/UI, migration/seed/import/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-poland-competition-selector-research.md`.
 
+**Review Polonia: PASS USER-REPORTED sulla prima ricognizione parziale; non certifica le candidate e non autorizza population dei selector.** Il backlog continua a coprire tutti e cinque i Paesi.
+
 #### FASE 5D-E-I — Integrazione lacune per la prima copertura utile
 
-**Stato: BACKLOG CREATO / ATTIVITÀ NON INIZIATA.** Passaggio obbligatorio dopo la review Polonia e prima di approvare dati destinati ai selector. Il registro `docs/european-expansion/phase-5d-e-i-selector-coverage-gap-backlog.md` collega per FR/ES/CH/SI/PL Paese, Sport, informazione mancante, ricerca/fonti esistenti, priorità P0/P1/P2 e criterio verificabile di chiusura. P0 copre senior dilettantistici M/F, categorie territoriali e circuiti esterni rilevanti; P1 principali giovani nazionali; P2 gironi locali, giovani territoriali, coppe, selezioni, veterani e storico rinviabili. Il PASS metodologico non cambia lo stato delle candidate. **Primo intervento circoscritto proposto:** chiudere soltanto le P0 calcio/futsal dei cinque Paesi riusando fonti e ricerche già raccolte, senza ripetere i censimenti e senza ancora creare manifest, seed o import.
+**Stato: BACKLOG CREATO / ATTIVITÀ NON INIZIATA E NON AUTORIZZATA.** Passaggio obbligatorio prima di approvare dati destinati ai selector, ma non blocca la foundation adapter 5E. Il registro `docs/european-expansion/phase-5d-e-i-selector-coverage-gap-backlog.md` collega per FR/ES/CH/SI/PL Paese, Sport, informazione mancante, ricerca/fonti esistenti, priorità P0/P1/P2 e criterio verificabile di chiusura. P0 copre senior dilettantistici M/F, categorie territoriali e circuiti esterni rilevanti; P1 principali giovani nazionali; P2 gironi locali, giovani territoriali, coppe, selezioni, veterani e storico rinviabili. Il PASS metodologico non cambia lo stato delle candidate. Nessuna integrazione è stata eseguita in 5E-A.
+
+### FASE 5E — Dual-read / dual-write e adapter server
+
+**Stato: IN CORSO — 5E-A COMPLETATA; 5E-B E SUCCESSIVE NON INIZIATE.**
+
+#### FASE 5E-A — Resolver canonical-first e compatibility planner
+
+**Stato: IMPLEMENTATA E TESTATA REPOSITORY-ONLY; NESSUN COLLEGAMENTO RUNTIME, UI O DATABASE.** La primitive pura `lib/taxonomy/canonicalSportsCompatibility.ts` implementa gli stati read 5B (`canonical`, `legacy_mapped`, `legacy_raw`, `ambiguous`, `empty`, `invalid_reference`), mantiene osservabile un canonical ID invalido senza downgrade silenzioso e consente read storico coerente di record inattivi. Parser e planner write distinguono `absent`, `legacy`, `canonical` e `reset`: omissione non significa reset; conflitti/valori invalidi falliscono prima del piano; una write canonicale richiede record attivo e catena coerente; legacy unknown/ambiguous/inattivo preserva il raw e azzera soltanto lo stale canonical del gruppo. La compatibility projection è stabile e non localizzata.
+
+Supabase/Production non interrogati né modificati. Migration/seed/manifest/import/backfill: **NO**. RLS/grant/ownership/Applications: **NON MODIFICATI**. UI/API route/runtime caller: **NON COLLEGATI**. Mobile: **NON MODIFICATO**. 5D-E-I resta aperta/non iniziata e sarà necessaria prima di approvare una tranche reale per i selector, non per la foundation 5E-A. Deliverable: `docs/european-expansion/phase-5e-a-canonical-sports-compatibility-adapter.md`. **Prossimo passaggio autorizzabile: 5E-B — repository adapter read-only limitato a Sport/Discipline/Variant, senza UI o write remoto.**
 
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES/CH/SI PASS METODOLOGICO; POLONIA COMPLETATA/REVIEW PENDING; 5D-E-I BACKLOG CREATO/NON INIZIATA**;
-- 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
+- 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
+- 5E — dual-read / dual-write e adapter server — **IN CORSO: 5E-A COMPLETATA; 5E-B+ NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
