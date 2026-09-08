@@ -47,6 +47,9 @@ test('contract maps validation errors to stable 400 codes and hides unexpected e
   assert.deepEqual(mapProfilePrimarySportContractError(new Error('database detail')), {
     status: 500, code: 'profile_primary_sport_write_failed',
   });
+  assert.deepEqual(mapProfilePrimarySportContractError({ code: '42501', message: 'private RLS detail' }), {
+    status: 403, code: 'profile_primary_sport_forbidden',
+  });
 });
 
 test('PATCH /api/profiles/me integrates the planner and keeps one atomic row mutation', () => {

@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F-D — PRIMARY SPORT PROFILE COLLEGATO ALLA ROUTE E TESTATO NEL REPOSITORY; NON DEPLOYATO** |
+| Last completed subphase | **FASE 5F-E — REVIEW 5F-D E RELEASE GATE LOCALE PASS; NON DEPLOYATO** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Review del diff 5F-D e del contratto request/errori; nessun deploy o test remoto ancora autorizzato** |
+| Next safe action | **Review umana payload/errori 5F-E; eventuale deploy/canary richiede autorizzazione separata** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -718,11 +718,17 @@ La differenza nove trigger Production/quattro nel runtime locale non ha bloccato
 
 **Stato: IMPLEMENTATO E TESTATO NEL REPOSITORY; NON DEPLOYATO E NESSUNA WRITE REMOTA.** `PATCH /api/profiles/me` integra il planner 5E-D e proietta il gruppo completo legacy/canonical nello stesso UPDATE o UPSERT owner-scoped. Campo assente, reset, legacy mapped/raw, canonical attivo/coerente e errori stabili seguono i contratti approvati. I test di route/contratto e PostgreSQL isolato coprono atomicità, rollback, RLS owner-only e nove trigger; cinque trigger aggiuntivi sono stub nominali/semantici e non copie dei body Production. Deliverable: `docs/european-expansion/phase-5f-d-profile-primary-sport-runtime-connection.md`. 5F-A non è stata rieseguita; Preview non verificato; 5D-C pendente; 5D-E-I aperta/non iniziata.
 
-**Prossimo controllo concreto:** review del diff route e del contract request/errori prima di autorizzare qualsiasi deploy o canary.
+**Review completata:** PASS repository dopo la remediation del mapping RLS `42501` a `profile_primary_sport_forbidden` HTTP 403. Gli errori inattesi restano 500 opachi.
+
+### FASE 5F-E — Review e release gate locale primary sport
+
+**Stato: PASS LOCALE; NON DEPLOYATO E NESSUNA OPERAZIONE REMOTA.** Il gate consolida contract test route/request/errori, planner matrix e PostgreSQL isolato per atomicità, rollback, owner-only e nove trigger. Il test route verifica il source boundary e l'adapter puro, non avvia un server Next; cinque trigger sono stub e non body Production. Deliverable: `docs/european-expansion/phase-5f-e-profile-primary-sport-local-release-gate.md`. Il GET user-reported con canonical null resta baseline legacy, non prova PATCH.
+
+**Prossimo controllo concreto:** review umana del payload e dei codici 400/403/500; deploy/canary e write remota richiedono autorizzazione separata.
 
 #### Cosa manca per concludere la FASE 5
 
-1. **Completare 5F oltre il repository:** sottoporre 5F-D a review e, soltanto con nuova autorizzazione, deploy/canary del primary sport; restano inoltre gli altri ambiti Profile/esperienze previsti dalla fase. Nessun catalogo Competition estero è necessario per il primo flusso Sport/Discipline/Variant.
+1. **Completare 5F oltre il repository:** sottoporre il gate 5F-E a review umana e, soltanto con nuova autorizzazione, deploy/canary del primary sport; restano inoltre gli altri ambiti Profile/esperienze previsti dalla fase. Nessun catalogo Competition estero è necessario per il primo flusso Sport/Discipline/Variant.
 2. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
 3. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
 4. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.

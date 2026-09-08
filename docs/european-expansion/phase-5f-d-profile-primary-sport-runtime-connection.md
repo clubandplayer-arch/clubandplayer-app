@@ -17,7 +17,7 @@ Il solo `PATCH /api/profiles/me` usa ora la foundation 5E per il primary sport. 
 - `sport` e `primarySport` insieme: `conflicting_input` HTTP 400;
 - payload malformed: `invalid_input` HTTP 400; riferimento mancante/inattivo/incoerente: `invalid_reference` HTTP 400.
 
-Gli errori inattesi del repository o della mutation sono `profile_primary_sport_write_failed` HTTP 500 e non espongono dettagli interni.
+Una negazione RLS PostgreSQL `42501` diventa `profile_primary_sport_forbidden` HTTP 403. Gli altri errori inattesi del repository o della mutation sono `profile_primary_sport_write_failed` HTTP 500. Nessuno dei due espone dettagli interni.
 
 ## Atomicità e autorizzazione
 

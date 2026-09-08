@@ -22,9 +22,10 @@ export type ProfilePrimarySportColumns = {
 };
 
 export type ProfilePrimarySportContractError = {
-  status: 400 | 500;
+  status: 400 | 403 | 500;
   code:
     | CanonicalSportsCompatibilityError['code']
+    | 'profile_primary_sport_forbidden'
     | 'profile_primary_sport_write_failed';
 };
 
@@ -84,6 +85,9 @@ export function mapProfilePrimarySportContractError(
 ): ProfilePrimarySportContractError {
   if (error instanceof CanonicalSportsCompatibilityError) {
     return { status: 400, code: error.code };
+  }
+  if (error && typeof error === 'object' && 'code' in error && error.code === '42501') {
+    return { status: 403, code: 'profile_primary_sport_forbidden' };
   }
   return { status: 500, code: 'profile_primary_sport_write_failed' };
 }
