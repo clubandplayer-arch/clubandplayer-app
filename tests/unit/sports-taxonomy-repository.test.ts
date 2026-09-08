@@ -37,6 +37,8 @@ const variants: VariantCatalogRow[] = [
 class FakeSource implements SportsTaxonomyDataSource {
   calls: string[] = [];
   mappings: LegacySportMappingRow[] = [];
+  projectionLabels: string[] = [];
+  projectionCount: number | null = null;
 
   async getSport(id: string) {
     this.calls.push(`sport:${id}`);
@@ -53,6 +55,13 @@ class FakeSource implements SportsTaxonomyDataSource {
   async findActiveLegacyMappings(value: string, limit: number) {
     this.calls.push(`legacy:${value}:${limit}`);
     return this.mappings.filter((row) => row.normalizedSourceValue === value).slice(0, limit);
+  }
+  async findActiveLegacyProjectionLabels(reference: { sportId: string }, limit: number) {
+    this.calls.push(`projection:${reference.sportId}:${limit}`);
+    return {
+      labels: this.projectionLabels.slice(0, limit),
+      totalCount: this.projectionCount ?? this.projectionLabels.length,
+    };
   }
 }
 
@@ -145,4 +154,20 @@ test('unknown and ambiguous legacy values stay explicit', async () => {
   assert.equal((await repository.resolve({})).status, 'empty');
   assert.equal(source.calls.filter((call) => call === 'legacy:shared:2').length, 1);
   assert.equal(source.calls.some((call) => call === `sport:${ids.football}`), false);
+});
+
+test('stable legacy projection accepts aliases with one label and fails closed on drift or overflow', async () => {
+  const source = new FakeSource();
+  const repository = new SportsTaxonomyRepository(source);
+  const canonical = await repository.getContext({ sportId: ids.football });
+  assert.ok(canonical);
+
+  source.projectionLabels = ['Calcio', 'Calcio'];
+  assert.deepEqual(await repository.getStableLegacyProjection(canonical), { status: 'unique', value: 'Calcio' });
+  source.projectionLabels = [];
+  assert.deepEqual(await repository.getStableLegacyProjection(canonical), { status: 'none', value: null });
+  source.projectionLabels = ['Calcio', 'Football'];
+  assert.deepEqual(await repository.getStableLegacyProjection(canonical), { status: 'ambiguous', value: null });
+  source.projectionCount = 33;
+  assert.deepEqual(await repository.getStableLegacyProjection(canonical), { status: 'overflow', value: null });
 });

@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5E-C — INTERNAL SERVICE READ-ONLY CANONICALSPORTCONTEXT IMPLEMENTATO E TESTATO** |
+| Last completed subphase | **FASE 5E-D — INTERNAL WRITE-PLAN SERVICE SPORT/DISCIPLINE/VARIANT IMPLEMENTATO E TESTATO** |
 | Current active phase | **FASE 5E — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Autorizzazione 5E-D internal write-plan service senza persistenza, route, UI o write remoto** |
+| Next safe action | **Autorizzazione 5E-E audit/contract del primo caller runtime; nessun collegamento o write remoto** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A/5E-B/5E-C IMPLEMENTATE E TESTATE; 5E-D–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-D IMPLEMENTATE E TESTATE; 5E-E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -626,7 +626,7 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 ### FASE 5E — Dual-read / dual-write e adapter server
 
-**Stato: IN CORSO — 5E-A, 5E-B E 5E-C COMPLETATE; 5E-D E SUCCESSIVE NON INIZIATE.**
+**Stato: IN CORSO — 5E-A–5E-D COMPLETATE; 5E-E E SUCCESSIVE NON INIZIATE.**
 
 #### FASE 5E-A — Resolver canonical-first e compatibility planner
 
@@ -646,13 +646,19 @@ I test usano un fake data source e non una connessione remota. Supabase/Preview/
 
 I contract test coprono tutti i sei stati, delega singola e shape wire esatta senza record/nome/stato attivo interni. Supabase/Preview/Production: **NON INTERROGATI/NON MODIFICATI**. Route/UI/selector/runtime payload: **NON COLLEGATI**. Write/Organization/Competition/migration/seed/manifest/import/backfill: **NO**. RLS/grant/ownership, Profiles, Opportunities, Applications e Mobile: **NON MODIFICATI**. 5D-E-I resta aperta/non iniziata/non autorizzata e mantiene FR/ES/CH/SI/PL. Deliverable: `docs/european-expansion/phase-5e-c-canonical-sport-context-service.md`. **Prossimo passaggio autorizzabile: 5E-D — internal write-plan service Sport/Discipline/Variant senza persistenza, route o UI.**
 
+#### FASE 5E-D — Internal write-plan service Sport / Discipline / Variant
+
+**Stato: IMPLEMENTATA E TESTATA REPOSITORY-ONLY; NESSUNA PERSISTENZA, ROUTE, UI O ESECUZIONE REMOTA.** `lib/taxonomy/canonicalSportWritePlanService.server.ts` riusa parser/planner 5E-A e repository 5E-B per produrre un singolo piano `no_change` oppure `write` con source, Sport/Discipline/Variant IDs e compatibility legacy. Canonical richiede catena attiva/coerente; mapping legacy univoco/attivo produce dual-plan; raw, ambiguous o inactive preservano il raw e azzerano gli ID stale; reset è esplicito e absent non modifica nulla.
+
+5E-B aggiunge un lookup projection esclusivamente SELECT, exact-target e bounded: count exact, massimo 33 righe per budget 32, deduplica alias con la stessa label stabile, `null` se nessun equivalente, fail-closed su label divergenti o overflow. Nessuna funzione applica il piano. Supabase/Preview/Production: **NON INTERROGATI/NON MODIFICATI**. Runtime caller/route/UI/selector: **NON COLLEGATI**. Profiles, Opportunities, Applications, Organization/Competition, migration/seed/manifest/import/backfill, RLS/grant/ownership e Mobile: **NON MODIFICATI**. 5D-E-I resta aperta/non iniziata/non autorizzata per tutti i cinque Paesi. Deliverable: `docs/european-expansion/phase-5e-d-canonical-sport-write-plan-service.md`. **Prossimo passaggio autorizzabile: 5E-E — audit/contract repository-only del primo caller runtime, raccomandato Profile primary sport, senza collegamento o write remoto.**
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
 - 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
-- 5E — dual-read / dual-write e adapter server — **IN CORSO: 5E-A/5E-B/5E-C COMPLETATE; 5E-D+ NOT STARTED**;
+- 5E — dual-read / dual-write e adapter server — **IN CORSO: 5E-A–5E-D COMPLETATE; 5E-E+ NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;

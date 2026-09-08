@@ -48,6 +48,10 @@ export interface SportsTaxonomyDataSource {
   getDiscipline(id: string): Promise<DisciplineCatalogRow | null>;
   getVariant(id: string): Promise<VariantCatalogRow | null>;
   findActiveLegacyMappings(normalizedSourceValue: string, limit: number): Promise<LegacySportMappingRow[]>;
+  findActiveLegacyProjectionLabels(
+    reference: SportDisciplineVariantReference,
+    limit: number,
+  ): Promise<{ labels: string[]; totalCount: number }>;
 }
 
 type DbSportRow = { id: string; code: string; canonical_name: string; is_active: boolean };
@@ -134,6 +138,27 @@ export class SupabaseSportsTaxonomyDataSource implements SportsTaxonomyDataSourc
       variantId: row.variant_id,
     }));
   }
+
+  async findActiveLegacyProjectionLabels(
+    reference: SportDisciplineVariantReference,
+    limit: number,
+  ): Promise<{ labels: string[]; totalCount: number }> {
+    let query = this.client
+      .from('legacy_sport_mappings')
+      .select('legacy_display_label', { count: 'exact' })
+      .eq('sport_id', reference.sportId)
+      .eq('is_active', true);
+    query = reference.disciplineId
+      ? query.eq('discipline_id', reference.disciplineId)
+      : query.is('discipline_id', null);
+    query = reference.variantId ? query.eq('variant_id', reference.variantId) : query.is('variant_id', null);
+    const { data, error, count } = await query.limit(limit);
+    if (error) throw error;
+    return {
+      labels: (data ?? []).flatMap((row) => typeof row.legacy_display_label === 'string' ? [row.legacy_display_label] : []),
+      totalCount: count ?? 0,
+    };
+  }
 }
 
 const contextKey = ({ sportId, disciplineId, variantId }: SportDisciplineVariantReference): string =>
@@ -174,6 +199,22 @@ export class SportsTaxonomyRepository {
       discipline,
       variant,
     };
+  }
+
+  async getStableLegacyProjection(
+    context: SportDisciplineVariantContext,
+    maxMappings = 32,
+  ): Promise<{ status: 'unique' | 'none' | 'ambiguous' | 'overflow'; value: string | null }> {
+    const result = await this.source.findActiveLegacyProjectionLabels({
+      sportId: context.sport.id,
+      disciplineId: context.discipline?.id,
+      variantId: context.variant?.id,
+    }, maxMappings + 1);
+    if (result.totalCount > maxMappings) return { status: 'overflow', value: null };
+    const labels = [...new Set(result.labels.map((label) => label.trim()).filter(Boolean))];
+    if (!labels.length) return { status: 'none', value: null };
+    if (labels.length > 1) return { status: 'ambiguous', value: null };
+    return { status: 'unique', value: labels[0] };
   }
 
   async resolve(input: ResolveSportsTaxonomyInput): Promise<CanonicalSportsReadResolution<SportDisciplineVariantContext>> {
