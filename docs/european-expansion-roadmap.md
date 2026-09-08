@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5E-A — RESOLVER/PLANNER CANONICAL-FIRST REPOSITORY-ONLY IMPLEMENTATO E TESTATO** |
-| Current active phase | **FASE 5E — AVVIATA; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Autorizzazione 5E-B adapter repository read-only Sport/Discipline/Variant; nessuna UI/write remoto** |
+| Last completed subphase | **FASE 5E-B — REPOSITORY ADAPTER READ-ONLY SPORT/DISCIPLINE/VARIANT IMPLEMENTATO E TESTATO** |
+| Current active phase | **FASE 5E — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
+| Next safe action | **Autorizzazione 5E-C internal service read-only per il wire context Sport; nessuna route/UI/write remoto** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A IMPLEMENTATA/TESTATA; 5E-B–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A/5E-B IMPLEMENTATE E TESTATE; 5E-C–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -626,7 +626,7 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 ### FASE 5E — Dual-read / dual-write e adapter server
 
-**Stato: IN CORSO — 5E-A COMPLETATA; 5E-B E SUCCESSIVE NON INIZIATE.**
+**Stato: IN CORSO — 5E-A E 5E-B COMPLETATE; 5E-C E SUCCESSIVE NON INIZIATE.**
 
 #### FASE 5E-A — Resolver canonical-first e compatibility planner
 
@@ -634,13 +634,19 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 Supabase/Production non interrogati né modificati. Migration/seed/manifest/import/backfill: **NO**. RLS/grant/ownership/Applications: **NON MODIFICATI**. UI/API route/runtime caller: **NON COLLEGATI**. Mobile: **NON MODIFICATO**. 5D-E-I resta aperta/non iniziata e sarà necessaria prima di approvare una tranche reale per i selector, non per la foundation 5E-A. Deliverable: `docs/european-expansion/phase-5e-a-canonical-sports-compatibility-adapter.md`. **Prossimo passaggio autorizzabile: 5E-B — repository adapter read-only limitato a Sport/Discipline/Variant, senza UI o write remoto.**
 
+#### FASE 5E-B — Repository adapter read-only Sport / Discipline / Variant
+
+**Stato: IMPLEMENTATA E TESTATA REPOSITORY-ONLY; NON COLLEGATA A ROUTE, UI O PRODUCTION.** `lib/taxonomy/sportsTaxonomyRepository.server.ts` aggiunge un data source Supabase esclusivamente SELECT e un repository dependency-injected. I lookup canonicali sono exact-ID e validano UUID, shape e catena `Sport → Discipline → Variant`; il mapping legacy usa la normalizzazione foundation, richiede `is_active = true` ed è limitato a due risultati per rilevare ambiguity senza fuzzy matching. Canonical ha precedenza e non consulta legacy; riferimenti parziali, cross-sport o cross-discipline restano `invalid_reference`. Il budget è costante: massimo tre lookup per canonical e quattro per legacy univoco; ambiguity si ferma al lookup mapping.
+
+I test usano un fake data source e non una connessione remota. Supabase/Preview/Production: **NON INTERROGATI/NON MODIFICATI**. Route/UI/API payload/runtime caller: **NON COLLEGATI**. Write/migration/seed/manifest/import/backfill: **NO**. Organization/Competition, RLS/grant/ownership, Profiles, Opportunities, Applications e Mobile: **NON MODIFICATI**. 5D-E-I resta aperta/non iniziata/non autorizzata. Deliverable: `docs/european-expansion/phase-5e-b-sports-taxonomy-read-repository.md`. **Prossimo passaggio autorizzabile: 5E-C — internal service read-only che restituisce il wire context Sport 5B, ancora senza route/UI/write remoto.**
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
 - 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
-- 5E — dual-read / dual-write e adapter server — **IN CORSO: 5E-A COMPLETATA; 5E-B+ NOT STARTED**;
+- 5E — dual-read / dual-write e adapter server — **IN CORSO: 5E-A/5E-B COMPLETATE; 5E-C+ NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
