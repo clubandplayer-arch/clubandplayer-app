@@ -167,3 +167,65 @@ rm -f /tmp/phase-5f-a-production-apply.txt
 Apply, registrazione history, post-check finale e 5F-B finale sono conclusi con successo. **Non rieseguire la migration.** Il checkpoint schema 5F-A Production è chiuso; qualsiasi collegamento runtime richiede una nuova attività e autorizzazione separata.
 
 Preview, 5D-C, 5D-E-I, route/planner, UI, selector, seed, backfill e ogni altra migration restano esclusi.
+
+## 10. Estensione 5F esperienze — apply esclusivo Production non ancora autorizzato
+
+Il preflight Production eseguito dall'utente il `2026-09-08 14:35:59 UTC` ha restituito `PASS_READY_EXCLUSIVE_APPLY_WITH_5D_C_PENDING`, `transactionReadOnly=on`, `ROLLBACK` ed exit code 0. History: 5C=1, 5F-A=1, 5D-C=0, esperienze=0; colonne, constraint e RPC target assenti. La migration esperienze resta non applicata.
+
+Migration esclusiva: `supabase/migrations/20261209120000_athlete_experience_sport_context.sql`.
+SHA-256: `cd5782787ab63035cf22628fb0ea2e4949a478a8ac12129f37ebc35676feb375`.
+
+La policy `athlete_experiences_select_public` consente SELECT sulle esperienze dei profili attivi, ma non concede DELETE/INSERT/UPDATE. La RPC è `security invoker`, non accetta un profile ID e deriva il target da `auth.uid()`; per le scritture resta quindi applicabile `athlete_experiences_manage_own`. La lettura pubblica non è una violazione dell'isolamento delle scritture e nessuna policy deve essere modificata.
+
+### 10.1 Apply DDL — solo dopo nuova autorizzazione esplicita
+
+Eseguire da Codespace autorizzato, in finestra a basso traffico. La migration include `BEGIN/COMMIT`; `ACCESS EXCLUSIVE` sulla tabella è limitato da `lock_timeout` e qualsiasi errore arresta `psql`. Non usare `db push`, migration repair o `--single-transaction`.
+
+```bash
+cd /workspace/clubandplayer-app
+set -euo pipefail
+MIGRATION='supabase/migrations/20261209120000_athlete_experience_sport_context.sql'
+EXPECTED_SHA256='cd5782787ab63035cf22628fb0ea2e4949a478a8ac12129f37ebc35676feb375'
+printf '%s  %s\n' "$EXPECTED_SHA256" "$MIGRATION" | sha256sum --check --strict
+: "${PRODUCTION_DATABASE_URL:?Configura il secret senza stamparlo}"
+
+PGOPTIONS='-c application_name=phase_5f_experience_exclusive_apply -c lock_timeout=5s -c statement_timeout=60s' \
+psql "$PRODUCTION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -P pager=off -f "$MIGRATION" \
+  | tee /tmp/phase-5f-experience-production-apply.txt
+```
+
+Procedere soltanto con checksum OK, exit code 0 e `COMMIT`. Timeout, errore SQL o connessione interrotta => **STOP senza retry e senza history**.
+
+### 10.2 Post-check pre-history
+
+Eseguire integralmente `scripts/sports/reports/phase-5f-experience-sport-post-apply-read-only.sql`. È PASS soltanto con:
+
+- `schemaReady=true` e `transactionReadOnly=on`;
+- tre colonne UUID nullable senza default e quattro constraint compatibili/validati;
+- RLS enabled+forced;
+- entrambe le policy reali presenti (`select_public` e `manage_own`), con owner-write compatibile;
+- RPC `security invoker`, firma JSONB, ritorno integer, search path vuoto, EXECUTE `authenticated=true`, `public=false`;
+- trigger esperienze invariati;
+- `canonicalNonNullRows=0`, perché non sono autorizzati backfill o write runtime;
+- history esperienze ancora 0.
+
+Qualunque mismatch => **STOP**: non registrare history e non correggere oggetti durante la finestra.
+
+### 10.3 Registrazione condizionata della sola history
+
+Solo dopo il PASS pre-history e dopo aver verificato, come nel punto 4.2, che `version` sia l'unica colonna obbligatoria senza default:
+
+```sql
+begin;
+set local lock_timeout='5s';
+set local statement_timeout='15s';
+lock table supabase_migrations.schema_migrations in share row exclusive mode;
+insert into supabase_migrations.schema_migrations(version) values ('20261209120000');
+select count(*) as experience_history_rows
+from supabase_migrations.schema_migrations where version='20261209120000';
+commit;
+```
+
+Il conteggio deve essere 1. Quindi rieseguire il post-check (`schemaReady=true`, history=1) e il preflight (`PASS_ALREADY_APPLIED`), conservare JSON ed exit code, infine rimuovere `/tmp/phase-5f-experience-production-apply.txt` e fare unset del secret. La registrazione diretta evita di applicare implicitamente la 5D-C precedente, ma richiede la stessa autorizzazione esplicita dell'apply DDL.
+
+**Prossimo singolo passaggio operativo:** autorizzare esplicitamente l'apply esclusivo Production della sola `20261209120000`, il post-check e, condizionatamente al PASS, la registrazione della sola versione. Fino a tale autorizzazione non eseguire alcun comando mutativo.
