@@ -1,7 +1,14 @@
 # FASE 5F-C — Runbook esclusivo apply 5F-A Production
 
 Data: 2026-09-08  
-Stato: **RUNBOOK PREPARATO — APPLY NON AUTORIZZATO E NON ESEGUITO**
+Stato: **APPLY AUTORIZZATO IL 2026-09-08 — ESECUZIONE BLOCCATA IN QUESTO WORKSPACE PER CREDENZIALI PRODUCTION ASSENTI; NON ESEGUITO**
+
+## 0. Registro autorizzazione ed esecuzione
+
+- Autorizzazione utente ricevuta il 2026-09-08 per applicare esclusivamente 5F-A in Production e, solo dopo un post-check PASS, registrare la sola versione `20261208120000` nella migration history.
+- Verifica workspace: `PRODUCTION_DATABASE_URL`, `SUPABASE_DB_URL` e `DATABASE_URL` non sono configurate; non sono presenti file `.env*` o credential file utilizzabili e non è disponibile un client Supabase autenticato.
+- Esito operativo: **BLOCKED_NOT_EXECUTED**. Non è stata aperta alcuna connessione Production, non è stato rieseguito il preflight remoto, non è stato acquisito alcun lock, non è stato applicato DDL e la migration history non è stata modificata.
+- L'autorizzazione resta registrata, ma l'esecuzione deve avvenire in un Codespace autorizzato che esponga `PRODUCTION_DATABASE_URL`. Non condividere la credenziale in chat. Prima di eseguire, ripartire dal punto 3 e rispettare tutti gli stop gate.
 
 ## 1. Evidenza e decisione
 
@@ -151,6 +158,6 @@ rm -f /tmp/phase-5f-a-production-apply.txt
 
 ## 9. Stop gate
 
-Questo runbook è soltanto preparato. **Richiesta necessaria prima del punto 5: autorizzazione esplicita ad applicare esclusivamente 5F-A in Production e, dopo il post-check, a registrare direttamente la sola versione `20261208120000` nella history.**
+L'autorizzazione al punto 5 e alla registrazione condizionata della history è stata ricevuta il 2026-09-08. **L'esecuzione non è avvenuta perché questo workspace non dispone della connessione Production.** Nel Codespace autorizzato, interrompere comunque il flusso a ogni stop gate e non registrare la history se il post-check non è PASS.
 
 Preview, 5D-C, 5D-E-I, route/planner, UI, selector, seed, backfill e ogni altra migration restano esclusi.
