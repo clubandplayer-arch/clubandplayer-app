@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F-C — APPLY ESCLUSIVO 5F-A PRODUCTION AUTORIZZATO; BLOCCATO PER CREDENZIALI ASSENTI/NON ESEGUITO** |
+| Last completed subphase | **FASE 5F-C — APPLY ESCLUSIVO 5F-A PRODUCTION AUTORIZZATO; PREFLIGHT RICONFERMATO PASS; APPLY NON ESEGUITO** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Eseguire il runbook 5F-C da Codespace autorizzato con `PRODUCTION_DATABASE_URL`, iniziando dal rerun preflight; fermarsi a ogni stop gate** |
+| Next safe action | **Attendere/esaminare esito apply 5F-A dal Codespace autorizzato; eseguire post-check e registrare history soltanto se PASS** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -497,7 +497,7 @@ Gli stati remoti non si deducono dai file repository. `USER-REPORTED` indica evi
 | `20260822120000_european_catalog_foundation.sql` / FASE 1, prerequisito FASE 5 | Unit/statici repository PASS; foundation riusata nei runtime 5C/5F | **NON VERIFICATO in 5F-B** | **USER-REPORTED presente/verificata da audit successivi; non riconfermata in 5F-B** | Nessuna decisione di apply in 5F-B | Resolver e identità Sport/Discipline/Variant |
 | `20261206120000_canonical_sports_competition_schema.sql` / 5C | PostgreSQL 16.15 locale PASS | **NON VERIFICATO in 5F-B** | **USER-REPORTED APPLICATA + post-check PASS; non riconfermata in 5F-B** | Preview solo dopo riconciliazione history; nessun apply richiesto qui | Candidate key composite richieste da 5F-A; cataloghi Position/Role/Competition |
 | `20261207120000_seed_controlled_sports_vocabulary.sql` / 5D-C | PostgreSQL 16.15 locale double-apply/drift PASS | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | Sì, ma soltanto dopo gate separato; non dipendenza di 5F-A | Vocabulary canonica Position/StaffRole e mapping legacy; non primary Sport FK |
-| `20261208120000_profile_primary_sport.sql` / 5F-A | PostgreSQL 16.15 locale, trigger/atomicità/rollback PASS | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | **PREFLIGHT PASS USER-REPORTED; APPLY AUTORIZZATO 2026-09-08 MA BLOCCATO PER CREDENZIALI ASSENTI/NON ESEGUITO** | Sì in Production da Codespace autorizzato; Preview non decidibile | Persistenza canonical primary sport Profile e futuro dual-write route |
+| `20261208120000_profile_primary_sport.sql` / 5F-A | PostgreSQL 16.15 locale, trigger/atomicità/rollback PASS | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | **PREFLIGHT PASS USER-REPORTED, RICONFERMATO 10:43:01 UTC; APPLY AUTORIZZATO MA NON ESEGUITO** | Sì in Production; attendere evidenza apply/post-check/history dal Codespace autorizzato. Preview non decidibile | Persistenza canonical primary sport Profile e futuro dual-write route |
 
 Prima di attivare codice dipendente da una migration, l'agente deve segnalare la migration pendente, distinguere test locale da apply condiviso, guidare preflight/apply/post-check per ambiente e chiedere autorizzazione esplicita. Nessun rollout è completato dai soli test locali.
 
@@ -702,11 +702,13 @@ Nel processo non erano disponibili Supabase CLI né variabili/secret di connessi
 
 ### FASE 5F-C — Runbook esclusivo apply 5F-A Production
 
-**Stato: PREPARATO E TESTATO STATICAMENTE; APPLY AUTORIZZATO MA BLOCCATO PER CREDENZIALI ASSENTI/NON ESEGUITO.** Il runbook fissa migration, SHA-256, verifica project ref, rerun preflight, `lock_timeout=5s`, `statement_timeout=60s`, finestra a basso traffico, post-check schema/trigger/no-backfill, registrazione diretta e lockata della sola versione history e verifica finale. Non usa `db push` o `migration repair`.
+**Stato: PREPARATO E TESTATO STATICAMENTE; APPLY AUTORIZZATO, PREFLIGHT RICONFERMATO PASS, APPLY NON ESEGUITO.** Il runbook fissa migration, SHA-256, verifica project ref, rerun preflight, `lock_timeout=5s`, `statement_timeout=60s`, finestra a basso traffico, post-check schema/trigger/no-backfill, registrazione diretta e lockata della sola versione history e verifica finale. Non usa `db push` o `migration repair`.
 
 La differenza nove trigger Production/quattro nel runtime locale non blocca il DDL schema-only: nessun trigger è modificato o invocato dall'ALTER. Il post-check deve però preservare tutti i nove nomi, funzioni, definizioni e stato enabled; altrimenti history non viene registrata. Preview resta non verificato, 5D-C pendente e 5D-E-I aperta/non iniziata. Deliverable: `docs/european-expansion/phase-5f-c-production-exclusive-apply-runbook.md`. **Stop gate operativo: l'autorizzazione è stata ricevuta, ma l'apply e la successiva registrazione history restano subordinati rispettivamente al rerun preflight PASS e al post-check PASS previsti dal runbook.**
 
 **Checkpoint esecuzione 2026-09-08: AUTORIZZATA MA BLOCKED_NOT_EXECUTED.** L'utente ha autorizzato l'apply esclusivo 5F-A Production e la registrazione della sola versione history condizionata al post-check PASS. Nel workspace di esecuzione non risultano configurate `PRODUCTION_DATABASE_URL`, `SUPABASE_DB_URL` o `DATABASE_URL`, né un client Supabase autenticato: nessuna connessione remota, preflight remoto, lock, DDL o modifica history è stata eseguita. L'autorizzazione è registrata; il passaggio successivo è eseguire il runbook dal punto 3 in un Codespace autorizzato, senza condividere credenziali e mantenendo tutti gli stop gate.
+
+**Checkpoint Codespace utente 10:43:01 UTC: PREFLIGHT PASS, APPLY PENDING.** Il preflight Production è stato rieseguito con `PASS_READY_TO_APPLY_5F_A`, `transactionReadOnly=on` e `ROLLBACK`; la connessione del Codespace autorizzato è funzionante. Non sono ancora stati comunicati esito apply, post-check o registrazione history: il rollout 5F-A resta pertanto **NON COMPLETATO** e nessun codice dipendente può essere attivato.
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 

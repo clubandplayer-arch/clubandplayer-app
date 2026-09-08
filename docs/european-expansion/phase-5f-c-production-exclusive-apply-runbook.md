@@ -1,7 +1,7 @@
 # FASE 5F-C — Runbook esclusivo apply 5F-A Production
 
 Data: 2026-09-08  
-Stato: **APPLY AUTORIZZATO IL 2026-09-08 — ESECUZIONE BLOCCATA IN QUESTO WORKSPACE PER CREDENZIALI PRODUCTION ASSENTI; NON ESEGUITO**
+Stato: **APPLY AUTORIZZATO — PREFLIGHT PRODUCTION RICONFERMATO PASS ALLE 10:43:01 UTC; APPLY NON ANCORA ESEGUITO**
 
 ## 0. Registro autorizzazione ed esecuzione
 
@@ -9,12 +9,13 @@ Stato: **APPLY AUTORIZZATO IL 2026-09-08 — ESECUZIONE BLOCCATA IN QUESTO WORKS
 - Verifica workspace: `PRODUCTION_DATABASE_URL`, `SUPABASE_DB_URL` e `DATABASE_URL` non sono configurate; non sono presenti file `.env*` o credential file utilizzabili e non è disponibile un client Supabase autenticato.
 - Esito operativo: **BLOCKED_NOT_EXECUTED**. Non è stata aperta alcuna connessione Production, non è stato rieseguito il preflight remoto, non è stato acquisito alcun lock, non è stato applicato DDL e la migration history non è stata modificata.
 - L'autorizzazione resta registrata, ma l'esecuzione deve avvenire in un Codespace autorizzato che esponga `PRODUCTION_DATABASE_URL`. Non condividere la credenziale in chat. Prima di eseguire, ripartire dal punto 3 e rispettare tutti gli stop gate.
+- Checkpoint utente successivo: nel Codespace autorizzato il preflight Production è stato rieseguito alle `10:43:01 UTC` con `PASS_READY_TO_APPLY_5F_A`, `transactionReadOnly=on` e chiusura `ROLLBACK`. La connessione in quel Codespace funziona. Questo supera lo stop gate preflight per quello snapshot, ma non prova né registra l'apply: 5F-A e la relativa history restano assenti in attesa degli esiti successivi.
 
 ## 1. Evidenza e decisione
 
 Preflight Production 5F-B eseguito dall'utente nel SQL Editor il 2026-09-08 alle `10:06:54.813523+00:00`: **`PASS_READY_TO_APPLY_5F_A`**, `transactionReadOnly=on`. History: 5C una riga, 5D-C zero, 5F-A zero. Candidate key 5C presenti; tre colonne e quattro constraint 5F-A assenti. Preview resta **NON VERIFICATO**.
 
-La migration è applicabile alla Production descritta da quello snapshot, ma il PASS non è autorizzazione all'apply. Prima dell'esecuzione serve una nuova autorizzazione esplicita e un rerun immediato del preflight.
+La migration è applicabile alla Production descritta dallo snapshot più recente e l'autorizzazione è stata ricevuta. L'esecuzione resta separata: non dichiarare l'apply finché non sono disponibili output del comando, post-check PASS e registrazione history conclusa.
 
 Migration esclusiva: `supabase/migrations/20261208120000_profile_primary_sport.sql`.  
 SHA-256 approvabile: `313a56e370e700c2906987b944bbbefb2edd15ad7c7d51d435e1fa2d3022e9f3`.  
