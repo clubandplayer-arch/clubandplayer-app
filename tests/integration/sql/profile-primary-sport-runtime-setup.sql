@@ -30,3 +30,5 @@ insert into public.sport_disciplines(id, sport_id, code) values
 insert into public.sport_variants(id, discipline_id, code) values
   ('80000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000001', 'eleven_a_side'),
   ('80000000-0000-4000-8000-000000000002', '70000000-0000-4000-8000-000000000002', 'six_a_side');
+
+grant select on public.sports, public.sport_disciplines, public.sport_variants to authenticated;

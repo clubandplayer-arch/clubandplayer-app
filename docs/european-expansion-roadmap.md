@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F-C — ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; HISTORY 1 E CONTROLLI FINALI PASS** |
+| Last completed subphase | **FASE 5F-D — PRIMARY SPORT PROFILE COLLEGATO ALLA ROUTE E TESTATO NEL REPOSITORY; NON DEPLOYATO** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Autorizzare separatamente il primo collegamento runtime 5F del primary sport Profile; non rieseguire 5F-A** |
+| Next safe action | **Review del diff 5F-D e del contratto request/errori; nessun deploy o test remoto ancora autorizzato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-E FOUNDATION COMPLETATE; ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; RUNTIME 5F E 5G–5J PENDENTI.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-E FOUNDATION COMPLETATE; ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; PRIMARY SPORT ROUTE 5F-D IMPLEMENTATA REPOSITORY-ONLY; RESTO DI 5F E 5G–5J PENDENTI.**
 
 ### Registro migration FASE 5
 
@@ -680,7 +680,7 @@ Suddivisione confermata dopo l'audit:
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
 - 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
 - 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
-- 5F — profili ed esperienze — **IN CORSO: ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; RUNTIME PRIMARY SPORT NON COLLEGATO**;
+- 5F — profili ed esperienze — **IN CORSO: SCHEMA 5F-A PRODUCTION COMPLETO; PRIMARY SPORT ROUTE 5F-D IMPLEMENTATA/TESTATA MA NON DEPLOYATA; ESPERIENZE PENDENTI**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
 - 5I — UI, filtri e controlled vocabulary — **NOT STARTED**;
@@ -714,9 +714,15 @@ La differenza nove trigger Production/quattro nel runtime locale non ha bloccato
 
 **Checkpoint finale Codespace utente 12:14:07 UTC: ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO.** La sola versione `20261208120000` è stata registrata con conteggio 1. Il post-check delle `12:12:54 UTC` conferma schema ready, quattro vincoli compatibili/validati, nove trigger enabled invariati, zero canonical rows e history 1. Il 5F-B finale delle `12:14:07 UTC` restituisce `PASS_5F_A_ALREADY_APPLIED`, read-only on e `ROLLBACK`. Preview resta non verificato; 5D-C non applicata; 5D-E-I aperta/non iniziata. Non rieseguire 5F-A.
 
+### FASE 5F-D — Collegamento runtime primary sport Profile
+
+**Stato: IMPLEMENTATO E TESTATO NEL REPOSITORY; NON DEPLOYATO E NESSUNA WRITE REMOTA.** `PATCH /api/profiles/me` integra il planner 5E-D e proietta il gruppo completo legacy/canonical nello stesso UPDATE o UPSERT owner-scoped. Campo assente, reset, legacy mapped/raw, canonical attivo/coerente e errori stabili seguono i contratti approvati. I test di route/contratto e PostgreSQL isolato coprono atomicità, rollback, RLS owner-only e nove trigger; cinque trigger aggiuntivi sono stub nominali/semantici e non copie dei body Production. Deliverable: `docs/european-expansion/phase-5f-d-profile-primary-sport-runtime-connection.md`. 5F-A non è stata rieseguita; Preview non verificato; 5D-C pendente; 5D-E-I aperta/non iniziata.
+
+**Prossimo controllo concreto:** review del diff route e del contract request/errori prima di autorizzare qualsiasi deploy o canary.
+
 #### Cosa manca per concludere la FASE 5
 
-1. **Completare 5F runtime:** autorizzare e implementare il collegamento atomico del planner già esistente al primary sport di `PATCH /api/profiles/me`, mantenendo i client legacy facoltativi, quindi verificare read/write, reset, errori stabili e i nove trigger Production. Nessun catalogo Competition estero è necessario per questo primo flusso Sport/Discipline/Variant.
+1. **Completare 5F oltre il repository:** sottoporre 5F-D a review e, soltanto con nuova autorizzazione, deploy/canary del primary sport; restano inoltre gli altri ambiti Profile/esperienze previsti dalla fase. Nessun catalogo Competition estero è necessario per il primo flusso Sport/Discipline/Variant.
 2. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
 3. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
 4. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.

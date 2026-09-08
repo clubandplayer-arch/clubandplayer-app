@@ -12,11 +12,9 @@ select test.assert(
   'all four primary sport constraints must exist exactly once'
 );
 select test.assert(
-  (select count(*) = 4 and bool_and(tgenabled = 'O') from pg_trigger
-   where tgrelid = 'public.profiles'::regclass
-     and tgname in ('trg_profile_location_coerce', 'profiles_sync_names',
-                    'profiles_set_visibility_status', 'profiles_notify_draft_demotion')),
-  'all existing Profile triggers must remain installed and enabled'
+  (select count(*) = 9 and bool_and(tgenabled = 'O') from pg_trigger
+   where tgrelid = 'public.profiles'::regclass and not tgisinternal),
+  'the nine-trigger Production compatibility fixture must remain installed and enabled'
 );
 
 -- Valid sport-only, discipline and full-variant chains.
@@ -34,6 +32,34 @@ select test.assert(
    where id = '30000000-0000-0000-0000-000000000001'),
   'canonical-only updates must remain compatible with the existing visibility trigger'
 );
+
+-- The authenticated caller can update only the Profile selected by auth.uid().
+set role authenticated;
+select set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
+update public.profiles set
+  sport = 'Calcio',
+  sport_id = '60000000-0000-4000-8000-000000000001',
+  sport_discipline_id = '70000000-0000-4000-8000-000000000001',
+  sport_variant_id = '80000000-0000-4000-8000-000000000001'
+where user_id = auth.uid();
+select test.assert((select sport_id = '60000000-0000-4000-8000-000000000001'
+  and sport_discipline_id = '70000000-0000-4000-8000-000000000001'
+  and sport_variant_id = '80000000-0000-4000-8000-000000000001'
+  from public.profiles where user_id = auth.uid()),
+  'authenticated owner must update its complete primary-sport group');
+select test.assert((select count(*) = 0 from public.profiles
+  where user_id = '40000000-0000-0000-0000-000000000002' and sport_id is not null),
+  'owner-scoped update must not affect another Profile');
+do $$
+declare affected integer;
+begin
+  update public.profiles set sport = 'Unauthorized'
+  where user_id = '40000000-0000-0000-0000-000000000002';
+  get diagnostics affected = row_count;
+  perform test.assert(affected = 0, 'RLS must hide another user Profile from UPDATE');
+end
+$$;
+reset role;
 
 -- Missing references, invalid shape, cross-sport and cross-discipline chains fail.
 do $$
