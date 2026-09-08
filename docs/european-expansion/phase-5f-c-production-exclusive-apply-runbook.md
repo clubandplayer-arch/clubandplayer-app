@@ -1,7 +1,7 @@
 # FASE 5F-C — Runbook esclusivo apply 5F-A Production
 
 Data: 2026-09-08  
-Stato: **SCHEMA APPLICATO IN PRODUCTION — POST-CHECK PRE-HISTORY PASS; REGISTRAZIONE HISTORY PENDENTE**
+Stato: **ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO — HISTORY REGISTRATA E CONTROLLI FINALI PASS**
 
 ## 0. Registro autorizzazione ed esecuzione
 
@@ -13,12 +13,14 @@ Stato: **SCHEMA APPLICATO IN PRODUCTION — POST-CHECK PRE-HISTORY PASS; REGISTR
 - Checkpoint apply comunicato dall'utente: la sola migration `20261208120000_profile_primary_sport.sql` è stata applicata in Production con `COMMIT` e `APPLY_EXIT_CODE=0`. Non rieseguire la migration: lo schema è ora presente mentre la history è ancora assente.
 - Post-check pre-history delle `10:51:48 UTC`: **PASS** con `schemaReady=true`, tre colonne UUID nullable senza default, quattro constraint compatibili e validati, nove trigger enabled e invariati, `canonicalNonNullRows=0` e `phase_5f_a_rows=0`.
 - Stato di arresto intenzionale: **SCHEMA_APPLIED_HISTORY_PENDING**. Il rollout non è concluso finché la sola versione `20261208120000` non è registrata e i controlli finali non restituiscono history 1 e `PASS_5F_A_ALREADY_APPLIED`.
+- Checkpoint finale comunicato dall'utente: registrazione della sola versione `20261208120000` conclusa con conteggio `1`. Il post-check finale delle `12:12:54 UTC` conferma `schemaReady=true`, quattro constraint compatibili e validati, nove trigger enabled e invariati, `canonicalNonNullRows=0` e history `1`.
+- Preflight finale delle `12:14:07 UTC`: **`PASS_5F_A_ALREADY_APPLIED`**, `transactionReadOnly=on`, concluso con `ROLLBACK`. Stato finale: **PRODUCTION_SCHEMA_ROLLOUT_COMPLETE**. Preview resta non verificato; non rieseguire la migration.
 
 ## 1. Evidenza e decisione
 
 Preflight Production 5F-B eseguito dall'utente nel SQL Editor il 2026-09-08 alle `10:06:54.813523+00:00`: **`PASS_READY_TO_APPLY_5F_A`**, `transactionReadOnly=on`. History: 5C una riga, 5D-C zero, 5F-A zero. Candidate key 5C presenti; tre colonne e quattro constraint 5F-A assenti. Preview resta **NON VERIFICATO**.
 
-Lo schema è stato applicato e il post-check pre-history è PASS. La migration non deve essere rieseguita. Riprendere esclusivamente dal punto 7 quando si intende registrare la history; il rollout resta incompleto fino alla verifica finale.
+Lo schema e la relativa history sono presenti in Production e i controlli finali sono PASS. La migration non deve essere rieseguita. Questo chiude il solo rollout schema 5F-A, non collega il planner al runtime e non completa l'intera FASE 5.
 
 Migration esclusiva: `supabase/migrations/20261208120000_profile_primary_sport.sql`.  
 SHA-256 approvabile: `313a56e370e700c2906987b944bbbefb2edd15ad7c7d51d435e1fa2d3022e9f3`.  
@@ -162,6 +164,6 @@ rm -f /tmp/phase-5f-a-production-apply.txt
 
 ## 9. Stop gate
 
-L'apply autorizzato è concluso con successo e il post-check pre-history è PASS. **Stop corrente prima del punto 7: non rieseguire la migration.** La registrazione history autorizzata resta pendente; dopo di essa sono obbligatori post-check finale e 5F-B finale prima di dichiarare il rollout completato.
+Apply, registrazione history, post-check finale e 5F-B finale sono conclusi con successo. **Non rieseguire la migration.** Il checkpoint schema 5F-A Production è chiuso; qualsiasi collegamento runtime richiede una nuova attività e autorizzazione separata.
 
 Preview, 5D-C, 5D-E-I, route/planner, UI, selector, seed, backfill e ogni altra migration restano esclusi.

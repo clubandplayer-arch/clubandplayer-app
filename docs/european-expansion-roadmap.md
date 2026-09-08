@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F-C — SCHEMA 5F-A APPLICATO IN PRODUCTION; POST-CHECK PRE-HISTORY PASS; HISTORY PENDENTE** |
+| Last completed subphase | **FASE 5F-C — ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; HISTORY 1 E CONTROLLI FINALI PASS** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Non rieseguire 5F-A; registrare soltanto `20261208120000` in history, poi post-check finale e 5F-B finale** |
+| Next safe action | **Autorizzare separatamente il primo collegamento runtime 5F del primary sport Profile; non rieseguire 5F-A** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-E COMPLETATE; 5F-A CREATA/TESTATA LOCALE NON APPLICATA; 5F-B PREFLIGHT PREPARATO MA NON ESEGUITO SU AMBIENTI CONDIVISI; 5F-C–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-E FOUNDATION COMPLETATE; ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; RUNTIME 5F E 5G–5J PENDENTI.**
 
 ### Registro migration FASE 5
 
@@ -497,7 +497,7 @@ Gli stati remoti non si deducono dai file repository. `USER-REPORTED` indica evi
 | `20260822120000_european_catalog_foundation.sql` / FASE 1, prerequisito FASE 5 | Unit/statici repository PASS; foundation riusata nei runtime 5C/5F | **NON VERIFICATO in 5F-B** | **USER-REPORTED presente/verificata da audit successivi; non riconfermata in 5F-B** | Nessuna decisione di apply in 5F-B | Resolver e identità Sport/Discipline/Variant |
 | `20261206120000_canonical_sports_competition_schema.sql` / 5C | PostgreSQL 16.15 locale PASS | **NON VERIFICATO in 5F-B** | **USER-REPORTED APPLICATA + post-check PASS; non riconfermata in 5F-B** | Preview solo dopo riconciliazione history; nessun apply richiesto qui | Candidate key composite richieste da 5F-A; cataloghi Position/Role/Competition |
 | `20261207120000_seed_controlled_sports_vocabulary.sql` / 5D-C | PostgreSQL 16.15 locale double-apply/drift PASS | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | Sì, ma soltanto dopo gate separato; non dipendenza di 5F-A | Vocabulary canonica Position/StaffRole e mapping legacy; non primary Sport FK |
-| `20261208120000_profile_primary_sport.sql` / 5F-A | PostgreSQL 16.15 locale, trigger/atomicità/rollback PASS | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | **SCHEMA APPLICATO, COMMIT/EXIT 0 USER-REPORTED; POST-CHECK PRE-HISTORY PASS 10:51:48 UTC; HISTORY PENDENTE** | Non rieseguire DDL; registrare soltanto history e completare i due check finali. Preview non decidibile | Persistenza canonical primary sport Profile e futuro dual-write route |
+| `20261208120000_profile_primary_sport.sql` / 5F-A | PostgreSQL 16.15 locale, trigger/atomicità/rollback PASS | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | **APPLICATA E REGISTRATA USER-REPORTED; HISTORY 1; POST-CHECK 12:12:54 E 5F-B 12:14:07 PASS** | Nessuna in Production; non rieseguire. Preview non decidibile | Persistenza canonical primary sport Profile disponibile; futuro dual-write route non ancora collegato |
 
 Prima di attivare codice dipendente da una migration, l'agente deve segnalare la migration pendente, distinguere test locale da apply condiviso, guidare preflight/apply/post-check per ambiente e chiedere autorizzazione esplicita. Nessun rollout è completato dai soli test locali.
 
@@ -680,7 +680,7 @@ Suddivisione confermata dopo l'audit:
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
 - 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
 - 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
-- 5F — profili ed esperienze — **IN CORSO: SCHEMA 5F-A APPLICATO IN PRODUCTION E POST-CHECK PRE-HISTORY PASS; HISTORY E CHECK FINALI PENDENTI; RUNTIME PRIMARY SPORT NON COLLEGATO**;
+- 5F — profili ed esperienze — **IN CORSO: ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; RUNTIME PRIMARY SPORT NON COLLEGATO**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
 - 5I — UI, filtri e controlled vocabulary — **NOT STARTED**;
@@ -688,23 +688,23 @@ Suddivisione confermata dopo l'audit:
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
-**Stato: MIGRATION CREATA/TESTATA LOCALE E SCHEMA APPLICATO IN PRODUCTION; HISTORY PENDENTE; PREVIEW NON VERIFICATO.** `supabase/migrations/20261208120000_profile_primary_sport.sql` aggiunge soltanto `profiles.sport_id`, `sport_discipline_id` e `sport_variant_id`, UUID nullable senza default/backfill. Le FK direct/composite e lo shape check preservano Sport→Discipline→Variant e usano le candidate key 5C; `profiles.sport` resta invariato.
+**Stato: MIGRATION CREATA/TESTATA LOCALE, APPLICATA E REGISTRATA IN PRODUCTION CON CONTROLLI FINALI PASS; PREVIEW NON VERIFICATO.** `supabase/migrations/20261208120000_profile_primary_sport.sql` aggiunge soltanto `profiles.sport_id`, `sport_discipline_id` e `sport_variant_id`, UUID nullable senza default/backfill. Le FK direct/composite e lo shape check preservano Sport→Discipline→Variant e usano le candidate key 5C; `profiles.sport` resta invariato.
 
-Il runtime harness applica due volte la migration in un database temporaneo con i trigger Profile versionati nel repository. PASS su legacy null, catene valide/invalide, riferimenti mancanti, trigger/constraint esistenti, UPDATE/UPSERT atomici e rollback, con marker `PHASE_5F_A_PROFILE_PRIMARY_SPORT_PASS`. Route/UI/planner/selector non collegati; RLS/grant, Competition, seed/import/backfill, Preview/Production e Mobile non modificati. 5D-E-I resta aperta/non iniziata per FR/ES/CH/SI/PL. Deliverable: `docs/european-expansion/phase-5f-a-profile-primary-sport-schema.md`. **Prossimo passaggio autorizzabile: 5F-B preflight read-only mirato della sola 5F-A; nessun apply, db push, repair o collegamento route.**
+Il runtime harness applica due volte la migration in un database temporaneo con i trigger Profile versionati nel repository. PASS su legacy null, catene valide/invalide, riferimenti mancanti, trigger/constraint esistenti, UPDATE/UPSERT atomici e rollback, con marker `PHASE_5F_A_PROFILE_PRIMARY_SPORT_PASS`. Route/UI/planner/selector non collegati; RLS/grant, Competition, seed/import/backfill e Mobile non modificati. Preview resta non verificato; il successivo rollout Production è tracciato separatamente in 5F-C. 5D-E-I resta aperta/non iniziata per FR/ES/CH/SI/PL. Deliverable: `docs/european-expansion/phase-5f-a-profile-primary-sport-schema.md`.
 
 ### FASE 5F-B — Preflight read-only primary sport Profile
 
-**Stato: REPORT CREATO E TESTATO SU POSTGRESQL 16.15 LOCALE; PREVIEW E PRODUCTION NON ACCESSIBILI/NON CONTROLLATI.** `scripts/sports/reports/phase-5f-b-profile-primary-sport-preflight-read-only.sql` produce una sola cella JSON in transazione read-only e classifica prerequisiti, candidate key 5C, collisioni colonne/constraint, trigger Profile e history 5C/5D-C/5F-A. Il runtime locale verifica sia `PASS_READY_TO_APPLY_5F_A` sia `PASS_5F_A_ALREADY_APPLIED` senza sostituire il preflight remoto.
+**Stato: REPORT CREATO/TESTATO LOCALE ED ESEGUITO IN PRODUCTION; CHECK FINALE PASS. PREVIEW NON VERIFICATO.** `scripts/sports/reports/phase-5f-b-profile-primary-sport-preflight-read-only.sql` produce una sola cella JSON in transazione read-only e classifica prerequisiti, candidate key 5C, collisioni colonne/constraint, trigger Profile e history 5C/5D-C/5F-A. Il runtime locale verifica sia `PASS_READY_TO_APPLY_5F_A` sia `PASS_5F_A_ALREADY_APPLIED` senza sostituire il preflight remoto.
 
-Nel processo non erano disponibili Supabase CLI né variabili/secret di connessione condivisa: Preview e Production sono quindi **NOT EXECUTED / NON VERIFICATI**, non PASS/BLOCKED e non implicitamente privi della migration. Nessun apply, seed, backfill, `db push`, `migration repair`, lock esplicito o modifica history è stato eseguito. 5F-A non è dichiarata pronta per alcun ambiente condiviso finché non viene restituito il JSON del relativo preflight. Istruzioni Codespace senza condivisione credenziali: `docs/european-expansion/phase-5f-b-profile-primary-sport-preflight.md`. **Prossimo passaggio: esecuzione umana read-only per ciascun ambiente accessibile e review separata; qualunque apply richiederà nuova autorizzazione esplicita.** 5D-E-I resta aperta/non iniziata per FR/ES/CH/SI/PL.
+Al momento della preparazione del report non erano disponibili nel workspace dell'agente Supabase CLI né variabili/secret di connessione condivisa; i successivi check Production sono stati eseguiti dal Codespace autorizzato dell'utente e sono registrati sotto. Preview resta **NON VERIFICATO**. Istruzioni Codespace senza condivisione credenziali: `docs/european-expansion/phase-5f-b-profile-primary-sport-preflight.md`. 5D-E-I resta aperta/non iniziata per FR/ES/CH/SI/PL.
 
 **5F-B PRODUCTION — PASS USER-REPORTED / PREVIEW NON VERIFICATO.** Il JSON completo del SQL Editor Production del 2026-09-08 riporta `PASS_READY_TO_APPLY_5F_A`, read-only on, 5C history una volta, 5D-C/5F-A history zero, candidate key presenti e nessuna colonna/constraint 5F-A. Nove trigger Profile risultano enabled. Il PASS abilita la preparazione del runbook, non l'apply.
 
 ### FASE 5F-C — Runbook esclusivo apply 5F-A Production
 
-**Stato: SCHEMA APPLICATO IN PRODUCTION; POST-CHECK PRE-HISTORY PASS; HISTORY PENDENTE.** Il runbook fissa migration, SHA-256, verifica project ref, rerun preflight, `lock_timeout=5s`, `statement_timeout=60s`, finestra a basso traffico, post-check schema/trigger/no-backfill, registrazione diretta e lockata della sola versione history e verifica finale. Non usa `db push` o `migration repair`.
+**Stato: ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; HISTORY E CONTROLLI FINALI PASS.** Il runbook fissa migration, SHA-256, verifica project ref, rerun preflight, `lock_timeout=5s`, `statement_timeout=60s`, finestra a basso traffico, post-check schema/trigger/no-backfill, registrazione diretta e lockata della sola versione history e verifica finale. Non usa `db push` o `migration repair`.
 
-La differenza nove trigger Production/quattro nel runtime locale non blocca il DDL schema-only: nessun trigger è modificato o invocato dall'ALTER. Il post-check deve però preservare tutti i nove nomi, funzioni, definizioni e stato enabled; altrimenti history non viene registrata. Preview resta non verificato, 5D-C pendente e 5D-E-I aperta/non iniziata. Deliverable: `docs/european-expansion/phase-5f-c-production-exclusive-apply-runbook.md`. Il gate preflight e il gate post-check pre-history sono stati superati; **restano il solo insert history autorizzato e i due controlli finali, senza rieseguire il DDL.**
+La differenza nove trigger Production/quattro nel runtime locale non ha bloccato il DDL schema-only: nessun trigger è stato modificato o invocato dall'ALTER. I controlli finali hanno confermato tutti i nove nomi, funzioni, definizioni e stato enabled. Preview resta non verificato, 5D-C pendente e 5D-E-I aperta/non iniziata. Deliverable: `docs/european-expansion/phase-5f-c-production-exclusive-apply-runbook.md`. **Schema, history e controlli finali sono conclusi; non rieseguire il DDL.**
 
 **Checkpoint esecuzione 2026-09-08: AUTORIZZATA MA BLOCKED_NOT_EXECUTED.** L'utente ha autorizzato l'apply esclusivo 5F-A Production e la registrazione della sola versione history condizionata al post-check PASS. Nel workspace di esecuzione non risultano configurate `PRODUCTION_DATABASE_URL`, `SUPABASE_DB_URL` o `DATABASE_URL`, né un client Supabase autenticato: nessuna connessione remota, preflight remoto, lock, DDL o modifica history è stata eseguita. L'autorizzazione è registrata; il passaggio successivo è eseguire il runbook dal punto 3 in un Codespace autorizzato, senza condividere credenziali e mantenendo tutti gli stop gate.
 
@@ -712,13 +712,14 @@ La differenza nove trigger Production/quattro nel runtime locale non blocca il D
 
 **Checkpoint Codespace utente 10:51:48 UTC: SCHEMA APPLICATO / POST-CHECK PRE-HISTORY PASS.** La sola migration 5F-A ha concluso con `COMMIT` e `APPLY_EXIT_CODE=0`. Il post-check conferma schema ready, tre colonne UUID nullable senza default, quattro vincoli compatibili/validati, nove trigger enabled invariati, zero canonical rows e history ancora zero. Stato: **SCHEMA_APPLIED_HISTORY_PENDING**. Non rieseguire la migration; registrare soltanto la versione `20261208120000`, quindi eseguire post-check finale e 5F-B finale. Il rollout non è ancora concluso.
 
+**Checkpoint finale Codespace utente 12:14:07 UTC: ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO.** La sola versione `20261208120000` è stata registrata con conteggio 1. Il post-check delle `12:12:54 UTC` conferma schema ready, quattro vincoli compatibili/validati, nove trigger enabled invariati, zero canonical rows e history 1. Il 5F-B finale delle `12:14:07 UTC` restituisce `PASS_5F_A_ALREADY_APPLIED`, read-only on e `ROLLBACK`. Preview resta non verificato; 5D-C non applicata; 5D-E-I aperta/non iniziata. Non rieseguire 5F-A.
+
 #### Cosa manca per concludere la FASE 5
 
-1. **Chiudere operativamente 5F-A Production:** registrare la sola versione `20261208120000` nella migration history e ottenere post-check finale con history 1 più `PASS_5F_A_ALREADY_APPLIED`. Questa è l'unica attività necessaria per chiudere l'attuale checkpoint schema; non richiede di rieseguire il DDL.
-2. **Completare 5F runtime:** autorizzare e implementare il collegamento atomico del planner già esistente al primary sport di `PATCH /api/profiles/me`, mantenendo i client legacy facoltativi, quindi verificare read/write, reset, errori stabili e i nove trigger Production. Nessun catalogo Competition estero è necessario per questo primo flusso Sport/Discipline/Variant.
-3. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
-4. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
-5. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.
+1. **Completare 5F runtime:** autorizzare e implementare il collegamento atomico del planner già esistente al primary sport di `PATCH /api/profiles/me`, mantenendo i client legacy facoltativi, quindi verificare read/write, reset, errori stabili e i nove trigger Production. Nessun catalogo Competition estero è necessario per questo primo flusso Sport/Discipline/Variant.
+2. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
+3. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
+4. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
