@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F-B — PREFLIGHT READ-ONLY PREPARATO/TESTATO LOCALE; PREVIEW E PRODUCTION NON ACCESSIBILI/NON CONTROLLATI** |
+| Last completed subphase | **FASE 5F-C — RUNBOOK APPLY ESCLUSIVO 5F-A PRODUCTION PREPARATO; APPLY NON AUTORIZZATO/NON ESEGUITO** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Esecuzione umana Codespace del report 5F-B sugli ambienti accessibili; poi review JSON e autorizzazione separata di ogni eventuale apply** |
+| Next safe action | **Review runbook 5F-C e autorizzazione esplicita separata prima dell'eventuale apply 5F-A Production** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -497,7 +497,7 @@ Gli stati remoti non si deducono dai file repository. `USER-REPORTED` indica evi
 | `20260822120000_european_catalog_foundation.sql` / FASE 1, prerequisito FASE 5 | Unit/statici repository PASS; foundation riusata nei runtime 5C/5F | **NON VERIFICATO in 5F-B** | **USER-REPORTED presente/verificata da audit successivi; non riconfermata in 5F-B** | Nessuna decisione di apply in 5F-B | Resolver e identità Sport/Discipline/Variant |
 | `20261206120000_canonical_sports_competition_schema.sql` / 5C | PostgreSQL 16.15 locale PASS | **NON VERIFICATO in 5F-B** | **USER-REPORTED APPLICATA + post-check PASS; non riconfermata in 5F-B** | Preview solo dopo riconciliazione history; nessun apply richiesto qui | Candidate key composite richieste da 5F-A; cataloghi Position/Role/Competition |
 | `20261207120000_seed_controlled_sports_vocabulary.sql` / 5D-C | PostgreSQL 16.15 locale double-apply/drift PASS | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | **NON APPLICATA secondo checkpoint; NON VERIFICATA in 5F-B** | Sì, ma soltanto dopo gate separato; non dipendenza di 5F-A | Vocabulary canonica Position/StaffRole e mapping legacy; non primary Sport FK |
-| `20261208120000_profile_primary_sport.sql` / 5F-A | PostgreSQL 16.15 locale, trigger/atomicità/rollback PASS | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | Sì per ogni ambiente che risulterà `PASS_READY_TO_APPLY_5F_A` | Persistenza canonical primary sport Profile e futuro dual-write route |
+| `20261208120000_profile_primary_sport.sql` / 5F-A | PostgreSQL 16.15 locale, trigger/atomicità/rollback PASS | **NON VERIFICATO / PREFLIGHT NON ESEGUITO** | **PREFLIGHT PASS_READY_TO_APPLY_5F_A USER-REPORTED 2026-09-08; NON APPLICATA** | Sì in Production, solo dopo autorizzazione esplicita; Preview non decidibile | Persistenza canonical primary sport Profile e futuro dual-write route |
 
 Prima di attivare codice dipendente da una migration, l'agente deve segnalare la migration pendente, distinguere test locale da apply condiviso, guidare preflight/apply/post-check per ambiente e chiedere autorizzazione esplicita. Nessun rollout è completato dai soli test locali.
 
@@ -697,6 +697,14 @@ Il runtime harness applica due volte la migration in un database temporaneo con 
 **Stato: REPORT CREATO E TESTATO SU POSTGRESQL 16.15 LOCALE; PREVIEW E PRODUCTION NON ACCESSIBILI/NON CONTROLLATI.** `scripts/sports/reports/phase-5f-b-profile-primary-sport-preflight-read-only.sql` produce una sola cella JSON in transazione read-only e classifica prerequisiti, candidate key 5C, collisioni colonne/constraint, trigger Profile e history 5C/5D-C/5F-A. Il runtime locale verifica sia `PASS_READY_TO_APPLY_5F_A` sia `PASS_5F_A_ALREADY_APPLIED` senza sostituire il preflight remoto.
 
 Nel processo non erano disponibili Supabase CLI né variabili/secret di connessione condivisa: Preview e Production sono quindi **NOT EXECUTED / NON VERIFICATI**, non PASS/BLOCKED e non implicitamente privi della migration. Nessun apply, seed, backfill, `db push`, `migration repair`, lock esplicito o modifica history è stato eseguito. 5F-A non è dichiarata pronta per alcun ambiente condiviso finché non viene restituito il JSON del relativo preflight. Istruzioni Codespace senza condivisione credenziali: `docs/european-expansion/phase-5f-b-profile-primary-sport-preflight.md`. **Prossimo passaggio: esecuzione umana read-only per ciascun ambiente accessibile e review separata; qualunque apply richiederà nuova autorizzazione esplicita.** 5D-E-I resta aperta/non iniziata per FR/ES/CH/SI/PL.
+
+**5F-B PRODUCTION — PASS USER-REPORTED / PREVIEW NON VERIFICATO.** Il JSON completo del SQL Editor Production del 2026-09-08 riporta `PASS_READY_TO_APPLY_5F_A`, read-only on, 5C history una volta, 5D-C/5F-A history zero, candidate key presenti e nessuna colonna/constraint 5F-A. Nove trigger Profile risultano enabled. Il PASS abilita la preparazione del runbook, non l'apply.
+
+### FASE 5F-C — Runbook esclusivo apply 5F-A Production
+
+**Stato: PREPARATO E TESTATO STATICAMENTE; APPLY NON AUTORIZZATO/NON ESEGUITO.** Il runbook fissa migration, SHA-256, verifica project ref, rerun preflight, `lock_timeout=5s`, `statement_timeout=60s`, finestra a basso traffico, post-check schema/trigger/no-backfill, registrazione diretta e lockata della sola versione history e verifica finale. Non usa `db push` o `migration repair`.
+
+La differenza nove trigger Production/quattro nel runtime locale non blocca il DDL schema-only: nessun trigger è modificato o invocato dall'ALTER. Il post-check deve però preservare tutti i nove nomi, funzioni, definizioni e stato enabled; altrimenti history non viene registrata. Preview resta non verificato, 5D-C pendente e 5D-E-I aperta/non iniziata. Deliverable: `docs/european-expansion/phase-5f-c-production-exclusive-apply-runbook.md`. **Stop gate: chiedere autorizzazione esplicita prima di applicare 5F-A e prima della successiva registrazione history prevista dal runbook.**
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
