@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F-E — REVIEW 5F-D E RELEASE GATE LOCALE PASS; NON DEPLOYATO** |
+| Last completed subphase | **FASE 5F-F — PIANO CANARY PRIMARY SPORT PREPARATO LOCALMENTE; NON ESEGUITO** |
 | Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Review umana payload/errori 5F-E; eventuale deploy/canary richiede autorizzazione separata** |
+| Next safe action | **Review piano 5F-F e scelta del rollback: profilo disposable o ripristino atomico; nessun deploy/write autorizzato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -724,11 +724,17 @@ La differenza nove trigger Production/quattro nel runtime locale non ha bloccato
 
 **Stato: PASS LOCALE; NON DEPLOYATO E NESSUNA OPERAZIONE REMOTA.** Il gate consolida contract test route/request/errori, planner matrix e PostgreSQL isolato per atomicità, rollback, owner-only e nove trigger. Il test route verifica il source boundary e l'adapter puro, non avvia un server Next; cinque trigger sono stub e non body Production. Deliverable: `docs/european-expansion/phase-5f-e-profile-primary-sport-local-release-gate.md`. Il GET user-reported con canonical null resta baseline legacy, non prova PATCH.
 
-**Prossimo controllo concreto:** review umana del payload e dei codici 400/403/500; deploy/canary e write remota richiedono autorizzazione separata.
+**Review umana 5F-E: assunta come autorizzazione a procedere alla sola preparazione locale successiva; nessun deploy/write remoto implicito.**
+
+### FASE 5F-F — Piano canary primary sport Profile
+
+**Stato: PREPARATO LOCALMENTE; NON ESEGUITO.** Definisce prerequisiti fail-closed, snapshot, matrice owner-scoped, read-after-write e ripristino atomico per un futuro singolo canary. Evidenzia che il reset non ripristina una baseline `sport="Calcio"` con ID null: servirà un profilo disposable oppure un ripristino amministrativo atomico separatamente approvato. Deliverable: `docs/european-expansion/phase-5f-f-profile-primary-sport-canary-plan.md`. Nessun merge, deploy, PATCH remoto o backfill è stato eseguito.
+
+**Prossimo controllo concreto:** review del piano e scelta del metodo di ripristino; solo dopo si potranno preparare comandi eseguibili e chiedere autorizzazione separata.
 
 #### Cosa manca per concludere la FASE 5
 
-1. **Completare 5F oltre il repository:** sottoporre il gate 5F-E a review umana e, soltanto con nuova autorizzazione, deploy/canary del primary sport; restano inoltre gli altri ambiti Profile/esperienze previsti dalla fase. Nessun catalogo Competition estero è necessario per il primo flusso Sport/Discipline/Variant.
+1. **Completare 5F oltre il repository:** revisionare il piano 5F-F, scegliere un profilo canary disposable oppure un ripristino amministrativo atomico e, soltanto con nuove autorizzazioni distinte, eseguire deploy e canary del primary sport; restano inoltre gli altri ambiti Profile/esperienze previsti dalla fase. Nessun catalogo Competition estero è necessario per il primo flusso Sport/Discipline/Variant.
 2. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
 3. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
 4. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.
