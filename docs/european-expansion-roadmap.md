@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5E-D — INTERNAL WRITE-PLAN SERVICE SPORT/DISCIPLINE/VARIANT IMPLEMENTATO E TESTATO** |
-| Current active phase | **FASE 5E — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Autorizzazione 5E-E audit/contract del primo caller runtime; nessun collegamento o write remoto** |
+| Last completed subphase | **FASE 5E-E — AUDIT/CONTRATTO PRIMARY SPORT PROFILE COMPLETATO; RUNTIME NON COLLEGATO** |
+| Current active phase | **FASE 5 — FOUNDATION 5E COMPLETATA; IN ATTESA DI 5F-A; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
+| Next safe action | **Autorizzazione 5F-A migration additiva primary sport Profile, solo colonne/vincoli nullable e test locale** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-D IMPLEMENTATE E TESTATE; 5E-E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-E IMPLEMENTATE E TESTATE; 5F–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -626,7 +626,7 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 ### FASE 5E — Dual-read / dual-write e adapter server
 
-**Stato: IN CORSO — 5E-A–5E-D COMPLETATE; 5E-E E SUCCESSIVE NON INIZIATE.**
+**Stato: COMPLETATA NEL PERIMETRO FOUNDATION — 5E-A–5E-E COMPLETATE; NESSUN RUNTIME WRITE COLLEGATO.**
 
 #### FASE 5E-A — Resolver canonical-first e compatibility planner
 
@@ -652,13 +652,21 @@ I contract test coprono tutti i sei stati, delega singola e shape wire esatta se
 
 5E-B aggiunge un lookup projection esclusivamente SELECT, exact-target e bounded: count exact, massimo 33 righe per budget 32, deduplica alias con la stessa label stabile, `null` se nessun equivalente, fail-closed su label divergenti o overflow. Nessuna funzione applica il piano. Supabase/Preview/Production: **NON INTERROGATI/NON MODIFICATI**. Runtime caller/route/UI/selector: **NON COLLEGATI**. Profiles, Opportunities, Applications, Organization/Competition, migration/seed/manifest/import/backfill, RLS/grant/ownership e Mobile: **NON MODIFICATI**. 5D-E-I resta aperta/non iniziata/non autorizzata per tutti i cinque Paesi. Deliverable: `docs/european-expansion/phase-5e-d-canonical-sport-write-plan-service.md`. **Prossimo passaggio autorizzabile: 5E-E — audit/contract repository-only del primo caller runtime, raccomandato Profile primary sport, senza collegamento o write remoto.**
 
+#### FASE 5E-E — Audit e contratto del primary sport Profile
+
+**Stato: COMPLETATA REPOSITORY-ONLY; NESSUN COLLEGAMENTO O WRITE RUNTIME.** L'audit individua il caller in `PATCH /api/profiles/me`: oggi accetta soltanto `sport` testuale, normalizza la compatibility legacy e usa un singolo update, con upsert alternativo se manca la riga. `ProfileEditForm` invia ancora soltanto la stringa legacy, quindi i client correnti restano compatibili con un'estensione additiva.
+
+Il contratto puro `lib/taxonomy/profilePrimarySportRuntimeContract.ts` proietta il piano 5E-D in un gruppo indivisibile `sport`, `sport_id`, `sport_discipline_id`, `sport_variant_id`; `no_change` non produce payload. Errori di contratto diventano code 400 stabili e gli errori inattesi un 500 opaco. Nessuna route importa o usa ancora il contratto. L'audit conferma il blocker reale: `profiles` non ha le tre colonne canonicali; prima del collegamento servono colonne UUID nullable, FK semplici/composite e shape check in una migration senza backfill. I cataloghi Competition FR/ES/CH/SI/PL e 5D-E-I non sono prerequisiti per questa foundation Sport/Discipline/Variant e restano aperti/non iniziati.
+
+Supabase/Preview/Production: **NON INTERROGATI/NON MODIFICATI**. Route/UI/selector/client payload: **NON MODIFICATI**. Migration/seed/import/backfill: **NO**. Deliverable: `docs/european-expansion/phase-5e-e-profile-primary-sport-runtime-contract.md`. **Prossimo passaggio autorizzabile: 5F-A — migration additiva primary sport Profile, limitata alle tre colonne nullable e vincoli, testata solo su PostgreSQL locale e senza backfill/apply remoto.**
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
 - 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
-- 5E — dual-read / dual-write e adapter server — **IN CORSO: 5E-A–5E-D COMPLETATE; 5E-E+ NOT STARTED**;
+- 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
