@@ -9,7 +9,7 @@ Perimetro: i 14 Sport esposti dall'app; priorità senior maschile/femminile dile
 
 Il PASS Spagna approva il metodo, non certifica ogni denominazione né autorizza i selector. Le lacune di Francia e Spagna restano registrate e non vengono riaperte. Questa tranche non modifica foundation, categorie legacy o contratto 5B.
 
-Per la Svizzera una label in tedesco, francese o italiano viene collegata come equivalente soltanto quando il sito ufficiale presenta la stessa competizione cambiando lingua o quando la federation pubblica entrambe le forme. In assenza di tale prova le forme restano candidate separate. I nomi sponsorizzati sono validity-aware e non sostituiscono automaticamente il nome stabile.
+Per la Svizzera una label in tedesco, francese o italiano viene collegata come equivalente soltanto quando la fonte federale contiene un riferimento esplicito alla **medesima competizione** — per esempio lo stesso competition ID, record, regolamento o pagina con selezione locale. La semplice presenza di due denominazioni nello stesso sito federale non basta a provarne l'equivalenza. In assenza del riferimento comune le forme restano candidate separate. I nomi sponsorizzati sono validity-aware e non sostituiscono automaticamente il nome stabile.
 
 Classificazione dell'evidenza:
 
@@ -236,7 +236,7 @@ Nessuna riga è completa o pronta a popolare i selector.
 ## 5. Regole per i futuri selector svizzeri
 
 1. Chiave logica: `country + sport + organizer + competition`, con season/validity separata.
-2. DE/FR/IT sono display names della stessa identity solo con prova federation, mai per traduzione automatica.
+2. DE/FR/IT sono display names della stessa identity solo con un riferimento federation esplicito alla medesima competizione; la coesistenza sullo stesso sito non è prova sufficiente e non autorizza traduzione automatica.
 3. `NLA`, `NLB`, `1. Liga` sono ambigue tra Sport: richiedono sempre sport e organizer.
 4. Regional association obbligatoria per livelli territoriali.
 5. Calcio a 8, indoor hockey e flag non ereditano automaticamente i campionati della disciplina principale.
