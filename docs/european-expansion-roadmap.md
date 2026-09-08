@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5D-E-A — SOURCE READINESS GATE PASS USER-REPORTED** |
-| Current active phase | **FASE 5D-E-R-ES — PRIMA RICOGNIZIONE DOCUMENTALE SPAGNA COMPLETATA CON COPERTURA PARZIALE; REVIEW PENDING** |
-| Next safe action | **Review Spagna; non iniziare la Svizzera prima del feedback e nessun manifest/import** |
+| Current active phase | **FASE 5D-E-R-CH — PRIMA RICOGNIZIONE DOCUMENTALE SVIZZERA COMPLETATA CON COPERTURA PARZIALE; REVIEW PENDING** |
+| Next safe action | **Review Svizzera; non iniziare la Slovenia prima del feedback e nessun manifest/import** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA PASS METODOLOGICO; SPAGNA RICOGNIZIONE COMPLETATA/REVIEW PENDING; CH/SI/PL E 5E–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C e 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA E SPAGNA PASS METODOLOGICO; SVIZZERA RICOGNIZIONE COMPLETATA/REVIEW PENDING; SI/PL E 5E–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -548,7 +548,7 @@ Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed*
 
 ### FASE 5D — Cataloghi e seed controllati
 
-**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; 5D-E-R-FR PASS METODOLOGICO; 5D-E-R-ES COMPLETATA/REVIEW PENDING; CH/SI/PL NON INIZIATI.**
+**Stato: IN CORSO — 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FR/ES PASS METODOLOGICO; 5D-E-R-CH COMPLETATA/REVIEW PENDING; SI/PL NON INIZIATI.**
 
 #### FASE 5D-A — Audit fonti, cataloghi e strategia seed
 
@@ -600,12 +600,18 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 
 **Stato: PRIMA RICOGNIZIONE COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Coperti i 14 Sport UI con priorità ai senior maschili/femminili dilettantistici, organismi nazionali/territoriali/circuiti esterni verificabili e principali giovani nazionali; coppe escluse dal primo elenco selector. Le fonti non accessibili o le denominazioni stagionali deboli sono marcate da ricontrollare, senza dichiararle inesistenti. Fútbol 8 non eredita il fútbol 11 e le label omonime restano scoped a sport/organizer. Applicazione/API/UI, migration/seed/import/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-spain-competition-selector-research.md`. **Stop gate:** review Spagna prima della Svizzera.
 
+**Review Spagna: PASS USER-REPORTED sulla prima ricognizione parziale; non certifica ogni denominazione e non autorizza population dei selector.** Le lacune restano registrate per integrazione successiva.
+
+#### FASE 5D-E-R-CH — Ricerca documentale Svizzera per i selettori
+
+**Stato: PRIMA RICOGNIZIONE COMPLETATA CON COPERTURA PARZIALE DICHIARATA — REVIEW UMANA PENDING; NESSUN MANIFEST O IMPORT.** Coperti i 14 Sport UI, con senior maschili/femminili, principali giovani, organizzatori nazionali/regionali e circuiti esterni documentabili. Le forme DE/FR/IT sono collegate soltanto quando una fonte federation sostiene l'equivalenza; sigle ambigue come NLA/NLB/1. Liga restano scoped a sport e organizer. Calcio a 8, flag e indoor hockey non ereditano categorie della disciplina principale. Coppe e selezioni territoriali sono escluse dal primo elenco Club. Applicazione/API/UI, migration/seed/import/backfill, Production, RLS/grant/ownership/Applications e Mobile: **NON MODIFICATI**. Deliverable: `docs/european-expansion/phase-5d-e-r-switzerland-competition-selector-research.md`. **Stop gate:** review Svizzera prima della Slovenia.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA PASS METODOLOGICO; SPAGNA COMPLETATA/REVIEW PENDING; CH/SI/PL NON INIZIATI**;
+- 5D — cataloghi e seed controllati — **IN CORSO: 5D-A–5D-E-A COMPLETATE; FIGC SOURCE BLOCKED; FRANCIA/SPAGNA PASS METODOLOGICO; SVIZZERA COMPLETATA/REVIEW PENDING; SI/PL NON INIZIATI**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
 - 5G — Opportunities e Applications — **NOT STARTED**;
