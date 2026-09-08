@@ -14,6 +14,7 @@ import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentPr
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Suggestion = {
   id: string;
@@ -84,8 +85,8 @@ function playerCountryLine(suggestion: Suggestion) {
   );
 }
 
-function secondaryMetaLine(suggestion: Suggestion): ReactNode {
-  const meta = [suggestion.city, suggestion.category || suggestion.sport, normalizeRoleLabel(suggestion.role)]
+function secondaryMetaLine(suggestion: Suggestion, t: ReturnType<typeof useI18n>['t']): ReactNode {
+  const meta = [suggestion.city, localizeSport(suggestion.category || suggestion.sport, t), localizeSportRole(normalizeRoleLabel(suggestion.role), t)]
     .filter(Boolean)
     .join(' · ');
   if (!meta) return <span className="text-xs text-neutral-500">—</span>;
@@ -331,15 +332,15 @@ export default function DiscoverPage() {
                       </div>
                       {activeTab === 'institution' ? (
                         <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
-                          ENTE
+                          {localizeAccountType('institution', t)}
                         </span>
                       ) : activeTab === 'staff' ? (
                         <span className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fuchsia-700">
-                          Staff
+                          {localizeAccountType('staff', t)}
                         </span>
                       ) : null}
                       {(activeTab === 'player' || activeTab === 'staff') ? playerCountryLine(item) : null}
-                      {secondaryMetaLine(item)}
+                      {secondaryMetaLine(item, t)}
                       <p className="mt-1 text-[11px] font-medium text-[var(--brand)]">
                         {countryId ? t('discover.reasonScoutingArea') : t('discover.reasonPersonalized')}
                       </p>

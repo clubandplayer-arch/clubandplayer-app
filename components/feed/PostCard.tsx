@@ -77,7 +77,7 @@ export function PostCard({
   onAuthorBlocked,
   onRepost,
 }: PostCardProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const LONG_PRESS_MS = 500;
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
@@ -134,7 +134,7 @@ export function PostCard({
   const isOwner = currentUserId != null && post.authorId === currentUserId;
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
-  const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
+  const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date, locale) : null;
   const [commentSignal, setCommentSignal] = useState(0);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);

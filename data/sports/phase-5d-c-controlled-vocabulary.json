@@ -1,0 +1,3688 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "2026.09.07.controlled-v1",
+  "source": {
+    "provider": "clubandplayer_internal_controlled_vocabulary",
+    "datasetVersion": "phase-5d-c-v1",
+    "publishedAt": "2026-09-07",
+    "retrievedAt": "2026-09-07",
+    "sourceUrl": "https://clubandplayer.com",
+    "license": "CLUBANDPLAYER_INTERNAL_CONTROLLED_VOCABULARY",
+    "attribution": "Club and Player controlled vocabulary; compatibility labels originate from the existing Web/API product contract"
+  },
+  "countries": [],
+  "expectedCounts": {
+    "gender_category": 3,
+    "competition_format": 4,
+    "territorial_scope": 6,
+    "player_position": 97,
+    "staff_role": 26,
+    "player_position_applicability": 97,
+    "legacy_player_position_mapping": 97,
+    "legacy_staff_role_mapping": 26
+  },
+  "payloadChecksum": "sha256:cff8258b19c1ec73ee075227c402535e2648328cf699baf22e492ec8a4c6d5a0",
+  "records": [
+    {
+      "kind": "gender_category",
+      "key": "gender:male",
+      "code": "male",
+      "canonicalName": "Male",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "gender_category",
+      "key": "gender:female",
+      "code": "female",
+      "canonicalName": "Female",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "gender_category",
+      "key": "gender:mixed",
+      "code": "mixed",
+      "canonicalName": "Mixed",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "competition_format",
+      "key": "format:round_robin",
+      "code": "round_robin",
+      "canonicalName": "Round robin",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "competition_format",
+      "key": "format:knockout",
+      "code": "knockout",
+      "canonicalName": "Knockout",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "competition_format",
+      "key": "format:group_then_knockout",
+      "code": "group_then_knockout",
+      "canonicalName": "Group stage then knockout",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "competition_format",
+      "key": "format:hybrid",
+      "code": "hybrid",
+      "canonicalName": "Hybrid",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "territorial_scope",
+      "key": "scope:global",
+      "code": "global",
+      "canonicalName": "Global",
+      "attributes": {
+        "requiresCountry": false,
+        "allowsMultipleCountries": true,
+        "allowsGeoArea": false,
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "territorial_scope",
+      "key": "scope:continental",
+      "code": "continental",
+      "canonicalName": "Continental",
+      "attributes": {
+        "requiresCountry": false,
+        "allowsMultipleCountries": true,
+        "allowsGeoArea": false,
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "territorial_scope",
+      "key": "scope:multi_country",
+      "code": "multi_country",
+      "canonicalName": "Multi-country",
+      "attributes": {
+        "requiresCountry": false,
+        "allowsMultipleCountries": true,
+        "allowsGeoArea": false,
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "territorial_scope",
+      "key": "scope:national",
+      "code": "national",
+      "canonicalName": "National",
+      "attributes": {
+        "requiresCountry": true,
+        "allowsMultipleCountries": false,
+        "allowsGeoArea": false,
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "territorial_scope",
+      "key": "scope:subnational",
+      "code": "subnational",
+      "canonicalName": "Subnational",
+      "attributes": {
+        "requiresCountry": true,
+        "allowsMultipleCountries": false,
+        "allowsGeoArea": true,
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "territorial_scope",
+      "key": "scope:local",
+      "code": "local",
+      "canonicalName": "Local",
+      "attributes": {
+        "requiresCountry": true,
+        "allowsMultipleCountries": false,
+        "allowsGeoArea": true,
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_goalkeeper",
+      "code": "association_football_goalkeeper",
+      "canonicalName": "Association football goalkeeper",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_centre_back",
+      "code": "association_football_centre_back",
+      "canonicalName": "Association football centre-back",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_full_back",
+      "code": "association_football_full_back",
+      "canonicalName": "Association football full-back or wing-back",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_defensive_midfielder",
+      "code": "association_football_defensive_midfielder",
+      "canonicalName": "Association football defensive midfielder",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_central_midfielder",
+      "code": "association_football_central_midfielder",
+      "canonicalName": "Association football central midfielder",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_attacking_midfielder",
+      "code": "association_football_attacking_midfielder",
+      "canonicalName": "Association football attacking midfielder",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_winger",
+      "code": "association_football_winger",
+      "canonicalName": "Association football winger",
+      "attributes": {
+        "displayOrder": 70
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_second_striker",
+      "code": "association_football_second_striker",
+      "canonicalName": "Association football second striker",
+      "attributes": {
+        "displayOrder": 80
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:association_football_centre_forward",
+      "code": "association_football_centre_forward",
+      "canonicalName": "Association football centre-forward",
+      "attributes": {
+        "displayOrder": 90
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:eight_a_side_goalkeeper",
+      "code": "eight_a_side_goalkeeper",
+      "canonicalName": "Eight-a-side goalkeeper",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:eight_a_side_central_defender",
+      "code": "eight_a_side_central_defender",
+      "canonicalName": "Eight-a-side central defender",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:eight_a_side_wide_defender",
+      "code": "eight_a_side_wide_defender",
+      "canonicalName": "Eight-a-side wide defender",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:eight_a_side_playmaker",
+      "code": "eight_a_side_playmaker",
+      "canonicalName": "Eight-a-side playmaker",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:eight_a_side_wide_attacker",
+      "code": "eight_a_side_wide_attacker",
+      "canonicalName": "Eight-a-side wide attacker",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:eight_a_side_centre_forward",
+      "code": "eight_a_side_centre_forward",
+      "canonicalName": "Eight-a-side centre-forward",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:futsal_goalkeeper",
+      "code": "futsal_goalkeeper",
+      "canonicalName": "Futsal goalkeeper",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:futsal_fixo",
+      "code": "futsal_fixo",
+      "canonicalName": "Futsal fixo",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:futsal_winger",
+      "code": "futsal_winger",
+      "canonicalName": "Futsal winger",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:futsal_pivot",
+      "code": "futsal_pivot",
+      "canonicalName": "Futsal pivot",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:futsal_universal",
+      "code": "futsal_universal",
+      "canonicalName": "Futsal universal",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:volleyball_setter",
+      "code": "volleyball_setter",
+      "canonicalName": "Volleyball setter",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:volleyball_opposite",
+      "code": "volleyball_opposite",
+      "canonicalName": "Volleyball opposite",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:volleyball_outside_hitter",
+      "code": "volleyball_outside_hitter",
+      "canonicalName": "Volleyball outside hitter",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:volleyball_middle_blocker",
+      "code": "volleyball_middle_blocker",
+      "canonicalName": "Volleyball middle blocker",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:volleyball_libero",
+      "code": "volleyball_libero",
+      "canonicalName": "Volleyball libero",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:basketball_point_guard",
+      "code": "basketball_point_guard",
+      "canonicalName": "Basketball point guard",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:basketball_shooting_guard",
+      "code": "basketball_shooting_guard",
+      "canonicalName": "Basketball shooting guard",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:basketball_small_forward",
+      "code": "basketball_small_forward",
+      "canonicalName": "Basketball small forward",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:basketball_power_forward",
+      "code": "basketball_power_forward",
+      "canonicalName": "Basketball power forward",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:basketball_center",
+      "code": "basketball_center",
+      "canonicalName": "Basketball center",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:water_polo_goalkeeper",
+      "code": "water_polo_goalkeeper",
+      "canonicalName": "Water polo goalkeeper",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:water_polo_center_forward",
+      "code": "water_polo_center_forward",
+      "canonicalName": "Water polo center forward",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:water_polo_center_back",
+      "code": "water_polo_center_back",
+      "canonicalName": "Water polo center back",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:water_polo_driver",
+      "code": "water_polo_driver",
+      "canonicalName": "Water polo driver",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:water_polo_wing",
+      "code": "water_polo_wing",
+      "canonicalName": "Water polo wing",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:water_polo_point",
+      "code": "water_polo_point",
+      "canonicalName": "Water polo point",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:handball_goalkeeper",
+      "code": "handball_goalkeeper",
+      "canonicalName": "Handball goalkeeper",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:handball_left_wing",
+      "code": "handball_left_wing",
+      "canonicalName": "Handball left wing",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:handball_left_back",
+      "code": "handball_left_back",
+      "canonicalName": "Handball left back",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:handball_center_back",
+      "code": "handball_center_back",
+      "canonicalName": "Handball center back",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:handball_right_back",
+      "code": "handball_right_back",
+      "canonicalName": "Handball right back",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:handball_right_wing",
+      "code": "handball_right_wing",
+      "canonicalName": "Handball right wing",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:handball_pivot",
+      "code": "handball_pivot",
+      "canonicalName": "Handball pivot",
+      "attributes": {
+        "displayOrder": 70
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_prop",
+      "code": "rugby_prop",
+      "canonicalName": "Rugby prop",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_hooker",
+      "code": "rugby_hooker",
+      "canonicalName": "Rugby hooker",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_lock",
+      "code": "rugby_lock",
+      "canonicalName": "Rugby lock",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_flanker",
+      "code": "rugby_flanker",
+      "canonicalName": "Rugby flanker",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_number_eight",
+      "code": "rugby_number_eight",
+      "canonicalName": "Rugby number eight",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_scrum_half",
+      "code": "rugby_scrum_half",
+      "canonicalName": "Rugby scrum-half",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_fly_half",
+      "code": "rugby_fly_half",
+      "canonicalName": "Rugby fly-half",
+      "attributes": {
+        "displayOrder": 70
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_center",
+      "code": "rugby_center",
+      "canonicalName": "Rugby center",
+      "attributes": {
+        "displayOrder": 80
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_wing",
+      "code": "rugby_wing",
+      "canonicalName": "Rugby wing",
+      "attributes": {
+        "displayOrder": 90
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:rugby_fullback",
+      "code": "rugby_fullback",
+      "canonicalName": "Rugby fullback",
+      "attributes": {
+        "displayOrder": 100
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:field_hockey_goalkeeper",
+      "code": "field_hockey_goalkeeper",
+      "canonicalName": "Field hockey goalkeeper",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:field_hockey_defender",
+      "code": "field_hockey_defender",
+      "canonicalName": "Field hockey defender",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:field_hockey_midfielder",
+      "code": "field_hockey_midfielder",
+      "canonicalName": "Field hockey midfielder",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:field_hockey_forward",
+      "code": "field_hockey_forward",
+      "canonicalName": "Field hockey forward",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:ice_hockey_goaltender",
+      "code": "ice_hockey_goaltender",
+      "canonicalName": "Ice hockey goaltender",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:ice_hockey_defenseman",
+      "code": "ice_hockey_defenseman",
+      "canonicalName": "Ice hockey defenseman",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:ice_hockey_left_wing",
+      "code": "ice_hockey_left_wing",
+      "canonicalName": "Ice hockey left wing",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:ice_hockey_center",
+      "code": "ice_hockey_center",
+      "canonicalName": "Ice hockey center",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:ice_hockey_right_wing",
+      "code": "ice_hockey_right_wing",
+      "canonicalName": "Ice hockey right wing",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_pitcher",
+      "code": "baseball_pitcher",
+      "canonicalName": "Baseball pitcher",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_catcher",
+      "code": "baseball_catcher",
+      "canonicalName": "Baseball catcher",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_first_base",
+      "code": "baseball_first_base",
+      "canonicalName": "Baseball first baseman",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_second_base",
+      "code": "baseball_second_base",
+      "canonicalName": "Baseball second baseman",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_third_base",
+      "code": "baseball_third_base",
+      "canonicalName": "Baseball third baseman",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_shortstop",
+      "code": "baseball_shortstop",
+      "canonicalName": "Baseball shortstop",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_left_fielder",
+      "code": "baseball_left_fielder",
+      "canonicalName": "Baseball left fielder",
+      "attributes": {
+        "displayOrder": 70
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_center_fielder",
+      "code": "baseball_center_fielder",
+      "canonicalName": "Baseball center fielder",
+      "attributes": {
+        "displayOrder": 80
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_right_fielder",
+      "code": "baseball_right_fielder",
+      "canonicalName": "Baseball right fielder",
+      "attributes": {
+        "displayOrder": 90
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:baseball_designated_hitter",
+      "code": "baseball_designated_hitter",
+      "canonicalName": "Baseball designated hitter",
+      "attributes": {
+        "displayOrder": 100
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_pitcher",
+      "code": "softball_pitcher",
+      "canonicalName": "Softball pitcher",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_catcher",
+      "code": "softball_catcher",
+      "canonicalName": "Softball catcher",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_first_base",
+      "code": "softball_first_base",
+      "canonicalName": "Softball first baseman",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_second_base",
+      "code": "softball_second_base",
+      "canonicalName": "Softball second baseman",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_third_base",
+      "code": "softball_third_base",
+      "canonicalName": "Softball third baseman",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_shortstop",
+      "code": "softball_shortstop",
+      "canonicalName": "Softball shortstop",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_left_fielder",
+      "code": "softball_left_fielder",
+      "canonicalName": "Softball left fielder",
+      "attributes": {
+        "displayOrder": 70
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_center_fielder",
+      "code": "softball_center_fielder",
+      "canonicalName": "Softball center fielder",
+      "attributes": {
+        "displayOrder": 80
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:softball_right_fielder",
+      "code": "softball_right_fielder",
+      "canonicalName": "Softball right fielder",
+      "attributes": {
+        "displayOrder": 90
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:lacrosse_goalkeeper",
+      "code": "lacrosse_goalkeeper",
+      "canonicalName": "Lacrosse goalkeeper",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:lacrosse_defender",
+      "code": "lacrosse_defender",
+      "canonicalName": "Lacrosse defender",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:lacrosse_midfielder",
+      "code": "lacrosse_midfielder",
+      "canonicalName": "Lacrosse midfielder",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:lacrosse_attack",
+      "code": "lacrosse_attack",
+      "canonicalName": "Lacrosse attack",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:lacrosse_long_stick_midfielder",
+      "code": "lacrosse_long_stick_midfielder",
+      "canonicalName": "Lacrosse long-stick midfielder",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:lacrosse_faceoff_specialist",
+      "code": "lacrosse_faceoff_specialist",
+      "canonicalName": "Lacrosse faceoff specialist",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_quarterback",
+      "code": "american_football_quarterback",
+      "canonicalName": "American football quarterback",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_running_back",
+      "code": "american_football_running_back",
+      "canonicalName": "American football running back",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_wide_receiver",
+      "code": "american_football_wide_receiver",
+      "canonicalName": "American football wide receiver",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_tight_end",
+      "code": "american_football_tight_end",
+      "canonicalName": "American football tight end",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_offensive_lineman",
+      "code": "american_football_offensive_lineman",
+      "canonicalName": "American football offensive lineman",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_defensive_lineman",
+      "code": "american_football_defensive_lineman",
+      "canonicalName": "American football defensive lineman",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_linebacker",
+      "code": "american_football_linebacker",
+      "canonicalName": "American football linebacker",
+      "attributes": {
+        "displayOrder": 70
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_cornerback",
+      "code": "american_football_cornerback",
+      "canonicalName": "American football cornerback",
+      "attributes": {
+        "displayOrder": 80
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_safety",
+      "code": "american_football_safety",
+      "canonicalName": "American football safety",
+      "attributes": {
+        "displayOrder": 90
+      }
+    },
+    {
+      "kind": "player_position",
+      "key": "position:american_football_kicker_punter",
+      "code": "american_football_kicker_punter",
+      "canonicalName": "American football kicker or punter",
+      "attributes": {
+        "displayOrder": 100
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:president",
+      "code": "president",
+      "canonicalName": "President",
+      "attributes": {
+        "displayOrder": 10
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:vice_president",
+      "code": "vice_president",
+      "canonicalName": "Vice president",
+      "attributes": {
+        "displayOrder": 20
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:sporting_director",
+      "code": "sporting_director",
+      "canonicalName": "Sporting director",
+      "attributes": {
+        "displayOrder": 30
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:general_manager",
+      "code": "general_manager",
+      "canonicalName": "General manager",
+      "attributes": {
+        "displayOrder": 40
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:secretary",
+      "code": "secretary",
+      "canonicalName": "Secretary",
+      "attributes": {
+        "displayOrder": 50
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:team_manager",
+      "code": "team_manager",
+      "canonicalName": "Team manager",
+      "attributes": {
+        "displayOrder": 60
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:team_official",
+      "code": "team_official",
+      "canonicalName": "Team official",
+      "attributes": {
+        "displayOrder": 70
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:head_coach",
+      "code": "head_coach",
+      "canonicalName": "Head coach",
+      "attributes": {
+        "displayOrder": 80
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:assistant_coach",
+      "code": "assistant_coach",
+      "canonicalName": "Assistant coach",
+      "attributes": {
+        "displayOrder": 90
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:technical_assistant",
+      "code": "technical_assistant",
+      "canonicalName": "Technical assistant",
+      "attributes": {
+        "displayOrder": 100
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:match_analyst",
+      "code": "match_analyst",
+      "canonicalName": "Match analyst",
+      "attributes": {
+        "displayOrder": 110
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:video_analyst",
+      "code": "video_analyst",
+      "canonicalName": "Video analyst",
+      "attributes": {
+        "displayOrder": 120
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:strength_conditioning_coach",
+      "code": "strength_conditioning_coach",
+      "canonicalName": "Strength and conditioning coach",
+      "attributes": {
+        "displayOrder": 130
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:goalkeeping_coach",
+      "code": "goalkeeping_coach",
+      "canonicalName": "Goalkeeping coach",
+      "attributes": {
+        "displayOrder": 140
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:team_doctor",
+      "code": "team_doctor",
+      "canonicalName": "Team doctor",
+      "attributes": {
+        "displayOrder": 150
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:physiotherapist",
+      "code": "physiotherapist",
+      "canonicalName": "Physiotherapist",
+      "attributes": {
+        "displayOrder": 160
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:osteopath",
+      "code": "osteopath",
+      "canonicalName": "Osteopath",
+      "attributes": {
+        "displayOrder": 170
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:massage_therapist",
+      "code": "massage_therapist",
+      "canonicalName": "Massage therapist",
+      "attributes": {
+        "displayOrder": 180
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:mental_performance_coach",
+      "code": "mental_performance_coach",
+      "canonicalName": "Mental performance coach",
+      "attributes": {
+        "displayOrder": 190
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:nutritionist",
+      "code": "nutritionist",
+      "canonicalName": "Nutritionist",
+      "attributes": {
+        "displayOrder": 200
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:scout",
+      "code": "scout",
+      "canonicalName": "Scout",
+      "attributes": {
+        "displayOrder": 210
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:talent_scout",
+      "code": "talent_scout",
+      "canonicalName": "Talent scout",
+      "attributes": {
+        "displayOrder": 220
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:press_officer",
+      "code": "press_officer",
+      "canonicalName": "Press officer",
+      "attributes": {
+        "displayOrder": 230
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:social_media_manager",
+      "code": "social_media_manager",
+      "canonicalName": "Social media manager",
+      "attributes": {
+        "displayOrder": 240
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:photographer",
+      "code": "photographer",
+      "canonicalName": "Photographer",
+      "attributes": {
+        "displayOrder": 250
+      }
+    },
+    {
+      "kind": "staff_role",
+      "key": "staff_role:content_creator",
+      "code": "content_creator",
+      "canonicalName": "Content creator",
+      "attributes": {
+        "displayOrder": 260
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_goalkeeper",
+      "references": {
+        "position": "position:association_football_goalkeeper",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_centre_back",
+      "references": {
+        "position": "position:association_football_centre_back",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_full_back",
+      "references": {
+        "position": "position:association_football_full_back",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_defensive_midfielder",
+      "references": {
+        "position": "position:association_football_defensive_midfielder",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_central_midfielder",
+      "references": {
+        "position": "position:association_football_central_midfielder",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_attacking_midfielder",
+      "references": {
+        "position": "position:association_football_attacking_midfielder",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_winger",
+      "references": {
+        "position": "position:association_football_winger",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_second_striker",
+      "references": {
+        "position": "position:association_football_second_striker",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:association_football_centre_forward",
+      "references": {
+        "position": "position:association_football_centre_forward",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:eight_a_side_goalkeeper",
+      "references": {
+        "position": "position:eight_a_side_goalkeeper",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:eight_a_side_central_defender",
+      "references": {
+        "position": "position:eight_a_side_central_defender",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:eight_a_side_wide_defender",
+      "references": {
+        "position": "position:eight_a_side_wide_defender",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:eight_a_side_playmaker",
+      "references": {
+        "position": "position:eight_a_side_playmaker",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:eight_a_side_wide_attacker",
+      "references": {
+        "position": "position:eight_a_side_wide_attacker",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:eight_a_side_centre_forward",
+      "references": {
+        "position": "position:eight_a_side_centre_forward",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:futsal_goalkeeper",
+      "references": {
+        "position": "position:futsal_goalkeeper",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:futsal_fixo",
+      "references": {
+        "position": "position:futsal_fixo",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:futsal_winger",
+      "references": {
+        "position": "position:futsal_winger",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:futsal_pivot",
+      "references": {
+        "position": "position:futsal_pivot",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:futsal_universal",
+      "references": {
+        "position": "position:futsal_universal",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:volleyball_setter",
+      "references": {
+        "position": "position:volleyball_setter",
+        "sport": "sport:volleyball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:volleyball_opposite",
+      "references": {
+        "position": "position:volleyball_opposite",
+        "sport": "sport:volleyball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:volleyball_outside_hitter",
+      "references": {
+        "position": "position:volleyball_outside_hitter",
+        "sport": "sport:volleyball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:volleyball_middle_blocker",
+      "references": {
+        "position": "position:volleyball_middle_blocker",
+        "sport": "sport:volleyball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:volleyball_libero",
+      "references": {
+        "position": "position:volleyball_libero",
+        "sport": "sport:volleyball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:basketball_point_guard",
+      "references": {
+        "position": "position:basketball_point_guard",
+        "sport": "sport:basketball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:basketball_shooting_guard",
+      "references": {
+        "position": "position:basketball_shooting_guard",
+        "sport": "sport:basketball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:basketball_small_forward",
+      "references": {
+        "position": "position:basketball_small_forward",
+        "sport": "sport:basketball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:basketball_power_forward",
+      "references": {
+        "position": "position:basketball_power_forward",
+        "sport": "sport:basketball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:basketball_center",
+      "references": {
+        "position": "position:basketball_center",
+        "sport": "sport:basketball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:water_polo_goalkeeper",
+      "references": {
+        "position": "position:water_polo_goalkeeper",
+        "sport": "sport:water_polo"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:water_polo_center_forward",
+      "references": {
+        "position": "position:water_polo_center_forward",
+        "sport": "sport:water_polo"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:water_polo_center_back",
+      "references": {
+        "position": "position:water_polo_center_back",
+        "sport": "sport:water_polo"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:water_polo_driver",
+      "references": {
+        "position": "position:water_polo_driver",
+        "sport": "sport:water_polo"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:water_polo_wing",
+      "references": {
+        "position": "position:water_polo_wing",
+        "sport": "sport:water_polo"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:water_polo_point",
+      "references": {
+        "position": "position:water_polo_point",
+        "sport": "sport:water_polo"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:handball_goalkeeper",
+      "references": {
+        "position": "position:handball_goalkeeper",
+        "sport": "sport:handball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:handball_left_wing",
+      "references": {
+        "position": "position:handball_left_wing",
+        "sport": "sport:handball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:handball_left_back",
+      "references": {
+        "position": "position:handball_left_back",
+        "sport": "sport:handball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:handball_center_back",
+      "references": {
+        "position": "position:handball_center_back",
+        "sport": "sport:handball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:handball_right_back",
+      "references": {
+        "position": "position:handball_right_back",
+        "sport": "sport:handball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:handball_right_wing",
+      "references": {
+        "position": "position:handball_right_wing",
+        "sport": "sport:handball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:handball_pivot",
+      "references": {
+        "position": "position:handball_pivot",
+        "sport": "sport:handball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_prop",
+      "references": {
+        "position": "position:rugby_prop",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_hooker",
+      "references": {
+        "position": "position:rugby_hooker",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_lock",
+      "references": {
+        "position": "position:rugby_lock",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_flanker",
+      "references": {
+        "position": "position:rugby_flanker",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_number_eight",
+      "references": {
+        "position": "position:rugby_number_eight",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_scrum_half",
+      "references": {
+        "position": "position:rugby_scrum_half",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_fly_half",
+      "references": {
+        "position": "position:rugby_fly_half",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_center",
+      "references": {
+        "position": "position:rugby_center",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_wing",
+      "references": {
+        "position": "position:rugby_wing",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:rugby_fullback",
+      "references": {
+        "position": "position:rugby_fullback",
+        "sport": "sport:rugby"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:field_hockey_goalkeeper",
+      "references": {
+        "position": "position:field_hockey_goalkeeper",
+        "sport": "sport:field_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:field_hockey_defender",
+      "references": {
+        "position": "position:field_hockey_defender",
+        "sport": "sport:field_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:field_hockey_midfielder",
+      "references": {
+        "position": "position:field_hockey_midfielder",
+        "sport": "sport:field_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:field_hockey_forward",
+      "references": {
+        "position": "position:field_hockey_forward",
+        "sport": "sport:field_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:ice_hockey_goaltender",
+      "references": {
+        "position": "position:ice_hockey_goaltender",
+        "sport": "sport:ice_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:ice_hockey_defenseman",
+      "references": {
+        "position": "position:ice_hockey_defenseman",
+        "sport": "sport:ice_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:ice_hockey_left_wing",
+      "references": {
+        "position": "position:ice_hockey_left_wing",
+        "sport": "sport:ice_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:ice_hockey_center",
+      "references": {
+        "position": "position:ice_hockey_center",
+        "sport": "sport:ice_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:ice_hockey_right_wing",
+      "references": {
+        "position": "position:ice_hockey_right_wing",
+        "sport": "sport:ice_hockey"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_pitcher",
+      "references": {
+        "position": "position:baseball_pitcher",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_catcher",
+      "references": {
+        "position": "position:baseball_catcher",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_first_base",
+      "references": {
+        "position": "position:baseball_first_base",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_second_base",
+      "references": {
+        "position": "position:baseball_second_base",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_third_base",
+      "references": {
+        "position": "position:baseball_third_base",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_shortstop",
+      "references": {
+        "position": "position:baseball_shortstop",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_left_fielder",
+      "references": {
+        "position": "position:baseball_left_fielder",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_center_fielder",
+      "references": {
+        "position": "position:baseball_center_fielder",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_right_fielder",
+      "references": {
+        "position": "position:baseball_right_fielder",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:baseball_designated_hitter",
+      "references": {
+        "position": "position:baseball_designated_hitter",
+        "sport": "sport:baseball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_pitcher",
+      "references": {
+        "position": "position:softball_pitcher",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_catcher",
+      "references": {
+        "position": "position:softball_catcher",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_first_base",
+      "references": {
+        "position": "position:softball_first_base",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_second_base",
+      "references": {
+        "position": "position:softball_second_base",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_third_base",
+      "references": {
+        "position": "position:softball_third_base",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_shortstop",
+      "references": {
+        "position": "position:softball_shortstop",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_left_fielder",
+      "references": {
+        "position": "position:softball_left_fielder",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_center_fielder",
+      "references": {
+        "position": "position:softball_center_fielder",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:softball_right_fielder",
+      "references": {
+        "position": "position:softball_right_fielder",
+        "sport": "sport:softball"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:lacrosse_goalkeeper",
+      "references": {
+        "position": "position:lacrosse_goalkeeper",
+        "sport": "sport:lacrosse"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:lacrosse_defender",
+      "references": {
+        "position": "position:lacrosse_defender",
+        "sport": "sport:lacrosse"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:lacrosse_midfielder",
+      "references": {
+        "position": "position:lacrosse_midfielder",
+        "sport": "sport:lacrosse"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:lacrosse_attack",
+      "references": {
+        "position": "position:lacrosse_attack",
+        "sport": "sport:lacrosse"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:lacrosse_long_stick_midfielder",
+      "references": {
+        "position": "position:lacrosse_long_stick_midfielder",
+        "sport": "sport:lacrosse"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:lacrosse_faceoff_specialist",
+      "references": {
+        "position": "position:lacrosse_faceoff_specialist",
+        "sport": "sport:lacrosse"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_quarterback",
+      "references": {
+        "position": "position:american_football_quarterback",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_running_back",
+      "references": {
+        "position": "position:american_football_running_back",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_wide_receiver",
+      "references": {
+        "position": "position:american_football_wide_receiver",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_tight_end",
+      "references": {
+        "position": "position:american_football_tight_end",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_offensive_lineman",
+      "references": {
+        "position": "position:american_football_offensive_lineman",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_defensive_lineman",
+      "references": {
+        "position": "position:american_football_defensive_lineman",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_linebacker",
+      "references": {
+        "position": "position:american_football_linebacker",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_cornerback",
+      "references": {
+        "position": "position:american_football_cornerback",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_safety",
+      "references": {
+        "position": "position:american_football_safety",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "player_position_applicability",
+      "key": "position_scope:american_football_kicker_punter",
+      "references": {
+        "position": "position:american_football_kicker_punter",
+        "sport": "sport:american_football"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:portiere",
+      "references": {
+        "position": "position:association_football_goalkeeper",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:difensore_centrale",
+      "references": {
+        "position": "position:association_football_centre_back",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Difensore centrale",
+        "normalizedSourceValue": "difensore_centrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:terzino_esterno_difensivo",
+      "references": {
+        "position": "position:association_football_full_back",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Terzino/Esterno difensivo",
+        "normalizedSourceValue": "terzino_esterno_difensivo",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:mediano",
+      "references": {
+        "position": "position:association_football_defensive_midfielder",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Mediano",
+        "normalizedSourceValue": "mediano",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:centrocampista_centrale",
+      "references": {
+        "position": "position:association_football_central_midfielder",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Centrocampista centrale",
+        "normalizedSourceValue": "centrocampista_centrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:trequartista",
+      "references": {
+        "position": "position:association_football_attacking_midfielder",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Trequartista",
+        "normalizedSourceValue": "trequartista",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:esterno_offensivo_ala",
+      "references": {
+        "position": "position:association_football_winger",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Esterno offensivo/Ala",
+        "normalizedSourceValue": "esterno_offensivo_ala",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:seconda_punta",
+      "references": {
+        "position": "position:association_football_second_striker",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Seconda punta",
+        "normalizedSourceValue": "seconda_punta",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eleven_a_side:punta_centrale",
+      "references": {
+        "position": "position:association_football_centre_forward",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eleven_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Punta centrale",
+        "normalizedSourceValue": "punta_centrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eight_a_side:portiere",
+      "references": {
+        "position": "position:eight_a_side_goalkeeper",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eight_a_side:difensore_centrale",
+      "references": {
+        "position": "position:eight_a_side_central_defender",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Difensore Centrale",
+        "normalizedSourceValue": "difensore_centrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eight_a_side:esterno_basso",
+      "references": {
+        "position": "position:eight_a_side_wide_defender",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Esterno Basso",
+        "normalizedSourceValue": "esterno_basso",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eight_a_side:regista",
+      "references": {
+        "position": "position:eight_a_side_playmaker",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Regista",
+        "normalizedSourceValue": "regista",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eight_a_side:esterno_alto",
+      "references": {
+        "position": "position:eight_a_side_wide_attacker",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Esterno Alto",
+        "normalizedSourceValue": "esterno_alto",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:association_football:eight_a_side:punta_centrale",
+      "references": {
+        "position": "position:eight_a_side_centre_forward",
+        "sport": "sport:football",
+        "discipline": "discipline:association_football",
+        "variant": "variant:eight_a_side"
+      },
+      "attributes": {
+        "sourceValue": "Punta Centrale",
+        "normalizedSourceValue": "punta_centrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:futsal:none:portiere",
+      "references": {
+        "position": "position:futsal_goalkeeper",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:futsal:none:fixo",
+      "references": {
+        "position": "position:futsal_fixo",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      },
+      "attributes": {
+        "sourceValue": "Fixo",
+        "normalizedSourceValue": "fixo",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:futsal:none:ala",
+      "references": {
+        "position": "position:futsal_winger",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      },
+      "attributes": {
+        "sourceValue": "Ala",
+        "normalizedSourceValue": "ala",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:futsal:none:pivot",
+      "references": {
+        "position": "position:futsal_pivot",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      },
+      "attributes": {
+        "sourceValue": "Pivot",
+        "normalizedSourceValue": "pivot",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:football:futsal:none:universale",
+      "references": {
+        "position": "position:futsal_universal",
+        "sport": "sport:football",
+        "discipline": "discipline:futsal"
+      },
+      "attributes": {
+        "sourceValue": "Universale",
+        "normalizedSourceValue": "universale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:volleyball:none:none:palleggiatore",
+      "references": {
+        "position": "position:volleyball_setter",
+        "sport": "sport:volleyball"
+      },
+      "attributes": {
+        "sourceValue": "Palleggiatore",
+        "normalizedSourceValue": "palleggiatore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:volleyball:none:none:opposto",
+      "references": {
+        "position": "position:volleyball_opposite",
+        "sport": "sport:volleyball"
+      },
+      "attributes": {
+        "sourceValue": "Opposto",
+        "normalizedSourceValue": "opposto",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:volleyball:none:none:schiacciatore",
+      "references": {
+        "position": "position:volleyball_outside_hitter",
+        "sport": "sport:volleyball"
+      },
+      "attributes": {
+        "sourceValue": "Schiacciatore",
+        "normalizedSourceValue": "schiacciatore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:volleyball:none:none:centrale",
+      "references": {
+        "position": "position:volleyball_middle_blocker",
+        "sport": "sport:volleyball"
+      },
+      "attributes": {
+        "sourceValue": "Centrale",
+        "normalizedSourceValue": "centrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:volleyball:none:none:libero",
+      "references": {
+        "position": "position:volleyball_libero",
+        "sport": "sport:volleyball"
+      },
+      "attributes": {
+        "sourceValue": "Libero",
+        "normalizedSourceValue": "libero",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:basketball:none:none:playmaker_pg",
+      "references": {
+        "position": "position:basketball_point_guard",
+        "sport": "sport:basketball"
+      },
+      "attributes": {
+        "sourceValue": "Playmaker (PG)",
+        "normalizedSourceValue": "playmaker_pg",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:basketball:none:none:guardia_sg",
+      "references": {
+        "position": "position:basketball_shooting_guard",
+        "sport": "sport:basketball"
+      },
+      "attributes": {
+        "sourceValue": "Guardia (SG)",
+        "normalizedSourceValue": "guardia_sg",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:basketball:none:none:ala_piccola_sf",
+      "references": {
+        "position": "position:basketball_small_forward",
+        "sport": "sport:basketball"
+      },
+      "attributes": {
+        "sourceValue": "Ala piccola (SF)",
+        "normalizedSourceValue": "ala_piccola_sf",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:basketball:none:none:ala_grande_pf",
+      "references": {
+        "position": "position:basketball_power_forward",
+        "sport": "sport:basketball"
+      },
+      "attributes": {
+        "sourceValue": "Ala grande (PF)",
+        "normalizedSourceValue": "ala_grande_pf",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:basketball:none:none:centro_c",
+      "references": {
+        "position": "position:basketball_center",
+        "sport": "sport:basketball"
+      },
+      "attributes": {
+        "sourceValue": "Centro (C)",
+        "normalizedSourceValue": "centro_c",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:water_polo:none:none:portiere",
+      "references": {
+        "position": "position:water_polo_goalkeeper",
+        "sport": "sport:water_polo"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:water_polo:none:none:centroboa",
+      "references": {
+        "position": "position:water_polo_center_forward",
+        "sport": "sport:water_polo"
+      },
+      "attributes": {
+        "sourceValue": "Centroboa",
+        "normalizedSourceValue": "centroboa",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:water_polo:none:none:marcatore_hole_d",
+      "references": {
+        "position": "position:water_polo_center_back",
+        "sport": "sport:water_polo"
+      },
+      "attributes": {
+        "sourceValue": "Marcatore (Hole-D)",
+        "normalizedSourceValue": "marcatore_hole_d",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:water_polo:none:none:driver_perimetrale",
+      "references": {
+        "position": "position:water_polo_driver",
+        "sport": "sport:water_polo"
+      },
+      "attributes": {
+        "sourceValue": "Driver/Perimetrale",
+        "normalizedSourceValue": "driver_perimetrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:water_polo:none:none:ala",
+      "references": {
+        "position": "position:water_polo_wing",
+        "sport": "sport:water_polo"
+      },
+      "attributes": {
+        "sourceValue": "Ala",
+        "normalizedSourceValue": "ala",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:water_polo:none:none:punto_regista",
+      "references": {
+        "position": "position:water_polo_point",
+        "sport": "sport:water_polo"
+      },
+      "attributes": {
+        "sourceValue": "Punto/Regista",
+        "normalizedSourceValue": "punto_regista",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:handball:none:none:portiere",
+      "references": {
+        "position": "position:handball_goalkeeper",
+        "sport": "sport:handball"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:handball:none:none:ala_sinistra",
+      "references": {
+        "position": "position:handball_left_wing",
+        "sport": "sport:handball"
+      },
+      "attributes": {
+        "sourceValue": "Ala sinistra",
+        "normalizedSourceValue": "ala_sinistra",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:handball:none:none:terzino_sinistro",
+      "references": {
+        "position": "position:handball_left_back",
+        "sport": "sport:handball"
+      },
+      "attributes": {
+        "sourceValue": "Terzino sinistro",
+        "normalizedSourceValue": "terzino_sinistro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:handball:none:none:centrale",
+      "references": {
+        "position": "position:handball_center_back",
+        "sport": "sport:handball"
+      },
+      "attributes": {
+        "sourceValue": "Centrale",
+        "normalizedSourceValue": "centrale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:handball:none:none:terzino_destro",
+      "references": {
+        "position": "position:handball_right_back",
+        "sport": "sport:handball"
+      },
+      "attributes": {
+        "sourceValue": "Terzino destro",
+        "normalizedSourceValue": "terzino_destro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:handball:none:none:ala_destra",
+      "references": {
+        "position": "position:handball_right_wing",
+        "sport": "sport:handball"
+      },
+      "attributes": {
+        "sourceValue": "Ala destra",
+        "normalizedSourceValue": "ala_destra",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:handball:none:none:pivot",
+      "references": {
+        "position": "position:handball_pivot",
+        "sport": "sport:handball"
+      },
+      "attributes": {
+        "sourceValue": "Pivot",
+        "normalizedSourceValue": "pivot",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:pilone",
+      "references": {
+        "position": "position:rugby_prop",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Pilone",
+        "normalizedSourceValue": "pilone",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:tallonatore",
+      "references": {
+        "position": "position:rugby_hooker",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Tallonatore",
+        "normalizedSourceValue": "tallonatore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:seconda_linea",
+      "references": {
+        "position": "position:rugby_lock",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Seconda linea",
+        "normalizedSourceValue": "seconda_linea",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:flanker",
+      "references": {
+        "position": "position:rugby_flanker",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Flanker",
+        "normalizedSourceValue": "flanker",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:numero_8",
+      "references": {
+        "position": "position:rugby_number_eight",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Numero 8",
+        "normalizedSourceValue": "numero_8",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:mediano_di_mischia",
+      "references": {
+        "position": "position:rugby_scrum_half",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Mediano di mischia",
+        "normalizedSourceValue": "mediano_di_mischia",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:apertura",
+      "references": {
+        "position": "position:rugby_fly_half",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Apertura",
+        "normalizedSourceValue": "apertura",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:centro",
+      "references": {
+        "position": "position:rugby_center",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Centro",
+        "normalizedSourceValue": "centro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:ala",
+      "references": {
+        "position": "position:rugby_wing",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Ala",
+        "normalizedSourceValue": "ala",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:rugby:none:none:estremo",
+      "references": {
+        "position": "position:rugby_fullback",
+        "sport": "sport:rugby"
+      },
+      "attributes": {
+        "sourceValue": "Estremo",
+        "normalizedSourceValue": "estremo",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:field_hockey:none:none:portiere",
+      "references": {
+        "position": "position:field_hockey_goalkeeper",
+        "sport": "sport:field_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:field_hockey:none:none:difensore",
+      "references": {
+        "position": "position:field_hockey_defender",
+        "sport": "sport:field_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Difensore",
+        "normalizedSourceValue": "difensore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:field_hockey:none:none:centrocampista",
+      "references": {
+        "position": "position:field_hockey_midfielder",
+        "sport": "sport:field_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Centrocampista",
+        "normalizedSourceValue": "centrocampista",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:field_hockey:none:none:attaccante",
+      "references": {
+        "position": "position:field_hockey_forward",
+        "sport": "sport:field_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Attaccante",
+        "normalizedSourceValue": "attaccante",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:ice_hockey:none:none:portiere",
+      "references": {
+        "position": "position:ice_hockey_goaltender",
+        "sport": "sport:ice_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:ice_hockey:none:none:difensore",
+      "references": {
+        "position": "position:ice_hockey_defenseman",
+        "sport": "sport:ice_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Difensore",
+        "normalizedSourceValue": "difensore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:ice_hockey:none:none:ala_sinistra",
+      "references": {
+        "position": "position:ice_hockey_left_wing",
+        "sport": "sport:ice_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Ala sinistra",
+        "normalizedSourceValue": "ala_sinistra",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:ice_hockey:none:none:centro",
+      "references": {
+        "position": "position:ice_hockey_center",
+        "sport": "sport:ice_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Centro",
+        "normalizedSourceValue": "centro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:ice_hockey:none:none:ala_destra",
+      "references": {
+        "position": "position:ice_hockey_right_wing",
+        "sport": "sport:ice_hockey"
+      },
+      "attributes": {
+        "sourceValue": "Ala destra",
+        "normalizedSourceValue": "ala_destra",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:pitcher",
+      "references": {
+        "position": "position:baseball_pitcher",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Pitcher",
+        "normalizedSourceValue": "pitcher",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:catcher",
+      "references": {
+        "position": "position:baseball_catcher",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Catcher",
+        "normalizedSourceValue": "catcher",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:prima_base",
+      "references": {
+        "position": "position:baseball_first_base",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Prima base",
+        "normalizedSourceValue": "prima_base",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:seconda_base",
+      "references": {
+        "position": "position:baseball_second_base",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Seconda base",
+        "normalizedSourceValue": "seconda_base",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:terza_base",
+      "references": {
+        "position": "position:baseball_third_base",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Terza base",
+        "normalizedSourceValue": "terza_base",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:interbase",
+      "references": {
+        "position": "position:baseball_shortstop",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Interbase",
+        "normalizedSourceValue": "interbase",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:esterno_sinistro",
+      "references": {
+        "position": "position:baseball_left_fielder",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Esterno sinistro",
+        "normalizedSourceValue": "esterno_sinistro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:esterno_centro",
+      "references": {
+        "position": "position:baseball_center_fielder",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Esterno centro",
+        "normalizedSourceValue": "esterno_centro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:esterno_destro",
+      "references": {
+        "position": "position:baseball_right_fielder",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Esterno destro",
+        "normalizedSourceValue": "esterno_destro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:baseball:none:none:battitore_designato",
+      "references": {
+        "position": "position:baseball_designated_hitter",
+        "sport": "sport:baseball"
+      },
+      "attributes": {
+        "sourceValue": "Battitore designato",
+        "normalizedSourceValue": "battitore_designato",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:pitcher",
+      "references": {
+        "position": "position:softball_pitcher",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Pitcher",
+        "normalizedSourceValue": "pitcher",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:catcher",
+      "references": {
+        "position": "position:softball_catcher",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Catcher",
+        "normalizedSourceValue": "catcher",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:prima_base",
+      "references": {
+        "position": "position:softball_first_base",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Prima base",
+        "normalizedSourceValue": "prima_base",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:seconda_base",
+      "references": {
+        "position": "position:softball_second_base",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Seconda base",
+        "normalizedSourceValue": "seconda_base",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:terza_base",
+      "references": {
+        "position": "position:softball_third_base",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Terza base",
+        "normalizedSourceValue": "terza_base",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:interbase",
+      "references": {
+        "position": "position:softball_shortstop",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Interbase",
+        "normalizedSourceValue": "interbase",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:esterno_sinistro",
+      "references": {
+        "position": "position:softball_left_fielder",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Esterno sinistro",
+        "normalizedSourceValue": "esterno_sinistro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:esterno_centro",
+      "references": {
+        "position": "position:softball_center_fielder",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Esterno centro",
+        "normalizedSourceValue": "esterno_centro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:softball:none:none:esterno_destro",
+      "references": {
+        "position": "position:softball_right_fielder",
+        "sport": "sport:softball"
+      },
+      "attributes": {
+        "sourceValue": "Esterno destro",
+        "normalizedSourceValue": "esterno_destro",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:lacrosse:none:none:portiere",
+      "references": {
+        "position": "position:lacrosse_goalkeeper",
+        "sport": "sport:lacrosse"
+      },
+      "attributes": {
+        "sourceValue": "Portiere",
+        "normalizedSourceValue": "portiere",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:lacrosse:none:none:difensore",
+      "references": {
+        "position": "position:lacrosse_defender",
+        "sport": "sport:lacrosse"
+      },
+      "attributes": {
+        "sourceValue": "Difensore",
+        "normalizedSourceValue": "difensore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:lacrosse:none:none:centrocampista",
+      "references": {
+        "position": "position:lacrosse_midfielder",
+        "sport": "sport:lacrosse"
+      },
+      "attributes": {
+        "sourceValue": "Centrocampista",
+        "normalizedSourceValue": "centrocampista",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:lacrosse:none:none:attaccante",
+      "references": {
+        "position": "position:lacrosse_attack",
+        "sport": "sport:lacrosse"
+      },
+      "attributes": {
+        "sourceValue": "Attaccante",
+        "normalizedSourceValue": "attaccante",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:lacrosse:none:none:lsm",
+      "references": {
+        "position": "position:lacrosse_long_stick_midfielder",
+        "sport": "sport:lacrosse"
+      },
+      "attributes": {
+        "sourceValue": "LSM",
+        "normalizedSourceValue": "lsm",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:lacrosse:none:none:faceoff_specialist",
+      "references": {
+        "position": "position:lacrosse_faceoff_specialist",
+        "sport": "sport:lacrosse"
+      },
+      "attributes": {
+        "sourceValue": "Faceoff specialist",
+        "normalizedSourceValue": "faceoff_specialist",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:quarterback",
+      "references": {
+        "position": "position:american_football_quarterback",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Quarterback",
+        "normalizedSourceValue": "quarterback",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:running_back",
+      "references": {
+        "position": "position:american_football_running_back",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Running back",
+        "normalizedSourceValue": "running_back",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:wide_receiver",
+      "references": {
+        "position": "position:american_football_wide_receiver",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Wide receiver",
+        "normalizedSourceValue": "wide_receiver",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:tight_end",
+      "references": {
+        "position": "position:american_football_tight_end",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Tight end",
+        "normalizedSourceValue": "tight_end",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:offensive_lineman",
+      "references": {
+        "position": "position:american_football_offensive_lineman",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Offensive lineman",
+        "normalizedSourceValue": "offensive_lineman",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:defensive_lineman",
+      "references": {
+        "position": "position:american_football_defensive_lineman",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Defensive lineman",
+        "normalizedSourceValue": "defensive_lineman",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:linebacker",
+      "references": {
+        "position": "position:american_football_linebacker",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Linebacker",
+        "normalizedSourceValue": "linebacker",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:cornerback",
+      "references": {
+        "position": "position:american_football_cornerback",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Cornerback",
+        "normalizedSourceValue": "cornerback",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:safety",
+      "references": {
+        "position": "position:american_football_safety",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Safety",
+        "normalizedSourceValue": "safety",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_player_position_mapping",
+      "key": "legacy_position:american_football:none:none:kicker_punter",
+      "references": {
+        "position": "position:american_football_kicker_punter",
+        "sport": "sport:american_football"
+      },
+      "attributes": {
+        "sourceValue": "Kicker/Punter",
+        "normalizedSourceValue": "kicker_punter",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:presidente",
+      "references": {
+        "staffRole": "staff_role:president"
+      },
+      "attributes": {
+        "sourceValue": "Presidente",
+        "normalizedSourceValue": "presidente",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:vicepresidente",
+      "references": {
+        "staffRole": "staff_role:vice_president"
+      },
+      "attributes": {
+        "sourceValue": "Vicepresidente",
+        "normalizedSourceValue": "vicepresidente",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:direttore_sportivo",
+      "references": {
+        "staffRole": "staff_role:sporting_director"
+      },
+      "attributes": {
+        "sourceValue": "Direttore Sportivo",
+        "normalizedSourceValue": "direttore_sportivo",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:direttore_generale",
+      "references": {
+        "staffRole": "staff_role:general_manager"
+      },
+      "attributes": {
+        "sourceValue": "Direttore Generale",
+        "normalizedSourceValue": "direttore_generale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:segretario",
+      "references": {
+        "staffRole": "staff_role:secretary"
+      },
+      "attributes": {
+        "sourceValue": "Segretario",
+        "normalizedSourceValue": "segretario",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:team_manager",
+      "references": {
+        "staffRole": "staff_role:team_manager"
+      },
+      "attributes": {
+        "sourceValue": "Team manager",
+        "normalizedSourceValue": "team_manager",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:dirigente_accompagnatore",
+      "references": {
+        "staffRole": "staff_role:team_official"
+      },
+      "attributes": {
+        "sourceValue": "Dirigente Accompagnatore",
+        "normalizedSourceValue": "dirigente_accompagnatore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:allenatore",
+      "references": {
+        "staffRole": "staff_role:head_coach"
+      },
+      "attributes": {
+        "sourceValue": "Allenatore",
+        "normalizedSourceValue": "allenatore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:vice_allenatore",
+      "references": {
+        "staffRole": "staff_role:assistant_coach"
+      },
+      "attributes": {
+        "sourceValue": "Vice Allenatore",
+        "normalizedSourceValue": "vice_allenatore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:collaboratore_tecnico",
+      "references": {
+        "staffRole": "staff_role:technical_assistant"
+      },
+      "attributes": {
+        "sourceValue": "Collaboratore Tecnico",
+        "normalizedSourceValue": "collaboratore_tecnico",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:match_analyst",
+      "references": {
+        "staffRole": "staff_role:match_analyst"
+      },
+      "attributes": {
+        "sourceValue": "Match Analyst",
+        "normalizedSourceValue": "match_analyst",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:video_analyst",
+      "references": {
+        "staffRole": "staff_role:video_analyst"
+      },
+      "attributes": {
+        "sourceValue": "Video Analyst",
+        "normalizedSourceValue": "video_analyst",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:preparatore_atletico",
+      "references": {
+        "staffRole": "staff_role:strength_conditioning_coach"
+      },
+      "attributes": {
+        "sourceValue": "Preparatore Atletico",
+        "normalizedSourceValue": "preparatore_atletico",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:preparatore_portieri",
+      "references": {
+        "staffRole": "staff_role:goalkeeping_coach"
+      },
+      "attributes": {
+        "sourceValue": "Preparatore Portieri",
+        "normalizedSourceValue": "preparatore_portieri",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:medico_sociale",
+      "references": {
+        "staffRole": "staff_role:team_doctor"
+      },
+      "attributes": {
+        "sourceValue": "Medico Sociale",
+        "normalizedSourceValue": "medico_sociale",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:fisioterapista",
+      "references": {
+        "staffRole": "staff_role:physiotherapist"
+      },
+      "attributes": {
+        "sourceValue": "Fisioterapista",
+        "normalizedSourceValue": "fisioterapista",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:osteopata",
+      "references": {
+        "staffRole": "staff_role:osteopath"
+      },
+      "attributes": {
+        "sourceValue": "Osteopata",
+        "normalizedSourceValue": "osteopata",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:massaggiatore",
+      "references": {
+        "staffRole": "staff_role:massage_therapist"
+      },
+      "attributes": {
+        "sourceValue": "Massaggiatore",
+        "normalizedSourceValue": "massaggiatore",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:mental_coach",
+      "references": {
+        "staffRole": "staff_role:mental_performance_coach"
+      },
+      "attributes": {
+        "sourceValue": "Mental Coach",
+        "normalizedSourceValue": "mental_coach",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:nutrizionista",
+      "references": {
+        "staffRole": "staff_role:nutritionist"
+      },
+      "attributes": {
+        "sourceValue": "Nutrizionista",
+        "normalizedSourceValue": "nutrizionista",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:scout",
+      "references": {
+        "staffRole": "staff_role:scout"
+      },
+      "attributes": {
+        "sourceValue": "Scout",
+        "normalizedSourceValue": "scout",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:talent_scout",
+      "references": {
+        "staffRole": "staff_role:talent_scout"
+      },
+      "attributes": {
+        "sourceValue": "Talent Scout",
+        "normalizedSourceValue": "talent_scout",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:addetto_stampa",
+      "references": {
+        "staffRole": "staff_role:press_officer"
+      },
+      "attributes": {
+        "sourceValue": "Addetto Stampa",
+        "normalizedSourceValue": "addetto_stampa",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:social_media_manager",
+      "references": {
+        "staffRole": "staff_role:social_media_manager"
+      },
+      "attributes": {
+        "sourceValue": "Social Media Manager",
+        "normalizedSourceValue": "social_media_manager",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:fotografo",
+      "references": {
+        "staffRole": "staff_role:photographer"
+      },
+      "attributes": {
+        "sourceValue": "Fotografo",
+        "normalizedSourceValue": "fotografo",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    },
+    {
+      "kind": "legacy_staff_role_mapping",
+      "key": "legacy_staff_role:content_creator",
+      "references": {
+        "staffRole": "staff_role:content_creator"
+      },
+      "attributes": {
+        "sourceValue": "Content Creator",
+        "normalizedSourceValue": "content_creator",
+        "notes": "Phase 5D-C exact legacy compatibility mapping"
+      }
+    }
+  ]
+}

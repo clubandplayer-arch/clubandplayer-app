@@ -21,6 +21,8 @@ import { isProfileComplete } from '@/lib/profiles/completion';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { resolveRequestLocale } from '@/lib/i18n/server';
 import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
+import { localizeOpportunityCategory, localizeSport } from '@/lib/i18n/controlledVocabulary';
+import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
 
 type ClubProfileRow = {
   id: string;
@@ -166,9 +168,10 @@ async function loadRegistryClubClaim(profileId: string): Promise<RegistryClubCla
   return (data as RegistryClubClaim | null) ?? null;
 }
 
-function locationLabel(row: ClubProfileRow, provinceAbbreviations: Record<string, string>): string {
+function locationLabel(row: ClubProfileRow, provinceAbbreviations: Record<string, string>, locale: string, otherLabel: string): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
-  const countryLabel = getCountryName(row.country || undefined) ?? (row.country || '');
+  const rawCountry = row.country || '';
+  const countryLabel = localizeCountryOption(rawCountry, getCountryName(rawCountry) ?? rawCountry, locale, otherLabel);
   return [row.city, provinceDisplayValue(row.province, provinceAbbreviations), state, countryLabel]
     .filter(Boolean)
     .join(' · ');
@@ -208,10 +211,11 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   }));
 
   const displayName = buildClubDisplayName(profileWithVerification.full_name, profileWithVerification.display_name, 'Club');
-  const sportLabel = normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport ?? null;
+  const sportLabel = localizeSport(normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport, t);
+  const categoryLabel = localizeOpportunityCategory(profileWithVerification.club_league_category, t);
   const subtitle =
-    [profileWithVerification.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
-  const location = locationLabel(profileWithVerification, provinceAbbreviations) || undefined;
+    [categoryLabel, sportLabel].filter(Boolean).join(' · ') || '—';
+  const location = locationLabel(profileWithVerification, provinceAbbreviations, locale, t('vocabulary.category.other')) || undefined;
   const headerLocationContent = (
     <div className="space-y-1">
       {location ? <p>{location}</p> : <p className="text-neutral-400">{t('profile.locationMissing')}</p>}
@@ -274,7 +278,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.headquarters')}</div>
-              <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile, provinceAbbreviations) || '—'}</div>
+              <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile, provinceAbbreviations, locale, t('vocabulary.category.other')) || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.mainSport')}</div>
@@ -282,7 +286,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.typeCategory')}</div>
-              <div className="mt-1 font-medium text-neutral-900">{profile.club_league_category || '—'}</div>
+              <div className="mt-1 font-medium text-neutral-900">{categoryLabel || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.facility')}</div>

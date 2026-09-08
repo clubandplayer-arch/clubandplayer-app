@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "registryVersion": "2026-09-07.phase-5d-d.audit-1",
+  "scope": {
+    "countries": ["IT", "FR", "ES", "CH", "SI", "PL"],
+    "sports": ["football"],
+    "entityKinds": ["sports_organization", "competition", "competition_level", "season"],
+    "disclaimer": "Discovery registry only. No source is approved for ingestion. Official website access does not establish reuse rights."
+  },
+  "policy": {
+    "allowedStatuses": ["discovery_only", "candidate_pending_evidence", "approved_for_manifest"],
+    "requiredApprovalEvidence": ["primary_authority", "stable_record_identifier", "dataset_version_or_effective_date", "explicit_reuse_terms", "attribution", "coverage_and_exclusions", "retrieval_checksum"],
+    "nationalProperNames": "preserve_source_language",
+    "translatedIdentityPersistence": false,
+    "fuzzyIdentityMatching": false
+  },
+  "sources": [
+    {"key":"IT:football:FIGC","country":"IT","sportCode":"football","authorityName":"Federazione Italiana Giuoco Calcio","authorityType":"national_federation","officialUrl":"https://www.figc.it/it","accessCheck":{"checkedAt":"2026-09-07","result":"http_200"},"status":"discovery_only","reuseStatus":"blocked_explicit_reuse_terms_missing","stableRecordIdentifiers":"not_evidenced","competitionCoverage":"not_audited","notes":"Official federation landing page only; not an ingestible dataset."},
+    {"key":"FR:football:FFF","country":"FR","sportCode":"football","authorityName":"Fédération Française de Football","authorityType":"national_federation","officialUrl":"https://www.fff.fr/","accessCheck":{"checkedAt":"2026-09-07","result":"automation_http_403"},"status":"discovery_only","reuseStatus":"blocked_explicit_reuse_terms_missing","stableRecordIdentifiers":"not_evidenced","competitionCoverage":"not_audited","notes":"Manual access required; no dataset or reuse licence established."},
+    {"key":"ES:football:RFEF","country":"ES","sportCode":"football","authorityName":"Real Federación Española de Fútbol","authorityType":"national_federation","officialUrl":"https://rfef.es/","accessCheck":{"checkedAt":"2026-09-07","result":"automation_http_403"},"status":"discovery_only","reuseStatus":"blocked_explicit_reuse_terms_missing","stableRecordIdentifiers":"not_evidenced","competitionCoverage":"not_audited","notes":"Manual access required; no dataset or reuse licence established."},
+    {"key":"CH:football:SFV","country":"CH","sportCode":"football","authorityName":"Schweizerischer Fussballverband","authorityType":"national_federation","officialUrl":"https://www.football.ch/","accessCheck":{"checkedAt":"2026-09-07","result":"automation_http_403"},"status":"discovery_only","reuseStatus":"blocked_explicit_reuse_terms_missing","stableRecordIdentifiers":"not_evidenced","competitionCoverage":"not_audited","notes":"Multilingual official site; source-language names must be retained. Manual access required."},
+    {"key":"SI:football:NZS","country":"SI","sportCode":"football","authorityName":"Nogometna zveza Slovenije","authorityType":"national_federation","officialUrl":"https://www.nzs.si/","accessCheck":{"checkedAt":"2026-09-07","result":"http_200_title_verified"},"status":"discovery_only","reuseStatus":"blocked_explicit_reuse_terms_missing","stableRecordIdentifiers":"not_evidenced","competitionCoverage":"not_audited","notes":"Official landing page verified; no dataset or reuse licence established."},
+    {"key":"PL:football:PZPN","country":"PL","sportCode":"football","authorityName":"Polski Związek Piłki Nożnej","authorityType":"national_federation","officialUrl":"https://www.pzpn.pl/","accessCheck":{"checkedAt":"2026-09-07","result":"http_200_title_verified"},"status":"discovery_only","reuseStatus":"blocked_explicit_reuse_terms_missing","stableRecordIdentifiers":"not_evidenced","competitionCoverage":"not_audited","notes":"Official landing page verified; no dataset or reuse licence established."},
+    {"key":"EU:football:UEFA","country":null,"sportCode":"football","authorityName":"Union of European Football Associations","authorityType":"continental_confederation","officialUrl":"https://www.uefa.com/","accessCheck":{"checkedAt":"2026-09-07","result":"automation_http_503"},"status":"discovery_only","reuseStatus":"blocked_explicit_reuse_terms_missing","stableRecordIdentifiers":"not_evidenced","competitionCoverage":"not_audited","notes":"Potential parent authority for European competitions; no ingestion approval."}
+  ],
+  "coverageGaps": [
+    "No competition-level, season or edition dataset has passed provenance and reuse gates.",
+    "No stable source record identifiers have been evidenced.",
+    "Non-football sports remain intentionally unregistered in this first discovery audit.",
+    "Age classes and cutoff rules require regulation-specific primary sources.",
+    "Organization hierarchies and historical validity remain unaudited.",
+    "Automated retrieval was blocked for FFF, RFEF, SFV and UEFA; manual verification is required."
+  ]
+}

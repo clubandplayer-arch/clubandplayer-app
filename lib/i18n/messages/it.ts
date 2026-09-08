@@ -105,7 +105,7 @@ const messages = {
   'opportunities.oldest': 'Meno recenti',
   'opportunities.perPage': 'Per pagina',
   'opportunities.loadError': 'Errore nel caricamento',
-  'opportunities.clubOnly': 'Devi essere un Club per creare un’opportunità.',
+  'opportunities.reverseOrder':'Inverti ordine','opportunities.visitClubProfile':'Visita profilo Club','opportunities.deleteTitle':'Eliminare opportunità?','opportunities.deleteConfirm':'Vuoi eliminare “{title}”?',  'opportunities.clubOnly': 'Devi essere un Club per creare un’opportunità.',
   'search.title': 'Ricerca',
   'search.country': 'Nazione',
   'search.allCountries': 'Tutte le nazioni',

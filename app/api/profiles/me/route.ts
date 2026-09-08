@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 import { isPlatformAdminEmail, PLATFORM_ADMIN_ROLE, PLATFORM_ADMIN_ROLE_LABEL } from '@/lib/constants/admin';
@@ -12,6 +11,15 @@ import {
   normalizeProfilePersonName,
   sanitizeProfileClubName,
 } from '@/lib/profiles/nameValidation';
+import { CanonicalSportWritePlanService } from '@/lib/taxonomy/canonicalSportWritePlanService.server';
+import {
+  mapProfilePrimarySportContractError,
+  planProfilePrimarySportRequest,
+} from '@/lib/taxonomy/profilePrimarySportRuntimeContract';
+import {
+  SportsTaxonomyRepository,
+  SupabaseSportsTaxonomyDataSource,
+} from '@/lib/taxonomy/sportsTaxonomyRepository.server';
 
 export const runtime = 'nodejs';
 
@@ -184,7 +192,21 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
-  if (updates.sport) updates.sport = normalizeSport(updates.sport) ?? updates.sport;
+  const hasPrimarySportInput = Object.prototype.hasOwnProperty.call(body, 'sport') ||
+    Object.prototype.hasOwnProperty.call(body, 'primarySport');
+  if (hasPrimarySportInput) {
+    try {
+      const repository = new SportsTaxonomyRepository(new SupabaseSportsTaxonomyDataSource(supabase));
+      const sportUpdate = await planProfilePrimarySportRequest(
+        body,
+        new CanonicalSportWritePlanService(repository),
+      );
+      if (sportUpdate) Object.assign(updates, sportUpdate);
+    } catch (error) {
+      const mapped = mapProfilePrimarySportContractError(error);
+      return jsonError(mapped.code, mapped.status, { code: mapped.code });
+    }
+  }
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
   if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();
   if (updates.birth_country) updates.birth_country = updates.birth_country.toString().trim().toUpperCase();
@@ -310,10 +332,22 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       .select('*')
       .maybeSingle();
 
-    if (up.error) return jsonError(up.error.message, 400);
+    if (up.error) {
+      if (hasPrimarySportInput) {
+        const mapped = mapProfilePrimarySportContractError(up.error);
+        return jsonError(mapped.code, mapped.status, { code: mapped.code });
+      }
+      return jsonError(up.error.message, 400);
+    }
     return NextResponse.json({ data: up.data });
   }
 
-  if (error) return jsonError(error.message, 400);
+  if (error) {
+    if (hasPrimarySportInput) {
+      const mapped = mapProfilePrimarySportContractError(error);
+      return jsonError(mapped.code, mapped.status, { code: mapped.code });
+    }
+    return jsonError(error.message, 400);
+  }
   return NextResponse.json({ data });
 });

@@ -135,7 +135,7 @@ export default function OpportunitiesTable({
                 </Link>
                   {showVisitClub && (
                     <Link href={`/clubs/${profileOwnerId}`} className="text-blue-700 hover:underline">
-                      Visita profilo club
+                      {t('opportunities.visitClubProfile')}
                     </Link>
                   )}
                 </div>

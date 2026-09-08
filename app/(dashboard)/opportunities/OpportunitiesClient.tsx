@@ -497,7 +497,7 @@ export default function OpportunitiesClient() {
             onClick={() => setParam('sort', (sp.get('sort') ?? 'recent') === 'recent' ? 'oldest' : 'recent')}
             className="w-full rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 sm:w-auto"
           >
-            Inverti ordine
+            {t('opportunities.reverseOrder')}
           </button>
           <div className="flex w-full items-center gap-2 sm:w-auto">
             <label className="text-sm text-gray-600">{t('opportunities.perPage')}</label>
@@ -615,26 +615,26 @@ export default function OpportunitiesClient() {
 
       <Modal
         open={!!deleteItem}
-        title="Eliminare opportunità?"
+        title={t('opportunities.deleteTitle')}
         onClose={() => setDeleteItem(null)}
       >
         {deleteItem && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-700">Vuoi eliminare “{deleteItem.title}”?</p>
+            <p className="text-sm text-gray-700">{t('opportunities.deleteConfirm', { title: deleteItem.title })}</p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
                 className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-50"
                 onClick={() => setDeleteItem(null)}
               >
-                Annulla
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
                 onClick={() => performDelete(deleteItem)}
               >
-                Elimina
+                {t('common.delete')}
               </button>
             </div>
           </div>

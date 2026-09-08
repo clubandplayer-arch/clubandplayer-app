@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeControlledStatus } from '@/lib/i18n/controlledVocabulary';
+import { localizeControlledStatus, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 import AthleteMediaHighlightsSection, {
   type AthleteMediaItem,
@@ -490,10 +490,10 @@ export default function PlayerPublicProfilePage() {
 
   const headerSubtitle = useMemo(() => {
     if (!profile) return '';
-    const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
-    const parts = [profile.role, sportLabel].filter(Boolean);
+    const sportLabel = localizeSport(normalizeSport(profile.sport ?? null) ?? profile.sport, t);
+    const parts = [localizeSportRole(profile.role, t), sportLabel].filter(Boolean);
     return parts.join(' · ') || '—';
-  }, [profile]);
+  }, [profile, t]);
 
   const clubDisplayName = useMemo(() => {
     if (!clubOfBelonging) return null;
@@ -562,7 +562,7 @@ export default function PlayerPublicProfilePage() {
             socialLinks={profile.links}
             showMessageButton
             showFollowButton={!isMe}
-            messageLabel="Messaggia"
+            messageLabel={t('profile.message')}
             fanVoteCount={fanVoteState.voteCount}
           />
 
@@ -651,7 +651,7 @@ export default function PlayerPublicProfilePage() {
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="heading-h2 text-xl">Bio</h2>
             <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">
-              {profile.bio && profile.bio.trim().length > 0 ? profile.bio : 'Nessuna bio disponibile.'}
+              {profile.bio && profile.bio.trim().length > 0 ? profile.bio : t('profile.noContent')}
             </p>
           </section>
 

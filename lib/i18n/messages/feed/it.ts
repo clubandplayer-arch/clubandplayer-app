@@ -51,5 +51,8 @@ const feed = {
   'settings.title': 'Impostazioni', 'settings.profile': 'Profilo', 'settings.notifications': 'Notifiche',
   'settings.session': 'Sessione', 'settings.saved': 'Impostazioni salvate.', 'settings.blockedUsers': 'Utenti bloccati',
   'settings.deleteAccount': 'Elimina account', 'settings.save': 'Salva', 'settings.saving': 'Salvataggio…',
+  'feed.clubEvent': 'Evento Club',
+  'feed.clubEventFallback': 'Evento del Club',
+  'feed.clubEventHighlight': 'Da non perdere: questo non è un post standard, è un evento ufficiale del Club.',
 } as const;
 export default feed;
