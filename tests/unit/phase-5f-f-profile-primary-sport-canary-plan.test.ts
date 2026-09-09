@@ -11,7 +11,7 @@ test('5F-F canary plan records authorization while remaining not executed', () =
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
   assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
-  assert.match(plan, /AUTHORIZED \/ NOT EXECUTED/);
+  assert.match(plan, /AUTHORIZED \/ BASELINE HTTP PENDING/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -54,6 +54,20 @@ test('5F-F stops Step 1 after loading the secret without an HTTP request', () =>
   assert.match(plan, /PHASE_5F_CANARY_SECRET_READY/);
   assert.match(plan, /non eseguire ancora `curl`/i);
   assert.match(plan, /non incollare il token in chat/i);
+});
+
+test('5F-F Step 2 captures two authenticated GET baselines without writing or leaking data', () => {
+  assert.match(plan, /Checkpoint Step 1.*PASS USER-REPORTED/s);
+  assert.match(plan, /set \+u/);
+  assert.match(plan, /umask 077/);
+  assert.match(plan, /api\/profiles\/me"\)/);
+  assert.match(plan, /api\/profiles\/me\/experiences"\)/);
+  assert.match(plan, /PROFILE_STATUS.*!= '200'/s);
+  assert.match(plan, /EXPERIENCES_STATUS.*!= '200'/s);
+  assert.match(plan, /PHASE_5F_CANARY_BASELINE_HTTP_PASS/);
+  assert.match(plan, /non incollare i JSON o il token/);
+  const step2 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 2 soltanto'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  assert.doesNotMatch(step2, /-X PATCH|--request PATCH|method: 'PATCH'/);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {

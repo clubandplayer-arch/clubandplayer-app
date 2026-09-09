@@ -75,6 +75,70 @@ printf 'PHASE_5F_CANARY_SECRET_READY user=%s release=%s\n' "$CANARY_USER_ID" "$R
 
 Non usare `set -x`, non incollare il token in chat e non eseguire ancora `curl`. Il solo output da comunicare è `PHASE_5F_CANARY_SECRET_READY ...`; lo Step 2 acquisirà le due baseline HTTP autenticate senza ripetere la qualificazione SQL e prima della prima scrittura.
 
+**Checkpoint Step 1 2026-09-09 — PASS USER-REPORTED.** Il marker ricevuto associa il secret caricato localmente all'owner e alla release attesi. Il token non è stato condiviso. Nessuna richiesta è stata ancora inviata.
+
+## Esecuzione guidata — Step 2 soltanto
+
+Questo step esegue esclusivamente i due `GET` autenticati Profile ed esperienze e conserva i body completi in file `/tmp` mode owner-only; non invia PATCH e non stampa né token né dati Profile. La qualificazione SQL già conclusa garantisce la riga Profile Staff esistente, quindi il percorso di integrità del GET Profile non deve creare o correggere righe. Qualunque status o shape inatteso è uno STOP con i file conservati.
+
+Eseguire nello **stesso terminale** dello Step 1, senza `set -u`:
+
+```bash
+set +u
+set -eo pipefail
+umask 077
+
+: "${CANARY_TOKEN:?CANARY_TOKEN non presente in questo terminale}"
+: "${CANARY_USER_ID:?CANARY_USER_ID non presente in questo terminale}"
+: "${PROD_BASE_URL:?PROD_BASE_URL non presente in questo terminale}"
+
+PROFILE_BEFORE='/tmp/phase-5f-canary-profile-before.json'
+EXPERIENCES_BEFORE='/tmp/phase-5f-canary-experiences-before.json'
+
+PROFILE_STATUS="$(curl --silent --show-error --proto '=https' --tlsv1.2 \
+  --output "$PROFILE_BEFORE" --write-out '%{http_code}' \
+  -H "Authorization: Bearer $CANARY_TOKEN" \
+  "$PROD_BASE_URL/api/profiles/me")"
+
+EXPERIENCES_STATUS="$(curl --silent --show-error --proto '=https' --tlsv1.2 \
+  --output "$EXPERIENCES_BEFORE" --write-out '%{http_code}' \
+  -H "Authorization: Bearer $CANARY_TOKEN" \
+  "$PROD_BASE_URL/api/profiles/me/experiences")"
+
+if [ "$PROFILE_STATUS" != '200' ] || [ "$EXPERIENCES_STATUS" != '200' ]; then
+  printf 'PHASE_5F_CANARY_STOP baseline_http profile=%s experiences=%s\n' \
+    "$PROFILE_STATUS" "$EXPERIENCES_STATUS"
+  false
+fi
+
+if ! jq -e --arg user "$CANARY_USER_ID" '
+    .data != null
+    and .data.user_id == $user
+    and ((.data.account_type // .data.type // "") | ascii_downcase) == "staff"
+    and .data.is_admin != true
+    and .data.sport_id == null
+    and .data.sport_discipline_id == null
+    and .data.sport_variant_id == null
+  ' "$PROFILE_BEFORE" >/dev/null \
+  || ! jq -e '
+    (.data | type) == "array"
+    and all(.data[]; .primarySport == null)
+  ' "$EXPERIENCES_BEFORE" >/dev/null; then
+  printf 'PHASE_5F_CANARY_STOP baseline_shape\n'
+  false
+fi
+
+PROFILE_SHA256="$(sha256sum "$PROFILE_BEFORE" | cut -d' ' -f1)"
+EXPERIENCES_SHA256="$(sha256sum "$EXPERIENCES_BEFORE" | cut -d' ' -f1)"
+EXPERIENCE_COUNT="$(jq '.data | length' "$EXPERIENCES_BEFORE")"
+
+printf 'PHASE_5F_CANARY_BASELINE_HTTP_PASS profile=%s experiences=%s count=%s profile_sha256=%s experiences_sha256=%s\n' \
+  "$PROFILE_STATUS" "$EXPERIENCES_STATUS" "$EXPERIENCE_COUNT" \
+  "$PROFILE_SHA256" "$EXPERIENCES_SHA256"
+```
+
+Se un `jq` fallisce, il blocco stampa `PHASE_5F_CANARY_STOP baseline_shape`, conserva entrambi i file e si ferma senza PATCH o teardown. Se passa, comunicare soltanto la riga `PHASE_5F_CANARY_BASELINE_HTTP_PASS`; non incollare i JSON o il token. Lo Step 3 preparerà e mostrerà il payload Profile esatto prima della prima scrittura autorizzata.
+
 ## Informazioni ancora strettamente necessarie
 
 1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
@@ -158,4 +222,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy, la qualificazione tecnica e l'attestazione disposable sono **PASS**; il canary è **AUTHORIZED / NOT EXECUTED**. Il prossimo e unico passaggio è lo Step 1 sopra: caricare localmente il token secret e restituire soltanto il marker `PHASE_5F_CANARY_SECRET_READY`. Non eseguire ancora richieste. Una divergenza in qualsiasi step successivo impone STOP, conservazione delle evidenze e nessun avanzamento automatico al teardown.
+Il deploy, la qualificazione tecnica, l'attestazione disposable e lo Step 1 sono **PASS**; il canary è **AUTHORIZED / BASELINE HTTP PENDING**. Il prossimo e unico passaggio è lo Step 2 sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun avanzamento automatico a scritture o teardown.
