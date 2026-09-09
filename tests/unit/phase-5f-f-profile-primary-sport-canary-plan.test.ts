@@ -31,6 +31,15 @@ test('5F-F records the Codespace pass and rejects the older Production deploymen
   assert.match(plan, /non è utilizzabile per il canary/);
 });
 
+test('5F-F records deploy authorization without broadening it and gives a fail-closed handoff', () => {
+  assert.match(plan, /AUTORIZZATO \/ NON ESEGUITO/);
+  assert.match(plan, /Promote to Production/);
+  assert.match(plan, /Source commit.*36dfa9860d9d12f5373ea3a85d76f706b4d718a4/s);
+  assert.match(plan, /Se lo SHA non compare.*fermarsi/s);
+  assert.match(plan, /comunicare soltanto l'URL immutabile del deployment/);
+  assert.match(plan, /non viene estesa a commit diversi, merge, migration o canary/);
+});
+
 test('5F-F uses only a disposable profile and accounts for trigger side effects', () => {
   assert.match(plan, /profilo di test dedicato e disposable/);
   assert.match(plan, /profilo reale.*è escluso/);
