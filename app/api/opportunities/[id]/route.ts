@@ -12,6 +12,10 @@ import {
   parseOpportunityGeographyCommand,
   resolveOpportunityGeography,
 } from '@/lib/opportunities/geography';
+import { CanonicalSportWritePlanService } from '@/lib/taxonomy/canonicalSportWritePlanService.server';
+import { planProfilePrimarySportRequest } from '@/lib/taxonomy/profilePrimarySportRuntimeContract';
+import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
+import { projectOpportunityCanonicalContext, resolveOpportunityRoleColumns } from '@/lib/opportunities/canonicalSportsContext.server';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +27,7 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender';
+  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code';
 
 function parseRoleGroup(value: unknown): 'player' | 'staff' | null {
   if (value == null) return null;
@@ -157,7 +161,7 @@ export async function GET(
     const clubInfo = await resolveClubInfo(supabase, data as Record<string, unknown>);
     const roleGroup = parseRoleGroup((data as any).role_group) ?? 'player';
     const geography = await resolveOpportunityGeography(supabase, data as Record<string, unknown>);
-    return NextResponse.json({ data: { ...data, role_group: roleGroup, roleGroup, ...clubInfo, geography } });
+    return NextResponse.json({ data: { ...data, ...projectOpportunityCanonicalContext(data), role_group: roleGroup, roleGroup, ...clubInfo, geography } });
   } catch (err: any) {
     return jsonError(err?.message || 'Unexpected error', 500);
   }
@@ -192,7 +196,6 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const region = norm(body.region);
   const province = norm(body.province);
   const city = norm(body.city);
-  const sport = normalizeSport(norm(body.sport)) ?? null;
   const roleHuman =
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??
@@ -237,7 +240,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data: opp, error: fetchError } = await supabase
     .from('opportunities')
-    .select('id, owner_id, created_by, sport, role_group')
+    .select(SELECT)
     .eq('id', id)
     .maybeSingle();
 
@@ -255,7 +258,6 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (Object.prototype.hasOwnProperty.call(body, 'region')) update.region = region;
   if (Object.prototype.hasOwnProperty.call(body, 'province')) update.province = province;
   if (Object.prototype.hasOwnProperty.call(body, 'city')) update.city = city;
-  if (Object.prototype.hasOwnProperty.call(body, 'sport')) update.sport = sport;
   if (
     Object.prototype.hasOwnProperty.call(body, 'role') ||
     Object.prototype.hasOwnProperty.call(body, 'roleLabel') ||
@@ -266,7 +268,10 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (Object.prototype.hasOwnProperty.call(body, 'club_name')) update.club_name = clubName;
   if (Object.prototype.hasOwnProperty.call(body, 'category')) update.category = category;
   if (hasRoleGroupField) update.role_group = roleGroup;
-  if (hasGenderField) update.gender = genderDb;
+  if (hasGenderField) {
+    update.gender = genderDb;
+    update.gender_code = genderDb;
+  }
   if (hasAgeMin) update.age_min = ageMin ?? null;
   if (hasAgeMax) update.age_max = ageMax ?? null;
 
@@ -281,7 +286,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
   }
 
-  const nextSport =
+  let nextSport =
     normalizeSport((update.sport as string | null | undefined) ?? null) ??
     normalizeSport((opp.sport as string | null | undefined) ?? null) ??
     null;
@@ -289,6 +294,39 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     parseRoleGroup((update.role_group as string | null | undefined) ?? null) ??
     parseRoleGroup((opp as any).role_group) ??
     'player';
+
+  const hasSportField = Object.prototype.hasOwnProperty.call(body, 'sport') || Object.prototype.hasOwnProperty.call(body, 'primarySport');
+  const hasRoleField = ['role', 'roleLabel', 'roleValue', 'playerPositionId', 'player_position_id', 'staffRoleId', 'staff_role_id']
+    .some((key) => Object.prototype.hasOwnProperty.call(body, key));
+  if (hasSportField || hasRoleField || hasRoleGroupField) {
+    try {
+      let canonicalSport = {
+        sport: (opp.sport as string | null) ?? null,
+        sport_id: (opp.sport_id as string | null) ?? null,
+        sport_discipline_id: (opp.sport_discipline_id as string | null) ?? null,
+        sport_variant_id: (opp.sport_variant_id as string | null) ?? null,
+      };
+      if (hasSportField) {
+        const planner = new CanonicalSportWritePlanService(
+          new SportsTaxonomyRepository(new SupabaseSportsTaxonomyDataSource(supabase)),
+        );
+        const planned = await planProfilePrimarySportRequest(body, planner);
+        if (planned) canonicalSport = planned;
+        Object.assign(update, canonicalSport);
+        nextSport = normalizeSport(canonicalSport.sport) ?? null;
+      }
+      const nextLegacyRole = hasRoleField ? roleHuman : ((opp.role as string | null) ?? null);
+      Object.assign(update, await resolveOpportunityRoleColumns({
+        supabase,
+        body,
+        roleGroup: nextRoleGroup,
+        legacyRole: nextLegacyRole,
+        sport: canonicalSport,
+      }));
+    } catch (error) {
+      return jsonError(error instanceof Error ? error.message : 'invalid_canonical_context', 400);
+    }
+  }
 
   if (nextSport === 'Calcio' && nextRoleGroup === 'player') {
     const candidate = requiredCandidate ?? roleHuman;
@@ -314,7 +352,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (Object.keys(update).length === 0) {
-    return NextResponse.json({ data: { ...opp, role_group: parseRoleGroup((opp as any).role_group) ?? 'player', roleGroup: parseRoleGroup((opp as any).role_group) ?? 'player' } });
+    return NextResponse.json({ data: { ...opp, ...projectOpportunityCanonicalContext(opp), role_group: parseRoleGroup((opp as any).role_group) ?? 'player', roleGroup: parseRoleGroup((opp as any).role_group) ?? 'player' } });
   }
 
   const { data, error } = await supabase
@@ -325,7 +363,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .maybeSingle();
 
   if (error) return jsonError(error.message, 400);
-  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player', geography: await resolveOpportunityGeography(supabase, data as Record<string, unknown>) } : data;
+  const normalizedData = data ? { ...data, ...projectOpportunityCanonicalContext(data), role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player', geography: await resolveOpportunityGeography(supabase, data as Record<string, unknown>) } : data;
   return NextResponse.json({ data: normalizedData });
 });
 

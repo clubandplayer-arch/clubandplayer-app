@@ -2,9 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { Opportunity } from '@/types/opportunity';
+import { projectOpportunityCanonicalContext } from '@/lib/opportunities/canonicalSportsContext.server';
 
 const SELECT_FIELDS =
-  'id,title,description,owner_id,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,club_id,status';
+  'id,title,description,owner_id,created_by,created_at,country,region,province,city,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,gender,gender_code,required_category,age_min,age_max,club_name,club_id,status';
 
 function clampLimit(n?: number, fallback = 5) {
   const safe = typeof n === 'number' && Number.isFinite(n) ? n : fallback;
@@ -28,6 +29,7 @@ function normalizeRow(row: Record<string, any>, nameMap: Record<string, string>)
     province: row.province ?? null,
     city: row.city ?? null,
     sport: row.sport ?? null,
+    ...projectOpportunityCanonicalContext(row),
     role: row.role ?? null,
     required_category: row.required_category ?? null,
     age_min: row.age_min ?? null,

@@ -2,7 +2,7 @@
 
 Data: 2026-09-07
 Dipendenze: FASE 5D-B completata; autorizzazione utente esplicita alla 5D-C.
-Stato: **REVIEW REPOSITORY-ONLY PASS — migration NON APPLICATA remotamente; gate Production separato richiesto**.
+Stato: **COMPLETATA — migration applicata e verificata in Production (PASS user-reported)**.
 
 ## 1. Perimetro
 
@@ -201,3 +201,9 @@ Solo dopo il COMMIT esegue il report read-only pre-history, che deve attestare h
 Il runner non è stato eseguito e resta subordinato ad autorizzazione mutativa esplicita. Non usa `db push`, non applica altre migration, non esegue backfill e non comprende 5D-E-I o verifiche 5F.
 
 **Autorizzazione rollout 2026-09-09 — RICEVUTA / ESECUZIONE CODESPACE PENDING.** È autorizzata esclusivamente l'esecuzione di `scripts/run-phase-5d-c-production-exclusive-apply.sh` per il file/hash fissato, i 356 record, i due post-check read-only e la registrazione condizionata della sola versione `20261207120000`. Altre migration, backfill, deploy, operazioni 5F e retry automatici restano esclusi. Il solo comando operativo è `bash scripts/run-phase-5d-c-production-exclusive-apply.sh` nel Codespace dell'operatore.
+
+## Checkpoint Production finale — 2026-09-09
+
+`PHASE_5D_C_PRODUCTION_ROLLOUT_COMPLETE history_5dc=1 evaluated=356 exact=356 missing=0 collisions=0 foundation_missing=0`
+
+Apply concluso con COMMIT e registrazione della sola versione `20261207120000`. Non ripetere migration, history o controlli già superati.

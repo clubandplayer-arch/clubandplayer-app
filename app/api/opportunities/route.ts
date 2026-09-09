@@ -16,6 +16,10 @@ import {
   parseOpportunityGeographyCommand,
   resolveOpportunityGeography,
 } from '@/lib/opportunities/geography';
+import { CanonicalSportWritePlanService } from '@/lib/taxonomy/canonicalSportWritePlanService.server';
+import { planProfilePrimarySportRequest } from '@/lib/taxonomy/profilePrimarySportRuntimeContract';
+import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
+import { projectOpportunityCanonicalContext, resolveOpportunityRoleColumns } from '@/lib/opportunities/canonicalSportsContext.server';
 
 export const runtime = 'nodejs';
 
@@ -100,6 +104,12 @@ export async function GET(req: NextRequest) {
   const club = (url.searchParams.get('club') || '').trim();
   const clubId = (url.searchParams.get('clubId') || url.searchParams.get('club_id') || '').trim();
   const sport = normalizeSport((url.searchParams.get('sport') || '').trim()) ?? '';
+  const sportId = (url.searchParams.get('sportId') || url.searchParams.get('sport_id') || '').trim();
+  const disciplineId = (url.searchParams.get('disciplineId') || url.searchParams.get('sport_discipline_id') || '').trim();
+  const variantId = (url.searchParams.get('variantId') || url.searchParams.get('sport_variant_id') || '').trim();
+  const playerPositionId = (url.searchParams.get('playerPositionId') || url.searchParams.get('player_position_id') || '').trim();
+  const staffRoleId = (url.searchParams.get('staffRoleId') || url.searchParams.get('staff_role_id') || '').trim();
+  const genderCode = (url.searchParams.get('genderCode') || url.searchParams.get('gender_code') || '').trim();
   const role = (url.searchParams.get('role') || '').trim();
   const roleGroupParam = url.searchParams.get('role_group') || url.searchParams.get('roleGroup');
   const roleGroup = parseRoleGroup(roleGroupParam);
@@ -114,7 +124,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
+      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,owner_id,club_id,status',
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
@@ -140,7 +150,13 @@ export async function GET(req: NextRequest) {
   }
   if (clubId) query = query.or(`club_id.eq.${clubId},owner_id.eq.${clubId},created_by.eq.${clubId}`);
   if (club) query = query.ilike('club_name', `%${club}%`);
-  if (sport) query = query.eq('sport', sport);
+  if (sportId) query = query.eq('sport_id', sportId);
+  else if (sport) query = query.eq('sport', sport);
+  if (disciplineId) query = query.eq('sport_discipline_id', disciplineId);
+  if (variantId) query = query.eq('sport_variant_id', variantId);
+  if (playerPositionId) query = query.eq('player_position_id', playerPositionId);
+  if (staffRoleId) query = query.eq('staff_role_id', staffRoleId);
+  if (genderCode) query = query.eq('gender_code', genderCode);
   if (role) query = query.eq('role', role);
   if (roleGroup) query = query.eq('role_group', roleGroup);
   if (category) query = query.eq('category', category);
@@ -200,6 +216,7 @@ export async function GET(req: NextRequest) {
     const roleGroup = parseRoleGroup(row.role_group) ?? 'player';
     return {
       ...row,
+      ...projectOpportunityCanonicalContext(row),
       owner_id: ownerId,
       created_by: ownerId,
       club_id: row.club_id ?? ownerId ?? null,
@@ -273,7 +290,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const region = norm((body as any).region);
   const province = norm((body as any).province);
   const city = norm((body as any).city);
-  const sport = normalizeSport(norm((body as any).sport)) ?? null;
+  const legacySportInput = normalizeSport(norm((body as any).sport)) ?? null;
   const roleHuman =
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??
@@ -291,7 +308,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   // required_category → EN (solo Calcio + role_group player legacy)
   let required_category: string | null = null;
-  if (sport === 'Calcio' && effectiveRoleGroup === 'player') {
+  if (legacySportInput === 'Calcio' && effectiveRoleGroup === 'player') {
     const candidate =
       norm((body as any).required_category) ??
       norm((body as any).requiredCategory) ??
@@ -315,6 +332,33 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const category = norm((body as any).category);
 
+  let canonicalSport;
+  let canonicalRole;
+  try {
+    const planner = new CanonicalSportWritePlanService(
+      new SportsTaxonomyRepository(new SupabaseSportsTaxonomyDataSource(supabase)),
+    );
+    canonicalSport = await planProfilePrimarySportRequest(body as Record<string, unknown>, planner);
+    if (!canonicalSport) {
+      canonicalSport = { sport: legacySportInput, sport_id: null, sport_discipline_id: null, sport_variant_id: null };
+    }
+    canonicalRole = await resolveOpportunityRoleColumns({
+      supabase,
+      body: body as Record<string, unknown>,
+      roleGroup: effectiveRoleGroup,
+      legacyRole: roleHuman,
+      sport: canonicalSport,
+    });
+    if (canonicalSport.sport === 'Calcio' && effectiveRoleGroup === 'player') {
+      const candidate = required_category ?? roleHuman;
+      const normalizedCategory = candidate ? normalizeToEN(candidate) : null;
+      if (!normalizedCategory) return invalidPayload('invalid_required_category', { allowed_en: PLAYING_CATEGORY_EN });
+      required_category = normalizedCategory;
+    }
+  } catch (error) {
+    return invalidPayload(error instanceof Error ? error.message : 'invalid_canonical_context');
+  }
+
   const basePayload: Record<string, unknown> = {
     title,
     description,
@@ -325,7 +369,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     region,
     province,
     city,
-    sport,
     role: roleHuman,
     role_group: effectiveRoleGroup,
     category,
@@ -334,6 +377,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     age_max,
     club_name,
     gender: genderDb,
+    ...canonicalSport,
+    ...canonicalRole,
+    gender_code: genderDb,
   };
 
   if (geographyCommand.kind !== 'absent' && geographyCommand.kind !== 'legacy') {
@@ -350,7 +396,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,club_id',
+        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,club_id',
       )
       .single();
 
@@ -364,6 +410,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (error) return dbError(error.message);
-  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player', geography: await resolveOpportunityGeography(supabase, data as Record<string, unknown>) } : data;
+  const normalizedData = data ? { ...data, ...projectOpportunityCanonicalContext(data), role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player', geography: await resolveOpportunityGeography(supabase, data as Record<string, unknown>) } : data;
   return successResponse({ data: normalizedData }, { status: 201 });
 });

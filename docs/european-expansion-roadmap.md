@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F — SCHEMA E GATE RUNTIME PRODUCTION COMPLETATI** |
-| Current active phase | **FASE 5D — GATE DATI 5D-C; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Eseguire nel Codespace il rollout esclusivo 5D-C autorizzato; arresto senza retry su errore** |
+| Last completed subphase | **FASE 5D-C — CONTROLLED VOCABULARY PRODUCTION APPLICATA E VERIFICATA** |
+| Current active phase | **FASE 5G — OPPORTUNITIES/APPLICATIONS, IMPLEMENTAZIONE LOCALE CANONICAL-FIRST** |
+| Next safe action | **Review della migration 5G e smoke locale delle route; nessun apply/deploy remoto autorizzato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -584,11 +584,11 @@ Codice modificato: **SÌ — tooling isolato e unit test**. API/UI/runtime: **NO
 
 #### FASE 5D-C — Controlled vocabulary e compatibility tranche
 
-**Stato: REVIEW REPOSITORY-ONLY PASS; REVIEW UMANA/R2 PASS; MIGRATION NON APPLICATA REMOTAMENTE.** Deliverable: `docs/european-expansion/phase-5d-c-controlled-vocabulary-compatibility-tranche.md`.
+**Stato: COMPLETATA — APPLICATA E VERIFICATA IN PRODUCTION (USER-REPORTED).** Deliverable: `docs/european-expansion/phase-5d-c-controlled-vocabulary-compatibility-tranche.md`.
 
 Il manifest controllato contiene 356 record: 3 gender category, 4 format, 6 territorial scope, 97 posizioni Player scoped, 26 ruoli Staff trasversali, 97 applicability Player e 123 mapping legacy esatti. Non contiene organization, competition, level, age class, season, edition, group o categorie italiane reinterpretate. La migration `20261207120000_seed_controlled_sports_vocabulary.sql` è stata applicata due volte su PostgreSQL 16.15 locale con conteggi invarianti; un conflitto sintetico divergente è stato rifiutato con rollback.
 
-Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Production interrogata/modificata: **NO / NO**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web/API/UI: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale 5D-C: **PASS USER-REPORTED**; non applicare ancora la migration. 5D-D è stata autorizzata e resta separata da qualunque import.
+Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / SÌ PRODUCTION PASS**. Production: **356 record exact, history singola verificata**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web/API/UI: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica finale 5D-C: **PASS USER-REPORTED**; non rieseguire la migration. 5D-D è stata autorizzata e resta separata da qualunque import.
 
 **5D-C-R2 — COMPLETATA / PASS USER-REPORTED.** La review umana è passata solo parzialmente: la card Registro società era ancora italiana e i ruoli Player non calcistici mostravano valori legacy italiani. La remediation localizza la card in IT/EN/ES/FR, dichiara il limite operativo “solo organizzazioni registrate in Italia” e l’estensione internazionale in lavorazione, e completa le label di tutti i ruoli presenti in `SPORTS_ROLES`. Valori persistiti, manifest e migration 5D-C restano invariati. Migration creata/testata/applicata in R1: **NO / NO / NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web: **presentation-only**; API: **NESSUN IMPATTO**; Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Deliverable: `docs/european-expansion/phase-5d-c-r1-human-review-remediation.md`. Il recheck Preview di Club/Profile, Player/Profile, widget laterale, Console e Network è stato confermato PASS dall’utente; 5D-D è stata successivamente autorizzata. Il recheck R2 localizza inoltre lo sport nel widget “Profili che segui”. È confermato che categorie, federazioni e competizioni sono nomi propri nazionali: quelle italiane restano in italiano in ogni lingua UI e i futuri cataloghi esteri manterranno la rispettiva denominazione nazionale.
 
@@ -601,6 +601,8 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 **Preflight Production 5D-C corretto 2026-09-09 — PASS READY / APPLY NON AUTORIZZATO.** History 5C/5F singola e 5D-C zero, tabelle/chiavi 8/8, 356 record valutati tutti missing, zero exact/collision e zero riferimenti foundation mancanti, read-only on. Preparato il runner definitivo: checksum, timeout, apply esclusivo della sola `20261207120000`, post-check 356 exact prima della history, registrazione condizionata della sola versione e post-check finale history 1. Non eseguito; richiede autorizzazione mutativa separata. Nessun backfill, 5F o 5D-E-I.
 
 **Autorizzazione rollout Production 5D-C 2026-09-09 — RICEVUTA / HANDOFF CODESPACE.** Autorizzato il solo runner `scripts/run-phase-5d-c-production-exclusive-apply.sh`: migration/hash fissati, 356 record, post-check pre-history, registrazione della sola `20261207120000` subordinata al PASS e verifica finale. Esclusi altre migration, backfill, deploy, 5F e retry automatici. Esecuzione non effettuata dall'agente; il prossimo dato è esclusivamente il marker PASS/errore del runner eseguito nel Codespace dell'utente.
+
+**Checkpoint rollout Production 5D-C 2026-09-09 — COMPLETATO / PASS USER-REPORTED.** Il runner esclusivo ha concluso con COMMIT e marker `PHASE_5D_C_PRODUCTION_ROLLOUT_COMPLETE`: history `20261207120000`=1, `evaluated=356`, `exact=356`, `missing=0`, `collisions=0`, `foundation_missing=0`. Migration, history e controlli 5D-C non devono essere rieseguiti. Nessun backfill, altra migration, deploy o operazione 5F è stato incluso.
 
 #### FASE 5D-D — Source registry organizations/competitions
 
@@ -691,11 +693,18 @@ Suddivisione confermata dopo l'audit:
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
 - 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
 - 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
-- 5F — profili ed esperienze — **IN CORSO: SCHEMI PROFILE ED ESPERIENZE PRODUCTION COMPLETI; ROUTE IMPLEMENTATE/TESTATE MA DEPLOY E CANARY PENDENTI**;
-- 5G — Opportunities e Applications — **NOT STARTED**;
+- 5F — profili ed esperienze — **COMPLETATA: SCHEMA, DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
+- 5G — Opportunities e Applications — **IN CORSO: SCHEMA/RUNTIME CANONICAL-FIRST IMPLEMENTATI LOCALMENTE; APPLY/DEPLOY REMOTI ESCLUSI**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
 - 5I — UI, filtri e controlled vocabulary — **NOT STARTED**;
 - 5J — regressione, backward compatibility e certificazione — **NOT STARTED**.
+
+
+### FASE 5G — Opportunities e Applications
+
+**Stato: IMPLEMENTAZIONE E VERIFICHE REPOSITORY COMPLETATE; NESSUN APPLY/DEPLOY REMOTO.** La migration additiva `20261210120000_opportunity_canonical_sports_context.sql` porta su `opportunities` il contesto Sport/Discipline/Variant, Position o StaffRole mutuamente esclusivi e gender canonico. POST/PATCH eseguono dual-write legacy/canonical usando planner e mapping 5D-C; GET/list/recommendations e viste Applications proiettano il contesto senza duplicarlo in `applications`, che continua a referenziare l'Opportunity. Ownership, status e RLS non cambiano; non è previsto backfill.
+
+Le sole dipendenze indispensabili successive sono organization/competition/level/age/season per collegare una Opportunity a competizioni estere reali. Restano fuori da questa tranche e dal censimento 5D-E-I: i campi nullable consentono il rollout sport/role/gender indipendentemente dai cataloghi esteri. Criterio di completamento repository: migration additiva validata localmente, compatibilità payload legacy e canonicale, riferimenti role-group/applicabilità fail-closed e lettura Applications senza duplicazione. Prossimo passaggio operativo, dopo review: preflight schema read-only dell'ambiente scelto e autorizzazione separata per l'eventuale apply esclusivo; nessuna operazione remota è autorizzata qui.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
