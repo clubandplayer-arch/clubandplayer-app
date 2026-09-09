@@ -3,13 +3,15 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const plan = readFileSync(new URL('../../docs/european-expansion/phase-5f-f-profile-primary-sport-canary-plan.md', import.meta.url), 'utf8');
+const experiencesRoute = readFileSync(new URL('../../app/api/profiles/me/experiences/route.ts', import.meta.url), 'utf8');
+const profileForm = readFileSync(new URL('../../components/profiles/ProfileEditForm.tsx', import.meta.url), 'utf8');
 
-test('5F-F canary plan is fail-closed before deploy and remote write', () => {
+test('5F-F canary plan records authorization while remaining not executed', () => {
   for (const prerequisite of ['deploy', 'account canary', 'snapshot', 'ripristino', 'autorizzazione esplicita']) {
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
-  assert.match(plan, /CANARY NON ESEGUITO/);
-  assert.match(plan, /NOT AUTHORIZED \/ NOT EXECUTED/);
+  assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
+  assert.match(plan, /AUTHORIZED \/ NOT EXECUTED/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -26,8 +28,32 @@ test('5F-F stops at one disposable identity before any combined canary write', (
   assert.match(plan, /auth\.users\.id/);
   assert.match(plan, /non comunicare email, password, token/);
   assert.match(plan, /un PATCH Profile/);
-  assert.match(plan, /un PUT di sostituzione esperienze/);
-  assert.match(plan, /Nessuna di queste scritture è autorizzata ora/);
+  assert.match(plan, /un PATCH di sostituzione esperienze/);
+});
+
+test('5F-F records qualification, disposable attestation and the narrow authorization', () => {
+  assert.match(plan, /QUALIFICATION_EXIT_CODE=0/);
+  assert.match(plan, /fittizio, dedicato ai test ed eliminabile/);
+  assert.match(plan, /un PATCH Profile, una sostituzione atomica delle esperienze/);
+  assert.match(plan, /Qualificazione, build, deploy e migration non devono essere ripetuti/);
+});
+
+test('5F-F resolves the experiences method discrepancy from the distributed commit', () => {
+  assert.match(plan, /Metodo effettivo esperienze — PATCH, non PUT/);
+  assert.match(plan, /esporta `GET` e `PATCH`; non esporta `PUT`/);
+  assert.match(plan, /replace_my_athlete_experiences\(jsonb\)/);
+  assert.match(plan, /405 Method Not Allowed/);
+  assert.match(experiencesRoute, /export const PATCH = withAuth/);
+  assert.doesNotMatch(experiencesRoute, /export const PUT/);
+  assert.match(experiencesRoute, /rpc\('replace_my_athlete_experiences'/);
+  assert.match(profileForm, /profiles\/me\/experiences[\s\S]*method: 'PATCH'/);
+});
+
+test('5F-F stops Step 1 after loading the secret without an HTTP request', () => {
+  assert.match(plan, /read -rsp 'CANARY_TOKEN: '/);
+  assert.match(plan, /PHASE_5F_CANARY_SECRET_READY/);
+  assert.match(plan, /non eseguire ancora `curl`/i);
+  assert.match(plan, /non incollare il token in chat/i);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {

@@ -1,14 +1,14 @@
 # FASE 5F-F — Review e procedura canary runtime Profile ed esperienze
 
 Data: 2026-09-09
-Stato: **DEPLOY PRODUCTION PASS — CANARY NON ESEGUITO; IDENTIFICAZIONE DISPOSABLE PENDING**
+Stato: **QUALIFICAZIONE + DISPOSABLE PASS; CANARY AUTORIZZATO MA NON ESEGUITO**
 
 ## Decisioni approvate
 
 - I contratti runtime Profile ed esperienze sono approvati funzionalmente, ma non ancora verificati da scritture remote.
 - Il canary userà esclusivamente un profilo di test dedicato e disposable. Il profilo reale osservato con `sport="Calcio"` e riferimenti canonici null è escluso.
 - Non è previsto alcun ripristino amministrativo del profilo reale e non sarà eseguito alcun backfill.
-- Il deploy Production autorizzato è concluso. Restano esclusi creazione remota dell'account, PATCH/PUT remoti, teardown e modifiche di schema finché non saranno autorizzati separatamente.
+- Il deploy Production autorizzato è concluso. Il canary Profile/esperienze e il teardown ordinario sono autorizzati esclusivamente sull'account qualificato; modifiche di schema, altri account e retry fuori procedura restano esclusi.
 
 Il perimetro resta owner-scoped. Profile comprende soltanto `sport`, `sport_id`, `sport_discipline_id` e `sport_variant_id`; esperienze comprende una sostituzione atomica della lista del medesimo owner, preservando `club_name`, `sport`, `role`, `category`, `start_year` ed `end_year` e aggiungendo soltanto i tre riferimenti sportivi canonici. Rimangono invariati i codici opachi del contratto: 400 per input/riferimenti invalidi, 403 per divieto RLS e 500 per errore inatteso.
 
@@ -34,7 +34,7 @@ Handoff minimo per l'operatore Vercel: aprire **Vercel Dashboard → progetto ch
 
 Prima di token, snapshot o scritture, occorre identificare **un solo account Production già esistente**, creato esclusivamente per test e non riconducibile a una persona reale. Comunicare soltanto il suo `auth.users.id` UUID non sensibile e confermare nello stesso messaggio che è `athlete` oppure `staff`, disposable e non admin; non comunicare email, password, token o altri dati personali.
 
-Dopo l'identificazione, il gate read-only qualificherà cardinalità owner, baseline Profile/esperienze, assenza di privilegi admin e mapping sportivo. Soltanto se il gate passa verrà richiesto separatamente il permesso per il seguente perimetro mutativo minimo: **un PATCH Profile**, **un PUT di sostituzione esperienze**, osservazioni read-after-write e **teardown del disposable**. Nessuna di queste scritture è autorizzata ora.
+Dopo l'identificazione, il gate read-only qualificherà cardinalità owner, baseline Profile/esperienze, assenza di privilegi admin e mapping sportivo. Il perimetro mutativo minimo successivamente autorizzato comprende **un PATCH Profile**, **un PATCH di sostituzione esperienze**, osservazioni read-after-write e **teardown del disposable**.
 
 **Account proposto 2026-09-09 — IDENTIFICATO / QUALIFICAZIONE TECNICA PENDING.** L'utente indica `b5ba567a-194b-4e07-afe7-f8f9ce29a808` come Staff con ruolo legacy `Fotografo`. L'idoneità disposable/non reale non è ancora attestata e non viene inferita dal ruolo. Una lettura anonima del solo endpoint pubblico ha restituito una lista vuota, compatibile con un profilo non pubblicato ma insufficiente a provare esistenza, cardinalità, privilegi o baseline; la route owner-only esperienze ha correttamente risposto 401 senza sessione. Nessuna scrittura è stata tentata.
 
@@ -52,6 +52,28 @@ psql "$PRODUCTION_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
 ```
 
 Il prossimo singolo dato necessario è la cella JSON `phase_5f_canary_account_qualification` completa. Qualunque classificazione diversa da `PASS_READ_ONLY_TECHNICAL_QUALIFICATION_DISPOSABLE_ATTESTATION_PENDING`, `transactionReadOnly` diverso da `on` o `writesPerformed` diverso da `false` è uno STOP senza retry. Non inviare URL database, key o token.
+
+**Checkpoint qualificazione e autorizzazione 2026-09-09 — PASS / CANARY AUTHORIZED.** Il report eseguito nel Codespace ha restituito `PASS_READ_ONLY_TECHNICAL_QUALIFICATION_DISPOSABLE_ATTESTATION_PENDING`, `transactionReadOnly=on`, `writesPerformed=false` e `QUALIFICATION_EXIT_CODE=0`. L'utente ha inoltre attestato che l'account è fittizio, dedicato ai test ed eliminabile con i suoi dati. Sono autorizzati esclusivamente su `b5ba567a-194b-4e07-afe7-f8f9ce29a808`: un PATCH Profile, una sostituzione atomica delle esperienze, le letture di verifica e il teardown ordinario. Qualificazione, build, deploy e migration non devono essere ripetuti.
+
+**Metodo effettivo esperienze — PATCH, non PUT.** Nel commit Production distribuito `36dfa9860d9d12f5373ea3a85d76f706b4d718a4`, `app/api/profiles/me/experiences/route.ts` esporta `GET` e `PATCH`; non esporta `PUT`. Il `PATCH` legge `{ experiences: [...] }`, costruisce l'intera lista e la passa una sola volta alla RPC `replace_my_athlete_experiences(jsonb)`, quindi la semantica è replacement atomico anche se il verbo HTTP è PATCH. Anche `ProfileEditForm` usa `method: 'PATCH'`. Ogni riferimento precedente a PUT era documentazione errata ed è corretto; inviare PUT produrrebbe `405 Method Not Allowed` e non deve essere provato.
+
+## Esecuzione guidata — Step 1 soltanto
+
+Usare la baseline già raccolta: non rieseguire il report di qualificazione. Prima di qualsiasi richiesta HTTP, caricare la sessione del solo account canary come secret nel terminale Codespace e preparare le costanti, senza stampare il token:
+
+```bash
+set +o history
+set -euo pipefail
+export CANARY_USER_ID='b5ba567a-194b-4e07-afe7-f8f9ce29a808'
+export RELEASE_COMMIT='36dfa9860d9d12f5373ea3a85d76f706b4d718a4'
+export PROD_BASE_URL='https://www.clubandplayer.com'
+read -rsp 'CANARY_TOKEN: ' CANARY_TOKEN; printf '\n'
+export CANARY_TOKEN
+test -n "$CANARY_TOKEN"
+printf 'PHASE_5F_CANARY_SECRET_READY user=%s release=%s\n' "$CANARY_USER_ID" "$RELEASE_COMMIT"
+```
+
+Non usare `set -x`, non incollare il token in chat e non eseguire ancora `curl`. Il solo output da comunicare è `PHASE_5F_CANARY_SECRET_READY ...`; lo Step 2 acquisirà le due baseline HTTP autenticate senza ripetere la qualificazione SQL e prima della prima scrittura.
 
 ## Informazioni ancora strettamente necessarie
 
@@ -71,7 +93,7 @@ La creazione dell'account e la sua eliminazione/disabilitazione sono operazioni 
 4. verificare che l'account canary athlete/staff possieda esattamente una riga `profiles`, non sia admin, non sia usato da persone reali e abbia già `sport` uguale alla label scelta con i tre ID null;
 5. salvare fuori dai log lo snapshot dell'intera riga Profile, dell'intera lista esperienze e il conteggio delle notifiche del canary;
 6. verificare mapping e catena attivi;
-7. ottenere autorizzazioni esplicite per il PATCH Profile, il PUT esperienze e il teardown.
+7. autorizzazioni esplicite per il PATCH Profile, il PATCH esperienze e il teardown — **PASS**.
 
 Qualunque mismatch è uno **STOP**. Non correggere schema, history, trigger o dati durante il canary.
 
@@ -136,4 +158,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy è **PASS** e il canary resta **NOT AUTHORIZED / NOT EXECUTED**. L'account Staff/Fotografo è identificato, ma la qualificazione tecnica e l'attestazione disposable sono entrambe pendenti. Il prossimo e unico controllo concreto è ricevere la cella JSON del report read-only; nessun token applicativo è richiesto e nessuna scrittura verrà eseguita prima del PASS tecnico, della conferma disposable e della successiva autorizzazione esplicita al perimetro Profile + esperienze + teardown.
+Il deploy, la qualificazione tecnica e l'attestazione disposable sono **PASS**; il canary è **AUTHORIZED / NOT EXECUTED**. Il prossimo e unico passaggio è lo Step 1 sopra: caricare localmente il token secret e restituire soltanto il marker `PHASE_5F_CANARY_SECRET_READY`. Non eseguire ancora richieste. Una divergenza in qualsiasi step successivo impone STOP, conservazione delle evidenze e nessun avanzamento automatico al teardown.
