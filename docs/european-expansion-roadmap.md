@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Identificare e qualificare read-only due nuovi account disposable, uno Club e uno Athlete/Player; nessuna write prima dell’autorizzazione** |
+| Next safe action | **Eseguire la qualificazione Production read-only dei due account canary 5G identificati; nessuna write prima di PASS, attestazione e autorizzazione** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -713,6 +713,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Rollout schema Production 5G — COMPLETATO / PASS USER-REPORTED.** Il runner esclusivo ha verificato il checksum, applicato la sola migration con COMMIT, superato il post-check, registrato esclusivamente `20261210120000` e concluso con `PHASE_5G_PRODUCTION_SCHEMA_ROLLOUT_COMPLETE history_5g=1 columns=6 constraints=8 indexes=3 canonical_rows=0`. Non ripetere migration, history o controlli già superati; nessun backfill, altra migration o deploy è stato eseguito. Il runtime è stato successivamente distribuito come registrato nel checkpoint seguente.
 
 **Post-deploy Production 5G — PASS USER-REPORTED.** Sul dominio canonico `https://www.clubandplayer.com`, `/api/env` restituisce SHA `5f99179c8a8e759e69bda15cdee12995811bbbd6`, `mode=production`, URL e anon key presenti e database `izzfjrcabtixxsrnkzro.supabase.co`. Build, deploy, migration e history non devono essere ripetuti. Per chiudere 5G resta un unico canary funzionale accorpato: un nuovo Club disposable crea una Opportunity con sport/position canonici e legacy dual-written, le letture e il filtro canonico la ritrovano; un nuovo Athlete/Player disposable invia una sola Application; `me`, `received` e lista owner confermano contesto ereditato e autorizzazioni; infine Application/Opportunity e i due account vengono rimossi e il residuo verificato. Prima di ogni write occorrono qualificazione read-only dei due UUID, attestazione di eliminabilità e autorizzazione esplicita. L’account Staff fotografo usato nella 5F è eliminato e vietato in questo canary.
+
+**Account candidati canary 5G — IDENTIFICATI / QUALIFICAZIONE READ-ONLY PENDING.** Club `870bb095-9f8b-4800-a8b9-3e137714e8d0`; Athlete/Player `2c988bc3-5245-45dc-8184-8582ab3b0e5a`. `scripts/run-phase-5g-canary-qualification.sh` controlla in una transazione read-only identità distinte, cardinalità auth/Profile, tipi account, segnali admin, baseline Opportunities/Applications vuota e un contesto football/association-football/eleven-a-side/goalkeeper canonico univoco. Il report non emette PII e non effettua write. Idoneità disposable e autorizzazione al canary restano separate e pendenti.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
