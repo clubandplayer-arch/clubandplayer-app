@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — MIGRATION E RUNTIME VERIFICATI LOCALMENTE SU POSTGRESQL 16** |
 | Current active phase | **FASE 5G — OPPORTUNITIES/APPLICATIONS, IMPLEMENTAZIONE LOCALE CANONICAL-FIRST** |
-| Next safe action | **Richiedere autorizzazione esplicita per il runner di apply esclusivo 5G già preparato; non eseguirlo prima dell’autorizzazione** |
+| Next safe action | **Verificare il candidato runtime 5G immutabile e richiedere autorizzazione separata per il deploy Vercel Production** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -709,6 +709,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Review migration e verifica funzionale 5G — UNIT PASS / POSTGRESQL 16 PASS USER-REPORTED.** Il runner `scripts/test-opportunity-canonical-sports-runtime-docker.sh` ha concluso nel Codespace con `PHASE_5G_OPPORTUNITY_CANONICAL_SPORTS_RUNTIME_PASS`. Sono quindi verificati su PostgreSQL 16 reale righe legacy/nullabilità, catene valide e invalide, FK e shape Player/Staff, aggiornamenti parziali, cambio `role_group` con pulizia atomica, reset e rollback. I NOTICE `does not exist, skipping` della foundation idempotente non sono errori: il runner usa `ON_ERROR_STOP=1` e ha raggiunto il marker finale. Anche i test unitari mirati su resolver, filtri, dual-write e scope delle letture Applications sono PASS. Il prossimo singolo passaggio è il report Production read-only tramite `scripts/run-phase-5g-production-preflight.sh`; non è stato ancora eseguito contro ambienti remoti e non autorizza apply/deploy.
 
 **Preflight Production 5G — PASS READY USER-REPORTED / APPLY NON AUTORIZZATO.** Il runner read-only ha restituito `PASS_READY_FOR_EXCLUSIVE_APPLY`: history 5C=1, 5D-C=1, 5G=0, tabelle=7, chiavi=6, colonne=0, collisioni=0, vincoli=0 e `read_only=on`. Preparato `scripts/run-phase-5g-production-exclusive-apply.sh`, vincolato alla sola migration `20261210120000` e al checksum `bf6eb4a7f8bc202c78ab3759c3b1b5ea80610db276672dd6d3719792b4ab7c9f`: applica con timeout, richiede il post-check schema/no-backfill prima di registrare la sola history 5G e conclude con un controllo read-only finale. Il runner non è stato eseguito; apply e deploy richiedono autorizzazione mutativa esplicita.
+
+**Rollout schema Production 5G — COMPLETATO / PASS USER-REPORTED.** Il runner esclusivo ha verificato il checksum, applicato la sola migration con COMMIT, superato il post-check, registrato esclusivamente `20261210120000` e concluso con `PHASE_5G_PRODUCTION_SCHEMA_ROLLOUT_COMPLETE history_5g=1 columns=6 constraints=8 indexes=3 canonical_rows=0`. Non ripetere migration, history o controlli già superati; nessun backfill, altra migration o deploy è stato eseguito. Il runtime 5G non è ancora distribuito: il gate successivo è la verifica repository-only dell’immagine candidata e una nuova autorizzazione esplicita al deploy.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
