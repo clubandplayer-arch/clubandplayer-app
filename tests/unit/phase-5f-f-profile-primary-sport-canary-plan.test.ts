@@ -11,7 +11,7 @@ test('5F-F canary plan records authorization while remaining not executed', () =
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
   assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
-  assert.match(plan, /AUTHORIZED \/ PROFILE PATCH PENDING/);
+  assert.match(plan, /AUTHORIZED \/ EXPERIENCES PATCH PENDING/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -74,7 +74,7 @@ test('5F-F Step 3 pins baselines and performs one Profile PATCH with fail-closed
   assert.match(plan, /Checkpoint Step 2.*PASS USER-REPORTED/s);
   assert.match(plan, /7646c11e47c833ca306a125ad399733d0bb15ee884a5d015472bed91415850f5/);
   assert.match(plan, /5f804c35bbaa20fbb75d111c4b6936820e95c6c813fb7544bd5bd2400b7c29e9/);
-  const step3 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 3 Profile completo'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  const step3 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 3 Profile completo'), plan.indexOf('## Esecuzione guidata — Step 4 esperienze completo'));
   assert.equal((step3.match(/--request PATCH/g) ?? []).length, 1);
   assert.match(step3, /\{sport: \$sport\}/);
   assert.match(step3, /cmp -s/);
@@ -82,6 +82,20 @@ test('5F-F Step 3 pins baselines and performs one Profile PATCH with fail-closed
   assert.match(step3, /PHASE_5F_CANARY_STOP profile_comparison/);
   assert.doesNotMatch(step3, /api\/profiles\/me\/experiences"\)"[\s\S]*--request PATCH/);
   assert.doesNotMatch(step3, /--request DELETE|-X DELETE|\/experiences[^\n]*--request PATCH/);
+});
+
+test('5F-F Step 4 performs one atomic experiences PATCH and preserves Profile', () => {
+  assert.match(plan, /Checkpoint Step 3.*PROFILE PASS USER-REPORTED/s);
+  assert.match(plan, /c98e964fdb6dfde8b1db811ad4de2be229d53747394193401a2815be55a2d4f1/);
+  assert.match(plan, /7d78ae8e3f697e6bd3c10edef77eb21eca8ad5e2b89585739fdaa0adcfadf97d/);
+  const step4 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 4 esperienze completo'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  assert.equal((step4.match(/--request PATCH/g) ?? []).length, 1);
+  assert.match(step4, /api\/profiles\/me\/experiences/);
+  assert.match(step4, /del\(\.primarySport\)/);
+  assert.match(step4, /EXPERIENCES_PATCH_RESPONSE/);
+  assert.match(step4, /PHASE_5F_CANARY_EXPERIENCES_PASS/);
+  assert.match(step4, /PHASE_5F_CANARY_STOP experiences_comparison/);
+  assert.doesNotMatch(step4, /--request DELETE|-X DELETE/);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {
