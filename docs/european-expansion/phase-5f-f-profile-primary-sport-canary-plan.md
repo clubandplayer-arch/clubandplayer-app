@@ -357,6 +357,52 @@ printf 'PHASE_5F_CANARY_EXPERIENCES_PASS patch=%s experiences_get=%s profile_get
 
 Se compare `PHASE_5F_CANARY_STOP`, non rilanciare: conservare tutti i file e fermarsi prima del teardown. Se passa, comunicare soltanto `PHASE_5F_CANARY_EXPERIENCES_PASS ...`; non incollare payload, JSON, sport, club o token. Lo Step 5 svolgerà le verifiche finali read-only su owner/side effect prima del teardown già autorizzato.
 
+**Checkpoint Step 4 2026-09-09 — EXPERIENCES PASS USER-REPORTED.** L'unico PATCH esperienze e i GET esperienze/Profile hanno restituito 200, con una esperienza. Il GET esperienze post-write ha SHA-256 `0364b47208d3b9ad9bb85869a24d889be8a58e1de38adc0a99090f03fc6ca372` e l'array dei contesti canonici SHA-256 `cc039a4f595fbba7f76280e1e1929790946dce5baffe014843c0386a3580c2a5`. I confronti del blocco hanno confermato replacement/read-after-write identici, valori legacy e cardinalità preservati, contesto canonico coerente e Profile invariato. Nessun retry o teardown è stato eseguito.
+
+## Esecuzione guidata — Step 5 consolidamento evidenze read-only
+
+Questo controllo opera soltanto sui file privati già raccolti: non invia richieste HTTP e non interroga il database. Consolida le prove già prodotte dagli Step 3–4 verificando owner del Profile, hash Profile invariato dopo il PATCH esperienze, hash del GET esperienze e dei contesti canonici, cardinalità e uguaglianza dei campi legacy con la baseline. Non sostituisce né ripete la qualificazione tecnica già conclusa.
+
+```bash
+set +u
+set -eo pipefail
+umask 077
+
+: "${CANARY_USER_ID:?CANARY_USER_ID non presente in questo terminale}"
+
+PROFILE_AFTER='/tmp/phase-5f-canary-profile-after.json'
+PROFILE_AFTER_EXPERIENCES='/tmp/phase-5f-canary-profile-after-experiences.json'
+EXPERIENCES_BEFORE='/tmp/phase-5f-canary-experiences-before.json'
+EXPERIENCES_CANONICAL='/tmp/phase-5f-canary-experiences-canonical.json'
+
+EXPECTED_PROFILE_SHA256='c98e964fdb6dfde8b1db811ad4de2be229d53747394193401a2815be55a2d4f1'
+EXPECTED_EXPERIENCES_SHA256='0364b47208d3b9ad9bb85869a24d889be8a58e1de38adc0a99090f03fc6ca372'
+EXPECTED_CONTEXTS_SHA256='cc039a4f595fbba7f76280e1e1929790946dce5baffe014843c0386a3580c2a5'
+
+if [ "$(sha256sum "$PROFILE_AFTER" | cut -d' ' -f1)" != "$EXPECTED_PROFILE_SHA256" ] \
+  || [ "$(sha256sum "$PROFILE_AFTER_EXPERIENCES" | cut -d' ' -f1)" != "$EXPECTED_PROFILE_SHA256" ] \
+  || [ "$(sha256sum "$EXPERIENCES_CANONICAL" | cut -d' ' -f1)" != "$EXPECTED_EXPERIENCES_SHA256" ] \
+  || [ "$(jq -c '[.data[].primarySport]' "$EXPERIENCES_CANONICAL" | sha256sum | cut -d' ' -f1)" != "$EXPECTED_CONTEXTS_SHA256" ]; then
+  printf 'PHASE_5F_CANARY_STOP evidence_hash_drift\n'
+  false
+fi
+
+if ! jq -e --arg user "$CANARY_USER_ID" '.data.user_id == $user' "$PROFILE_AFTER_EXPERIENCES" >/dev/null \
+  || ! jq -e --slurpfile before "$EXPERIENCES_BEFORE" '
+    (.data | length) == 1
+    and ([.data[] | del(.primarySport)] == [$before[0].data[] | del(.primarySport)])
+    and all(.data[]; (.primarySport | type) == "object" and (.primarySport.sportId | type) == "string")
+  ' "$EXPERIENCES_CANONICAL" >/dev/null; then
+  printf 'PHASE_5F_CANARY_STOP evidence_owner_or_side_effect\n'
+  false
+fi
+
+printf 'PHASE_5F_CANARY_FINAL_READ_ONLY_PASS owner=%s profile_sha256=%s experiences_sha256=%s contexts_sha256=%s\n' \
+  "$CANARY_USER_ID" "$EXPECTED_PROFILE_SHA256" "$EXPECTED_EXPERIENCES_SHA256" "$EXPECTED_CONTEXTS_SHA256"
+```
+
+Un `STOP` conserva lo stato e impedisce il teardown. Dopo il PASS, il solo passaggio ancora aperto del canary è il teardown ordinario già autorizzato e la verifica della rimozione; non effettuare il teardown nello stesso comando.
+
 ## Informazioni ancora strettamente necessarie
 
 1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
@@ -440,4 +486,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–3 sono **PASS**; il canary è **AUTHORIZED / EXPERIENCES PATCH PENDING**. Il prossimo e unico passaggio è lo Step 4 completo sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun avanzamento automatico al teardown.
+Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–4 sono **PASS**; il canary è **AUTHORIZED / FINAL READ-ONLY CHECK PENDING**. Il prossimo e unico passaggio è lo Step 5 sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun avanzamento automatico al teardown.

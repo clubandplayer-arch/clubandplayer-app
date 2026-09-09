@@ -11,7 +11,7 @@ test('5F-F canary plan records authorization while remaining not executed', () =
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
   assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
-  assert.match(plan, /AUTHORIZED \/ EXPERIENCES PATCH PENDING/);
+  assert.match(plan, /AUTHORIZED \/ FINAL READ-ONLY CHECK PENDING/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -96,6 +96,16 @@ test('5F-F Step 4 performs one atomic experiences PATCH and preserves Profile', 
   assert.match(step4, /PHASE_5F_CANARY_EXPERIENCES_PASS/);
   assert.match(step4, /PHASE_5F_CANARY_STOP experiences_comparison/);
   assert.doesNotMatch(step4, /--request DELETE|-X DELETE/);
+});
+
+test('5F-F Step 5 consolidates existing evidence without remote operations or teardown', () => {
+  assert.match(plan, /Checkpoint Step 4.*EXPERIENCES PASS USER-REPORTED/s);
+  assert.match(plan, /0364b47208d3b9ad9bb85869a24d889be8a58e1de38adc0a99090f03fc6ca372/);
+  assert.match(plan, /cc039a4f595fbba7f76280e1e1929790946dce5baffe014843c0386a3580c2a5/);
+  const step5 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 5 consolidamento evidenze read-only'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  assert.match(step5, /PHASE_5F_CANARY_FINAL_READ_ONLY_PASS/);
+  assert.match(step5, /evidence_owner_or_side_effect/);
+  assert.doesNotMatch(step5, /curl|psql|--request|-X (?:PATCH|POST|PUT|DELETE)|supabase/);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {
