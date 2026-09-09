@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5D-C — CONTROLLED VOCABULARY PRODUCTION APPLICATA E VERIFICATA** |
 | Current active phase | **FASE 5G — OPPORTUNITIES/APPLICATIONS, IMPLEMENTAZIONE LOCALE CANONICAL-FIRST** |
-| Next safe action | **Review della migration 5G e smoke locale delle route; nessun apply/deploy remoto autorizzato** |
+| Next safe action | **Eseguire il runner PostgreSQL 16 della 5G in un Codespace con Docker; poi, solo dopo PASS, il preflight Production read-only separatamente autorizzato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -705,6 +705,8 @@ Suddivisione confermata dopo l'audit:
 **Stato: IMPLEMENTAZIONE E VERIFICHE REPOSITORY COMPLETATE; NESSUN APPLY/DEPLOY REMOTO.** La migration additiva `20261210120000_opportunity_canonical_sports_context.sql` porta su `opportunities` il contesto Sport/Discipline/Variant, Position o StaffRole mutuamente esclusivi e gender canonico. POST/PATCH eseguono dual-write legacy/canonical usando planner e mapping 5D-C; GET/list/recommendations e viste Applications proiettano il contesto senza duplicarlo in `applications`, che continua a referenziare l'Opportunity. Ownership, status e RLS non cambiano; non è previsto backfill.
 
 Le sole dipendenze indispensabili successive sono organization/competition/level/age/season per collegare una Opportunity a competizioni estere reali. Restano fuori da questa tranche e dal censimento 5D-E-I: i campi nullable consentono il rollout sport/role/gender indipendentemente dai cataloghi esteri. Criterio di completamento repository: migration additiva validata localmente, compatibilità payload legacy e canonicale, riferimenti role-group/applicabilità fail-closed e lettura Applications senza duplicazione. Prossimo passaggio operativo, dopo review: preflight schema read-only dell'ambiente scelto e autorizzazione separata per l'eventuale apply esclusivo; nessuna operazione remota è autorizzata qui.
+
+**Review migration e verifica funzionale 5G — UNIT PASS / POSTGRESQL 16 HANDOFF.** Il runner `scripts/test-opportunity-canonical-sports-runtime-docker.sh` costruisce un PostgreSQL 16 isolato e verifica righe legacy/nullabilità, catene valide e invalide, FK e shape Player/Staff, aggiornamenti parziali, cambio `role_group` con pulizia atomica, reset e rollback. In questo ambiente Docker non è installato, quindi il test PostgreSQL non è stato dichiarato PASS: il singolo comando Codespace è `bash scripts/test-opportunity-canonical-sports-runtime-docker.sh`. I test unitari mirati su resolver, filtri, dual-write e scope delle letture Applications sono PASS. Preparati inoltre il report read-only `scripts/sports/reports/phase-5g-opportunity-canonical-sports-preflight-read-only.sql` e il wrapper secret-safe `scripts/run-phase-5g-production-preflight.sh`; non sono stati eseguiti contro ambienti remoti e non autorizzano apply/deploy.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
