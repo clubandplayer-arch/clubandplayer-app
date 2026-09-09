@@ -6,12 +6,12 @@ const plan = readFileSync(new URL('../../docs/european-expansion/phase-5f-f-prof
 const experiencesRoute = readFileSync(new URL('../../app/api/profiles/me/experiences/route.ts', import.meta.url), 'utf8');
 const profileForm = readFileSync(new URL('../../components/profiles/ProfileEditForm.tsx', import.meta.url), 'utf8');
 
-test('5F-F canary plan records authorization while remaining not executed', () => {
+test('5F-F canary plan records the completed deploy, canary and teardown', () => {
   for (const prerequisite of ['deploy', 'account canary', 'snapshot', 'ripristino', 'autorizzazione esplicita']) {
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
-  assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
-  assert.match(plan, /TEARDOWN VERIFICATION PENDING/);
+  assert.match(plan, /COMPLETATO — DEPLOY, CANARY E TEARDOWN VERIFICATO PASS/);
+  assert.match(plan, /gate runtime 5F è \*\*COMPLETE\*\*/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -150,6 +150,12 @@ test('5F-F Step 7 replaces the terminal-closing inline retry with a safe child w
   assert.match(plan, /TERMINAL EXIT 1 USER-REPORTED/);
   assert.match(plan, /bash scripts\/verify-phase-5f-canary-teardown\.sh/);
   assert.match(plan, /Non rilanciare il blocco inline/);
+});
+
+test('5F-F closes the runtime gate only after the verified zero-residue teardown', () => {
+  assert.match(plan, /Checkpoint Step 7.*TEARDOWN VERIFIED \/ RUNTIME GATE COMPLETE USER-REPORTED/s);
+  assert.match(plan, /auth=0 profiles=0 experiences=0 read_only=on/);
+  assert.match(plan, /Non rieseguire build, deploy, migration, write canary, DELETE o report di teardown/);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {

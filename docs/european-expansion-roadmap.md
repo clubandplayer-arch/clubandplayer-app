@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5F — ROLLOUT SCHEMA SPORT CANONICO ESPERIENZE PRODUCTION COMPLETATO** |
-| Current active phase | **FASE 5F — IN CORSO; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Completare il solo gate runtime 5F (deploy/canary Profile ed esperienze); non rieseguire le migration 5F già concluse** |
+| Last completed subphase | **FASE 5F — SCHEMA E GATE RUNTIME PRODUCTION COMPLETATI** |
+| Current active phase | **FASE 5D — GATE DATI 5D-C; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
+| Next safe action | **Revisionare il gate/apply controllato 5D-C senza ripetere deploy, canary o migration 5F** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -759,9 +759,11 @@ La differenza nove trigger Production/quattro nel runtime locale non ha bloccato
 
 **Canary Step 6 2026-09-09 — TEARDOWN REQUEST PASS USER-REPORTED.** La singola DELETE ordinaria ha restituito 200 per l'owner disposable atteso, senza retry. Il gate runtime non è ancora chiuso: resta un unico report PostgreSQL read-only, parametrizzato con gli UUID canary ricavati dalla baseline privata, che deve confermare zero Auth user, zero Profile e zero esperienze prima della chiusura 5F.
 
+**Canary Step 7 2026-09-09 — TEARDOWN VERIFIED / GATE RUNTIME 5F COMPLETE USER-REPORTED.** Il wrapper fail-closed ha confermato in Production, con transazione read-only, `auth=0 profiles=0 experiences=0`. Il disposable e i suoi dati risultano rimossi. Deploy, Profile dual-write, replacement atomico esperienze, read-after-write, isolamento owner-scoped e teardown sono PASS. Non ripetere alcuna operazione 5F; il prossimo blocco separato è il gate dati 5D-C.
+
 ### FASE 5F — Sport canonico delle esperienze atleta
 
-**Stato: IMPLEMENTATO E VERIFICATO LOCALE; SCHEMA E RUNTIME DEPLOYATI IN PRODUCTION; CANARY PENDING.** Sul commit `79bff7da` il runner corretto ha restituito `PHASE_5F_EXPERIENCE_SPORT_PASS` ed exit 0, verificando double-apply, rollback della sostituzione fallita, isolamento tra proprietari e reset del solo proprietario. `athlete_experiences` riceve tre riferimenti UUID nullable; la route preserva gli array legacy, accetta `primarySport`, usa il planner comune e sostituisce la lista con una RPC owner-derived atomica. GET mantiene i campi legacy e aggiunge `primarySport` nullable. Nessuna UI o write runtime remota è stata eseguita nel canary.
+**Stato: COMPLETATA — SCHEMA, RUNTIME, CANARY E TEARDOWN PRODUCTION PASS.** Sul commit `79bff7da` il runner corretto ha restituito `PHASE_5F_EXPERIENCE_SPORT_PASS` ed exit 0, verificando double-apply, rollback della sostituzione fallita, isolamento tra proprietari e reset del solo proprietario. `athlete_experiences` riceve tre riferimenti UUID nullable; la route preserva gli array legacy, accetta `primarySport`, usa il planner comune e sostituisce la lista con una RPC owner-derived atomica. GET mantiene i campi legacy e aggiunge `primarySport` nullable. Il runtime Production `36dfa9860d9d12f5373ea3a85d76f706b4d718a4` ha superato il canary disposable Profile/esperienze e la rimozione finale è stata verificata read-only.
 
 La canonicalizzazione di `role`/position e `category` non è attivata: dipende dalla vocabulary 5D-C ancora non applicata e dai contratti di applicabilità, quindi i due campi restano legacy. Competition/season canoniche richiedono cataloghi ulteriori e restano fuori da questo flusso indipendente. Il preflight read-only mirato è ora `scripts/sports/reports/phase-5f-experience-sport-preflight-read-only.sql`; deve essere eseguito sull'ambiente scelto esplicitamente dall'operatore.
 
@@ -773,10 +775,9 @@ Il preflight passa come `PASS_READY_EXCLUSIVE_APPLY_WITH_5D_C_PENDING` quando 5C
 
 #### Cosa manca per concludere la FASE 5
 
-1. **Completare 5F oltre lo schema:** primary sport Profile ed esperienze hanno schema Production concluso e runtime implementato/verificato localmente; restano esclusivamente deploy e canary autorizzati. Position/role attendono 5D-C, mentre Competition/season attendono i rispettivi cataloghi. Non rieseguire le migration 5F.
-2. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
-3. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
-4. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.
+1. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
+2. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
+3. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 

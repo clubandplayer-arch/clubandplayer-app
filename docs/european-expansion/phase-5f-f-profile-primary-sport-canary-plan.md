@@ -1,14 +1,14 @@
 # FASE 5F-F — Review e procedura canary runtime Profile ed esperienze
 
 Data: 2026-09-09
-Stato: **QUALIFICAZIONE + DISPOSABLE PASS; CANARY AUTORIZZATO MA NON ESEGUITO**
+Stato: **COMPLETATO — DEPLOY, CANARY E TEARDOWN VERIFICATO PASS**
 
 ## Decisioni approvate
 
-- I contratti runtime Profile ed esperienze sono approvati funzionalmente, ma non ancora verificati da scritture remote.
+- I contratti runtime Profile ed esperienze sono approvati e verificati dal canary Production concluso.
 - Il canary userà esclusivamente un profilo di test dedicato e disposable. Il profilo reale osservato con `sport="Calcio"` e riferimenti canonici null è escluso.
 - Non è previsto alcun ripristino amministrativo del profilo reale e non sarà eseguito alcun backfill.
-- Il deploy Production autorizzato è concluso. Il canary Profile/esperienze e il teardown ordinario sono autorizzati esclusivamente sull'account qualificato; modifiche di schema, altri account e retry fuori procedura restano esclusi.
+- Il deploy Production, il canary Profile/esperienze e il teardown ordinario sono conclusi sull'account qualificato; modifiche di schema, altri account e ripetizioni fuori procedura restano esclusi.
 
 Il perimetro resta owner-scoped. Profile comprende soltanto `sport`, `sport_id`, `sport_discipline_id` e `sport_variant_id`; esperienze comprende una sostituzione atomica della lista del medesimo owner, preservando `club_name`, `sport`, `role`, `category`, `start_year` ed `end_year` e aggiungendo soltanto i tre riferimenti sportivi canonici. Rimangono invariati i codici opachi del contratto: 400 per input/riferimenti invalidi, 403 per divieto RLS e 500 per errore inatteso.
 
@@ -548,6 +548,8 @@ printf 'PHASE_5F_CANARY_TEARDOWN_VERIFIED auth=0 profiles=0 experiences=0 read_o
 
 Se compare `STOP`, non eseguire correzioni o una seconda DELETE: conservare il report. Il marker `PHASE_5F_CANARY_TEARDOWN_VERIFIED` conclude il teardown e consente di chiudere il gate runtime 5F nel checkpoint successivo.
 
+**Checkpoint Step 7 2026-09-09 — TEARDOWN VERIFIED / RUNTIME GATE COMPLETE USER-REPORTED.** Il wrapper sicuro ha restituito `PHASE_5F_CANARY_TEARDOWN_VERIFIED auth=0 profiles=0 experiences=0 read_only=on`. Il report Production ha quindi confermato zero Auth user, zero Profile e zero esperienze per gli identificatori disposable, in transazione read-only. Deploy, canary Profile, replacement atomico esperienze, verifiche finali e teardown sono tutti PASS: il gate runtime 5F è **CONCLUSO**. Non rieseguire build, deploy, migration, write canary, DELETE o report di teardown.
+
 ## Informazioni ancora strettamente necessarie
 
 1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
@@ -631,4 +633,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–6 sono **PASS**; il canary è **TEARDOWN VERIFICATION PENDING**. Il prossimo e unico passaggio è il report read-only dello Step 7. Una divergenza impone STOP, conservazione delle evidenze e nessuna correzione automatica.
+Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–7 sono **PASS**; canary e teardown sono conclusi e il gate runtime 5F è **COMPLETE**. Nessuna operazione 5F deve essere ripetuta. Il prossimo lavoro appartiene al gate dati 5D-C separato.
