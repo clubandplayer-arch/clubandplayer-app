@@ -757,6 +757,8 @@ La differenza nove trigger Production/quattro nel runtime locale non ha bloccato
 
 **Canary Step 5 2026-09-09 — FINAL READ-ONLY PASS USER-REPORTED.** Il consolidamento degli artefatti privati ha riconfermato owner, Profile invariato, esperienza legacy preservata e contesto canonico atteso, senza nuove request. Il prossimo singolo passaggio è una sola chiamata alla procedura ordinaria owner-authenticated `DELETE /api/account/delete`; nessun retry. La conclusione del teardown richiederà poi una verifica separata dell'assenza di Auth user, Profile ed esperienze.
 
+**Canary Step 6 2026-09-09 — TEARDOWN REQUEST PASS USER-REPORTED.** La singola DELETE ordinaria ha restituito 200 per l'owner disposable atteso, senza retry. Il gate runtime non è ancora chiuso: resta un unico report PostgreSQL read-only, parametrizzato con gli UUID canary ricavati dalla baseline privata, che deve confermare zero Auth user, zero Profile e zero esperienze prima della chiusura 5F.
+
 ### FASE 5F — Sport canonico delle esperienze atleta
 
 **Stato: IMPLEMENTATO E VERIFICATO LOCALE; SCHEMA E RUNTIME DEPLOYATI IN PRODUCTION; CANARY PENDING.** Sul commit `79bff7da` il runner corretto ha restituito `PHASE_5F_EXPERIENCE_SPORT_PASS` ed exit 0, verificando double-apply, rollback della sostituzione fallita, isolamento tra proprietari e reset del solo proprietario. `athlete_experiences` riceve tre riferimenti UUID nullable; la route preserva gli array legacy, accetta `primarySport`, usa il planner comune e sostituisce la lista con una RPC owner-derived atomica. GET mantiene i campi legacy e aggiunge `primarySport` nullable. Nessuna UI o write runtime remota è stata eseguita nel canary.

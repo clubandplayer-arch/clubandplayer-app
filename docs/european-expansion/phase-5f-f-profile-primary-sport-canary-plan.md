@@ -442,6 +442,55 @@ printf 'PHASE_5F_CANARY_TEARDOWN_REQUEST_PASS status=%s owner=%s\n' \
 
 In caso di `STOP`, non ripetere la DELETE: conservare la risposta e fermarsi. In caso di PASS, non considerare ancora concluso il teardown finché una verifica separata non conferma l'assenza dell'utente Auth, del Profile e delle esperienze; non incollare il body della risposta o il token.
 
+**Checkpoint Step 6 2026-09-09 — TEARDOWN REQUEST PASS USER-REPORTED.** La singola `DELETE /api/account/delete` ha restituito HTTP 200 per l'owner disposable atteso. Nessun retry è stato eseguito. La risposta positiva non viene considerata prova sufficiente della rimozione: il gate resta aperto fino al report read-only dello Step 7.
+
+## Esecuzione guidata — Step 7 verifica read-only del teardown
+
+Il report deriva il Profile UUID dal file baseline privato con hash già fissato e conta esclusivamente eventuali residui per Auth user, Profile e relative esperienze. La transazione PostgreSQL è read-only, termina con rollback, non restituisce PII e non ripete qualificazione, migration o canary writes.
+
+```bash
+set +u
+set -eo pipefail
+umask 077
+
+: "${PRODUCTION_DATABASE_URL:?PRODUCTION_DATABASE_URL non presente in questo terminale}"
+: "${CANARY_USER_ID:?CANARY_USER_ID non presente in questo terminale}"
+
+EXPECTED_CANARY_USER_ID='b5ba567a-194b-4e07-afe7-f8f9ce29a808'
+EXPECTED_PROFILE_BEFORE_SHA256='7646c11e47c833ca306a125ad399733d0bb15ee884a5d015472bed91415850f5'
+PROFILE_BEFORE='/tmp/phase-5f-canary-profile-before.json'
+TEARDOWN_REPORT='/tmp/phase-5f-canary-teardown-verification.json'
+
+if [ "$CANARY_USER_ID" != "$EXPECTED_CANARY_USER_ID" ] \
+  || [ "$(sha256sum "$PROFILE_BEFORE" | cut -d' ' -f1)" != "$EXPECTED_PROFILE_BEFORE_SHA256" ]; then
+  printf 'PHASE_5F_CANARY_STOP teardown_verification_input\n'
+  false
+fi
+
+CANARY_PROFILE_ID="$(jq -er '.data.id | select(type == "string" and test("^[0-9a-fA-F-]{36}$"))' "$PROFILE_BEFORE")"
+
+psql "$PRODUCTION_DATABASE_URL" -X -At -v ON_ERROR_STOP=1 \
+  -v canary_user_id="$CANARY_USER_ID" \
+  -v canary_profile_id="$CANARY_PROFILE_ID" \
+  -f scripts/sports/reports/phase-5f-canary-teardown-verification-read-only.sql \
+  >"$TEARDOWN_REPORT"
+
+if ! jq -e '
+    .classification == "PASS_PHASE_5F_CANARY_TEARDOWN_VERIFIED"
+    and .transactionReadOnly == "on"
+    and .writesPerformed == false
+    and .containsPii == false
+    and .counts == {auth_users: 0, experiences: 0, profiles: 0}
+  ' "$TEARDOWN_REPORT" >/dev/null; then
+  printf 'PHASE_5F_CANARY_STOP teardown_residue\n'
+  false
+fi
+
+printf 'PHASE_5F_CANARY_TEARDOWN_VERIFIED auth=0 profiles=0 experiences=0 read_only=on\n'
+```
+
+Se compare `STOP`, non eseguire correzioni o una seconda DELETE: conservare il report. Il marker `PHASE_5F_CANARY_TEARDOWN_VERIFIED` conclude il teardown e consente di chiudere il gate runtime 5F nel checkpoint successivo.
+
 ## Informazioni ancora strettamente necessarie
 
 1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
@@ -525,4 +574,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–5 sono **PASS**; il canary è **AUTHORIZED / TEARDOWN REQUEST PENDING**. Il prossimo e unico passaggio è lo Step 6 sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun retry automatico.
+Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–6 sono **PASS**; il canary è **TEARDOWN VERIFICATION PENDING**. Il prossimo e unico passaggio è il report read-only dello Step 7. Una divergenza impone STOP, conservazione delle evidenze e nessuna correzione automatica.

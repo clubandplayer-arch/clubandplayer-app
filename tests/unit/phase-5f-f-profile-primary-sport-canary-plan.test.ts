@@ -11,7 +11,7 @@ test('5F-F canary plan records authorization while remaining not executed', () =
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
   assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
-  assert.match(plan, /AUTHORIZED \/ TEARDOWN REQUEST PENDING/);
+  assert.match(plan, /TEARDOWN VERIFICATION PENDING/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -116,6 +116,14 @@ test('5F-F Step 6 invokes the ordinary owner-scoped teardown exactly once withou
   assert.match(step6, /EXPECTED_CANARY_USER_ID='b5ba567a-194b-4e07-afe7-f8f9ce29a808'/);
   assert.match(step6, /PHASE_5F_CANARY_TEARDOWN_REQUEST_PASS/);
   assert.doesNotMatch(step6, /for |while |until |--retry|profiles\/me\/experiences/);
+});
+
+test('5F-F Step 7 verifies teardown residue through a read-only report', () => {
+  assert.match(plan, /Checkpoint Step 6.*TEARDOWN REQUEST PASS USER-REPORTED/s);
+  const step7 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 7 verifica read-only del teardown'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  assert.match(step7, /phase-5f-canary-teardown-verification-read-only\.sql/);
+  assert.match(step7, /PHASE_5F_CANARY_TEARDOWN_VERIFIED/);
+  assert.doesNotMatch(step7, /curl|--request DELETE|supabase db/);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {
