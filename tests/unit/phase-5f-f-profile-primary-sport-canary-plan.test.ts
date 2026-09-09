@@ -11,7 +11,7 @@ test('5F-F canary plan records authorization while remaining not executed', () =
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
   assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
-  assert.match(plan, /AUTHORIZED \/ FINAL READ-ONLY CHECK PENDING/);
+  assert.match(plan, /AUTHORIZED \/ TEARDOWN REQUEST PENDING/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -88,7 +88,7 @@ test('5F-F Step 4 performs one atomic experiences PATCH and preserves Profile', 
   assert.match(plan, /Checkpoint Step 3.*PROFILE PASS USER-REPORTED/s);
   assert.match(plan, /c98e964fdb6dfde8b1db811ad4de2be229d53747394193401a2815be55a2d4f1/);
   assert.match(plan, /7d78ae8e3f697e6bd3c10edef77eb21eca8ad5e2b89585739fdaa0adcfadf97d/);
-  const step4 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 4 esperienze completo'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  const step4 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 4 esperienze completo'), plan.indexOf('## Esecuzione guidata — Step 5 consolidamento evidenze read-only'));
   assert.equal((step4.match(/--request PATCH/g) ?? []).length, 1);
   assert.match(step4, /api\/profiles\/me\/experiences/);
   assert.match(step4, /del\(\.primarySport\)/);
@@ -102,10 +102,20 @@ test('5F-F Step 5 consolidates existing evidence without remote operations or te
   assert.match(plan, /Checkpoint Step 4.*EXPERIENCES PASS USER-REPORTED/s);
   assert.match(plan, /0364b47208d3b9ad9bb85869a24d889be8a58e1de38adc0a99090f03fc6ca372/);
   assert.match(plan, /cc039a4f595fbba7f76280e1e1929790946dce5baffe014843c0386a3580c2a5/);
-  const step5 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 5 consolidamento evidenze read-only'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  const step5 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 5 consolidamento evidenze read-only'), plan.indexOf('## Esecuzione guidata — Step 6 teardown ordinario'));
   assert.match(step5, /PHASE_5F_CANARY_FINAL_READ_ONLY_PASS/);
   assert.match(step5, /evidence_owner_or_side_effect/);
   assert.doesNotMatch(step5, /curl|psql|--request|-X (?:PATCH|POST|PUT|DELETE)|supabase/);
+});
+
+test('5F-F Step 6 invokes the ordinary owner-scoped teardown exactly once without retry', () => {
+  assert.match(plan, /Checkpoint Step 5.*FINAL READ-ONLY PASS USER-REPORTED/s);
+  const step6 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 6 teardown ordinario'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  assert.equal((step6.match(/--request DELETE/g) ?? []).length, 1);
+  assert.match(step6, /api\/account\/delete/);
+  assert.match(step6, /EXPECTED_CANARY_USER_ID='b5ba567a-194b-4e07-afe7-f8f9ce29a808'/);
+  assert.match(step6, /PHASE_5F_CANARY_TEARDOWN_REQUEST_PASS/);
+  assert.doesNotMatch(step6, /for |while |until |--retry|profiles\/me\/experiences/);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {

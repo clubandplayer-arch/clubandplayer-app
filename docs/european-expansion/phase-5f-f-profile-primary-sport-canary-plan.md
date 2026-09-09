@@ -403,6 +403,45 @@ printf 'PHASE_5F_CANARY_FINAL_READ_ONLY_PASS owner=%s profile_sha256=%s experien
 
 Un `STOP` conserva lo stato e impedisce il teardown. Dopo il PASS, il solo passaggio ancora aperto del canary è il teardown ordinario già autorizzato e la verifica della rimozione; non effettuare il teardown nello stesso comando.
 
+**Checkpoint Step 5 2026-09-09 — FINAL READ-ONLY PASS USER-REPORTED.** Il consolidamento locale ha riconfermato owner `b5ba567a-194b-4e07-afe7-f8f9ce29a808`, Profile SHA-256 `c98e964fdb6dfde8b1db811ad4de2be229d53747394193401a2815be55a2d4f1`, esperienze SHA-256 `0364b47208d3b9ad9bb85869a24d889be8a58e1de38adc0a99090f03fc6ca372` e contesti SHA-256 `cc039a4f595fbba7f76280e1e1929790946dce5baffe014843c0386a3580c2a5`. Non sono state inviate nuove request e non è stato eseguito il teardown.
+
+## Esecuzione guidata — Step 6 teardown ordinario
+
+La procedura ordinaria dell'app è `DELETE /api/account/delete`, autenticata come l'owner disposable. La route elimina i dati Profile/push-token dell'utente e poi l'utente Auth tramite il client amministrativo; non accetta un UUID nel payload, quindi il target deriva esclusivamente dalla sessione canary. Questo step esegue **una sola DELETE**, salva privatamente la risposta e non contiene retry né verifica successiva.
+
+```bash
+set +u
+set -eo pipefail
+umask 077
+
+: "${CANARY_TOKEN:?CANARY_TOKEN non presente in questo terminale}"
+: "${CANARY_USER_ID:?CANARY_USER_ID non presente in questo terminale}"
+: "${PROD_BASE_URL:?PROD_BASE_URL non presente in questo terminale}"
+
+EXPECTED_CANARY_USER_ID='b5ba567a-194b-4e07-afe7-f8f9ce29a808'
+TEARDOWN_RESPONSE='/tmp/phase-5f-canary-teardown-response.json'
+
+if [ "$CANARY_USER_ID" != "$EXPECTED_CANARY_USER_ID" ]; then
+  printf 'PHASE_5F_CANARY_STOP teardown_owner_mismatch\n'
+  false
+fi
+
+TEARDOWN_STATUS="$(curl --silent --show-error --proto '=https' --tlsv1.2 \
+  --request DELETE --output "$TEARDOWN_RESPONSE" --write-out '%{http_code}' \
+  -H "Authorization: Bearer $CANARY_TOKEN" \
+  "$PROD_BASE_URL/api/account/delete")"
+
+if [ "$TEARDOWN_STATUS" != '200' ] || ! jq -e '.ok == true' "$TEARDOWN_RESPONSE" >/dev/null; then
+  printf 'PHASE_5F_CANARY_STOP teardown_http=%s\n' "$TEARDOWN_STATUS"
+  false
+fi
+
+printf 'PHASE_5F_CANARY_TEARDOWN_REQUEST_PASS status=%s owner=%s\n' \
+  "$TEARDOWN_STATUS" "$CANARY_USER_ID"
+```
+
+In caso di `STOP`, non ripetere la DELETE: conservare la risposta e fermarsi. In caso di PASS, non considerare ancora concluso il teardown finché una verifica separata non conferma l'assenza dell'utente Auth, del Profile e delle esperienze; non incollare il body della risposta o il token.
+
 ## Informazioni ancora strettamente necessarie
 
 1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
@@ -486,4 +525,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–4 sono **PASS**; il canary è **AUTHORIZED / FINAL READ-ONLY CHECK PENDING**. Il prossimo e unico passaggio è lo Step 5 sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun avanzamento automatico al teardown.
+Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–5 sono **PASS**; il canary è **AUTHORIZED / TEARDOWN REQUEST PENDING**. Il prossimo e unico passaggio è lo Step 6 sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun retry automatico.
