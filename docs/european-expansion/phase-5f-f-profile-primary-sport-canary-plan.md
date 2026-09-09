@@ -448,6 +448,28 @@ In caso di `STOP`, non ripetere la DELETE: conservare la risposta e fermarsi. In
 
 Il report deriva il Profile UUID dal file baseline privato con hash già fissato e conta esclusivamente eventuali residui per Auth user, Profile e relative esperienze. La transazione PostgreSQL è read-only, termina con rollback, non restituisce PII e non ripete qualificazione, migration o canary writes.
 
+Se il terminale termina con exit 1 prima di produrre un marker, **non assumere che il report sia stato eseguito** e non rilanciarlo alla cieca. Aprire un nuovo terminale e usare prima questa diagnosi locale, che non apre connessioni e non stampa la URL:
+
+```bash
+set +e
+set +u
+
+DB_SECRET_STATE='missing'
+BASELINE_STATE='missing'
+PSQL_STATE='missing'
+REPORT_STATE='missing'
+
+[ -n "${PRODUCTION_DATABASE_URL:-}" ] && DB_SECRET_STATE='set'
+[ -r /tmp/phase-5f-canary-profile-before.json ] && BASELINE_STATE='present'
+command -v psql >/dev/null 2>&1 && PSQL_STATE='present'
+[ -r scripts/sports/reports/phase-5f-canary-teardown-verification-read-only.sql ] && REPORT_STATE='present'
+
+printf 'PHASE_5F_CANARY_STEP7_LOCAL_READINESS db_secret=%s baseline=%s psql=%s report=%s\n' \
+  "$DB_SECRET_STATE" "$BASELINE_STATE" "$PSQL_STATE" "$REPORT_STATE"
+```
+
+Questo marker è il solo dato necessario per distinguere un prerequisito locale mancante da un errore avvenuto durante `psql`. Non contiene segreti e non esegue il report.
+
 ```bash
 set +u
 set -eo pipefail

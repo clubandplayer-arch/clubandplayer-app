@@ -126,6 +126,13 @@ test('5F-F Step 7 verifies teardown residue through a read-only report', () => {
   assert.doesNotMatch(step7, /curl|--request DELETE|supabase db/);
 });
 
+test('5F-F Step 7 has a no-network recovery diagnostic that does not print the database URL', () => {
+  const step7 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 7 verifica read-only del teardown'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  assert.match(step7, /PHASE_5F_CANARY_STEP7_LOCAL_READINESS/);
+  assert.match(step7, /PRODUCTION_DATABASE_URL:-/);
+  assert.doesNotMatch(step7, /echo "\$PRODUCTION_DATABASE_URL"|printf[^\n]*PRODUCTION_DATABASE_URL/);
+});
+
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {
   assert.match(plan, /b5ba567a-194b-4e07-afe7-f8f9ce29a808/);
   assert.match(plan, /Staff con ruolo legacy `Fotografo`/);
