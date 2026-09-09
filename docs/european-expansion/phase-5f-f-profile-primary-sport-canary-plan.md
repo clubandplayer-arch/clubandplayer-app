@@ -16,7 +16,9 @@ Il perimetro resta owner-scoped e comprende soltanto `sport`, `sport_id`, `sport
 
 L'ambiente proposto è **Production**, non Preview: la migration 5F-A risulta applicata e registrata in Production, mentre Preview resta non verificato. Questa scelta riduce il rischio di eseguire codice contro uno schema sconosciuto, ma richiede un account Production deliberatamente sacrificabile e una finestra controllata.
 
-La revisione runtime da distribuire è `72b8f1e242a9a4dab81c5770ad0090585e2097fa`, che contiene il collegamento della route e del contratto. Prima del deploy l'operatore deve verificare che il release commit effettivo contenga questa revisione (`git merge-base --is-ancestor`) e registrare il SHA immutabile realmente distribuito; il piano non autorizza merge o deploy.
+Le revisioni runtime minime da distribuire sono `ad9862991d9d6d3c8992796c976601e6e3f917ea` per Profile e `c65da3e070c1274049b9ebc2382884fd10e7f909` per esperienze. Il precedente riferimento `72b8f1e...` non appartiene alla history Git corrente e non deve essere usato come gate. Prima del deploy l'operatore deve eseguire il verifier unico con il release commit effettivo e registrare lo SHA immutabile realmente distribuito; il piano non autorizza merge o deploy.
+
+Il candidato verificato repository-only è `36dfa9860d9d12f5373ea3a85d76f706b4d718a4`. Il comando `scripts/verify-phase-5f-runtime-release.sh 36dfa9860d9d12f5373ea3a85d76f706b4d718a4` ha confermato entrambe le ancestry e la presenza dei marker obbligatori nelle due route. Questo identifica il candidato, ma non prova che sia già distribuito.
 
 ## Informazioni ancora strettamente necessarie
 
@@ -31,7 +33,7 @@ La creazione dell'account e la sua eliminazione/disabilitazione sono operazioni 
 ## Prerequisiti fail-closed
 
 1. eseguire `git status --short` e ottenere output vuoto;
-2. verificare la revisione con `git merge-base --is-ancestor 72b8f1e242a9a4dab81c5770ad0090585e2097fa "$RELEASE_COMMIT"`;
+2. verificare entrambe le revisioni e le route con `scripts/verify-phase-5f-runtime-release.sh "$RELEASE_COMMIT"`;
 3. confermare nel deployment provider che `$RELEASE_COMMIT` corrisponda al deployment Production selezionato;
 4. rieseguire il report read-only 5F-C: schema ready, history 5F-A pari a uno e nove trigger abilitati/invariati;
 5. verificare che l'account canary athlete/staff possieda esattamente una riga `profiles`, non sia admin, non sia usato da persone reali e abbia già `sport` uguale alla label scelta con i tre ID null;
@@ -54,7 +56,7 @@ export CANARY_LEGACY_SPORT='<legacy-label-con-mapping-univoco-attivo>'
 : "${CANARY_TOKEN:?caricare CANARY_TOKEN come secret del Codespace}"
 
 git status --short
-git merge-base --is-ancestor 72b8f1e242a9a4dab81c5770ad0090585e2097fa "$RELEASE_COMMIT"
+scripts/verify-phase-5f-runtime-release.sh "$RELEASE_COMMIT"
 
 curl --fail-with-body --silent --show-error \
   -H "Authorization: Bearer $CANARY_TOKEN" \

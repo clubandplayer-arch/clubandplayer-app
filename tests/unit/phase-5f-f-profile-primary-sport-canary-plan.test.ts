@@ -14,8 +14,10 @@ test('5F-F canary plan is fail-closed before deploy and remote write', () => {
 
 test('5F-F selects Production and pins the reviewed runtime revision', () => {
   assert.match(plan, /ambiente proposto è \*\*Production\*\*/);
-  assert.match(plan, /72b8f1e242a9a4dab81c5770ad0090585e2097fa/);
-  assert.match(plan, /merge-base --is-ancestor/);
+  assert.match(plan, /ad9862991d9d6d3c8992796c976601e6e3f917ea/);
+  assert.match(plan, /c65da3e070c1274049b9ebc2382884fd10e7f909/);
+  assert.match(plan, /36dfa9860d9d12f5373ea3a85d76f706b4d718a4/);
+  assert.match(plan, /verify-phase-5f-runtime-release\.sh/);
   assert.match(plan, /Preview resta non verificato/);
 });
 
