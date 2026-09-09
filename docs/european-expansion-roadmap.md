@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5D-C — CONTROLLED VOCABULARY PRODUCTION APPLICATA E VERIFICATA** |
+| Last completed subphase | **FASE 5G — MIGRATION E RUNTIME VERIFICATI LOCALMENTE SU POSTGRESQL 16** |
 | Current active phase | **FASE 5G — OPPORTUNITIES/APPLICATIONS, IMPLEMENTAZIONE LOCALE CANONICAL-FIRST** |
-| Next safe action | **Eseguire il runner PostgreSQL 16 della 5G in un Codespace con Docker; poi, solo dopo PASS, il preflight Production read-only separatamente autorizzato** |
+| Next safe action | **Eseguire esclusivamente il preflight Production read-only 5G; apply e deploy restano non autorizzati** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -706,7 +706,7 @@ Suddivisione confermata dopo l'audit:
 
 Le sole dipendenze indispensabili successive sono organization/competition/level/age/season per collegare una Opportunity a competizioni estere reali. Restano fuori da questa tranche e dal censimento 5D-E-I: i campi nullable consentono il rollout sport/role/gender indipendentemente dai cataloghi esteri. Criterio di completamento repository: migration additiva validata localmente, compatibilità payload legacy e canonicale, riferimenti role-group/applicabilità fail-closed e lettura Applications senza duplicazione. Prossimo passaggio operativo, dopo review: preflight schema read-only dell'ambiente scelto e autorizzazione separata per l'eventuale apply esclusivo; nessuna operazione remota è autorizzata qui.
 
-**Review migration e verifica funzionale 5G — UNIT PASS / POSTGRESQL 16 HANDOFF.** Il runner `scripts/test-opportunity-canonical-sports-runtime-docker.sh` costruisce un PostgreSQL 16 isolato e verifica righe legacy/nullabilità, catene valide e invalide, FK e shape Player/Staff, aggiornamenti parziali, cambio `role_group` con pulizia atomica, reset e rollback. In questo ambiente Docker non è installato, quindi il test PostgreSQL non è stato dichiarato PASS: il singolo comando Codespace è `bash scripts/test-opportunity-canonical-sports-runtime-docker.sh`. I test unitari mirati su resolver, filtri, dual-write e scope delle letture Applications sono PASS. Preparati inoltre il report read-only `scripts/sports/reports/phase-5g-opportunity-canonical-sports-preflight-read-only.sql` e il wrapper secret-safe `scripts/run-phase-5g-production-preflight.sh`; non sono stati eseguiti contro ambienti remoti e non autorizzano apply/deploy.
+**Review migration e verifica funzionale 5G — UNIT PASS / POSTGRESQL 16 PASS USER-REPORTED.** Il runner `scripts/test-opportunity-canonical-sports-runtime-docker.sh` ha concluso nel Codespace con `PHASE_5G_OPPORTUNITY_CANONICAL_SPORTS_RUNTIME_PASS`. Sono quindi verificati su PostgreSQL 16 reale righe legacy/nullabilità, catene valide e invalide, FK e shape Player/Staff, aggiornamenti parziali, cambio `role_group` con pulizia atomica, reset e rollback. I NOTICE `does not exist, skipping` della foundation idempotente non sono errori: il runner usa `ON_ERROR_STOP=1` e ha raggiunto il marker finale. Anche i test unitari mirati su resolver, filtri, dual-write e scope delle letture Applications sono PASS. Il prossimo singolo passaggio è il report Production read-only tramite `scripts/run-phase-5g-production-preflight.sh`; non è stato ancora eseguito contro ambienti remoti e non autorizza apply/deploy.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
