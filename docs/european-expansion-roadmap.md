@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Eseguire una sola GET Club con il token sostituito, preservando il 401 e riusando le baseline env/applicant già PASS** |
+| Next safe action | **Eseguire una sola POST Opportunity canonical-first e le due letture di verifica; fermarsi prima dell’Application** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -727,6 +727,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Diagnostica 401 Club 5G — TOKEN UNEXPIRED / SERVER UNAUTHORIZED.** Subject locale corretto e 2712 secondi residui, ma la risposta Club ha forma `error` e code `Unauthorized`; gli hash delle tre evidenze sono registrati nell’output operatore. La sessione/token Club non è quindi utilizzabile anche se il JWT non è scaduto. Vietato riprovare con lo stesso token. Il prossimo step `source scripts/replace-phase-5g-canary-club-token.sh` acquisisce soltanto un nuovo access token Club tramite prompt nascosto, ne valida localmente subject/scadenza e sostituisce la variabile nel terminale; non usa rete e non modifica il token Athlete o i file baseline.
 
 **Sostituzione token Club 5G — PASS USER-REPORTED.** `source scripts/replace-phase-5g-canary-club-token.sh` ha validato il nuovo token e restituito `PHASE_5G_CANARY_CLUB_TOKEN_REPLACED` per il Club autorizzato. Nessuna rete o write è stata eseguita. Il prossimo blocco `scripts/run-phase-5g-canary-club-baseline-after-token-replacement.sh` archivia la risposta 401, riusa senza rete le evidenze env/applicant già 200 ed effettua una sola GET Club `applications/received`; nessun retry automatico.
+
+**Baseline HTTP canary 5G — PASS USER-REPORTED.** Con il token Club sostituito, la singola GET `applications/received` è 200; `/api/env` e applicant `applications/me` restano 200 dalle evidenze preservate. Entrambe le baseline applicative hanno SHA-256 `8fe32e407a1038ee38753b70e5374b3a46d6ae9d5f16cd5b73c53abaca8f5ed0`. Il precedente 401 resta archiviato con SHA-256 `3be5b8e53fdc8b0a2996590589456db33504977f3d1ce9bb75016c8a707e1a71`. Il prossimo blocco autorizzato `scripts/run-phase-5g-canary-opportunity.sh` usa il contesto privato qualificato, esegue una sola POST Opportunity e verifica response, dettaglio e filtro canonico; non crea ancora Application e non esegue retry.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
