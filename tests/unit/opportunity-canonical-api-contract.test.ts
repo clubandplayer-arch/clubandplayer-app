@@ -21,6 +21,15 @@ test('Opportunity writes use one row mutation after canonical planning', () => {
   assert.match(item, /roleGroup: nextRoleGroup/);
 });
 
+test('Opportunity writes preserve legacy gender while using 5D-C canonical gender codes', () => {
+  for (const route of [collection, item]) {
+    assert.match(route, /toOpportunityDbValue\(normalized, 'canonical'\)/);
+    assert.match(route, /toOpportunityDbValue\(normalized, 'fallback'\)/);
+  }
+  assert.match(collection, /gender:\s*genderDb,[\s\S]*gender_code:\s*genderCode/);
+  assert.match(item, /update\.gender = genderDb;\s*update\.gender_code = genderCode;/);
+});
+
 test('Application reads keep existing owner scopes and only inherit Opportunity context', () => {
   assert.match(mine, /\.eq\('athlete_id', user\.id\)/);
   assert.match(received, /\.or\(`owner_id\.eq\.\$\{user\.id\},created_by\.eq\.\$\{user\.id\}`\)/);
@@ -29,4 +38,3 @@ test('Application reads keep existing owner scopes and only inherit Opportunity 
   assert.doesNotMatch(mine, /\.update\(|\.insert\(|\.delete\(/);
   assert.doesNotMatch(received, /\.update\(|\.insert\(|\.delete\(/);
 });
-

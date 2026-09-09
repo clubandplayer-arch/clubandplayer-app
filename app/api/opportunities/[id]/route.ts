@@ -141,6 +141,11 @@ function resolveGender(value: unknown): string | null {
   return normalized ? toOpportunityDbValue(normalized, 'canonical') : null;
 }
 
+function resolveCanonicalGenderCode(value: unknown): string | null {
+  const normalized = normalizeOpportunityGender(value);
+  return normalized ? toOpportunityDbValue(normalized, 'fallback') : null;
+}
+
 export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
@@ -223,6 +228,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const hasGenderField = Object.prototype.hasOwnProperty.call(body, 'gender');
   const genderDb = hasGenderField ? resolveGender((body as any).gender) : null;
+  const genderCode = hasGenderField ? resolveCanonicalGenderCode((body as any).gender) : null;
   if (hasGenderField && !genderDb) return jsonError('invalid_gender', 400);
 
   const hasAgeMin = Object.prototype.hasOwnProperty.call(body, 'age_min');
@@ -270,7 +276,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (hasRoleGroupField) update.role_group = roleGroup;
   if (hasGenderField) {
     update.gender = genderDb;
-    update.gender_code = genderDb;
+    update.gender_code = genderCode;
   }
   if (hasAgeMin) update.age_min = ageMin ?? null;
   if (hasAgeMax) update.age_max = ageMax ?? null;

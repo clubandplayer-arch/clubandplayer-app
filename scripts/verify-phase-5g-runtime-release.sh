@@ -26,8 +26,10 @@ check_marker() {
 
 check_marker 'app/api/opportunities/route.ts' 'resolveOpportunityRoleColumns'
 check_marker 'app/api/opportunities/route.ts' "query.eq('sport_id', sportId)"
+check_marker 'app/api/opportunities/route.ts' "toOpportunityDbValue(normalized, 'fallback')"
 check_marker 'app/api/opportunities/[id]/route.ts' 'planProfilePrimarySportRequest'
 check_marker 'app/api/opportunities/[id]/route.ts' 'projectOpportunityCanonicalContext'
+check_marker 'app/api/opportunities/[id]/route.ts' 'update.gender_code = genderCode'
 check_marker 'app/api/applications/me/route.ts' 'projectOpportunityCanonicalContext'
 check_marker 'app/api/applications/received/route.ts' 'projectOpportunityCanonicalContext'
 

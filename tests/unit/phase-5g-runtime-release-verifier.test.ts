@@ -23,4 +23,6 @@ test('5G runtime verifier inspects both Opportunity routes and both Application 
     'app/api/applications/received/route.ts',
   ]) assert.ok(verifier.includes(path));
   assert.match(verifier, /PHASE_5G_RUNTIME_RELEASE_PASS/);
+  assert.match(verifier, /toOpportunityDbValue\(normalized, 'fallback'\)/);
+  assert.match(verifier, /update\.gender_code = genderCode/);
 });

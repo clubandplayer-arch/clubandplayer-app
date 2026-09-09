@@ -70,6 +70,11 @@ function resolveGender(value: unknown): string | null {
   return normalized ? toOpportunityDbValue(normalized, 'canonical') : null;
 }
 
+function resolveCanonicalGenderCode(value: unknown): string | null {
+  const normalized = normalizeOpportunityGender(value);
+  return normalized ? toOpportunityDbValue(normalized, 'fallback') : null;
+}
+
 function parseRoleGroup(value: unknown): 'player' | 'staff' | null {
   if (value == null) return null;
   const normalized = String(value).trim().toLowerCase();
@@ -299,6 +304,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (!club_name) return invalidPayload('club_name_missing');
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
   const genderDb = resolveGender((body as any).gender);
+  const genderCode = resolveCanonicalGenderCode((body as any).gender);
   if (!genderDb) return invalidPayload('invalid_gender');
 
   const roleGroupRaw = (body as any).role_group ?? (body as any).roleGroup ?? null;
@@ -379,7 +385,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     gender: genderDb,
     ...canonicalSport,
     ...canonicalRole,
-    gender_code: genderDb,
+    gender_code: genderCode,
   };
 
   if (geographyCommand.kind !== 'absent' && geographyCommand.kind !== 'legacy') {
