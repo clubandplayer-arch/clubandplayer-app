@@ -189,3 +189,13 @@ Il primo run read-only ha restituito `BLOCKED_MANIFEST_CONTRACT`, con history e 
 La causa era locale nel report: i tre CTE dei record dipendenti usavano `JOIN` interni verso `player_positions`/`staff_roles`. Poiché il seed non è ancora applicato, le posizioni e i ruoli attesi non esistono ancora e gli inner join eliminavano le 220 righe invece di classificarle `missing`. La correzione usa `LEFT JOIN`, mantenendo ogni record manifest nella valutazione; la soglia resta rigorosamente 356 e non è stata abbassata.
 
 Il runner ora stampa sempre il marker diagnostico dopo una query SQL valida. Le classificazioni PASS terminano con exit 0; ogni `BLOCKED_*` stampa prima history/schema/evaluated/exact/missing/collisions/foundation e termina con exit 1. Nessun dato Production è stato modificato e il risultato precedente non autorizza apply, seed, backfill o history.
+
+### Preflight Production corretto e procedura mutativa candidata
+
+**PASS USER-REPORTED.** Il rerun corretto ha restituito `PASS_READY_FOR_EXCLUSIVE_APPLY` con history 5C=1, 5D-C=0, Profile 5F=1, esperienze 5F=1, tabelle=8, chiavi=8, `evaluated=356`, `exact=0`, `missing=356`, `collisions=0`, `foundation_missing=0` e `read_only=on`.
+
+La procedura definitiva candidata è `scripts/run-phase-5d-c-production-exclusive-apply.sh`. Prima di qualsiasi connessione verifica il checksum migration fissato; usa `lock_timeout=5s` e `statement_timeout=120s` per l'apply, `ON_ERROR_STOP=1` e `pipefail`, e richiede URL senza password e password tramite input nascosto. La migration è l'unico file applicato e il suo `COMMIT` deve comparire come riga esatta nel log.
+
+Solo dopo il COMMIT esegue il report read-only pre-history, che deve attestare history 0 e tutti i 356 record exact con zero missing/collision/foundation missing. Soltanto quel PASS consente il lock e l'insert della singola versione `20261207120000`; qualunque errore termina il runner prima della history. Il report finale richiede history 1, `PASS_ALREADY_APPLIED` e gli stessi conteggi 356/356/0/0. Il marker conclusivo viene emesso soltanto dopo tutti i gate.
+
+Il runner non è stato eseguito e resta subordinato ad autorizzazione mutativa esplicita. Non usa `db push`, non applica altre migration, non esegue backfill e non comprende 5D-E-I o verifiche 5F.

@@ -221,3 +221,14 @@ test('5D-C Production preflight checks the complete manifest without writes', ()
   assert.match(runner, /\*\) exit 1/);
   assert.doesNotMatch(runner, /set -u|set -x|echo "\$PRODUCTION_DATABASE_URL"/);
 });
+
+test('5D-C exclusive apply runner gates history on the 356-record post-check', () => {
+  const runner = readFileSync('scripts/run-phase-5d-c-production-exclusive-apply.sh', 'utf8');
+  assert.match(runner, /EXPECTED_SHA256='85367f245d3f216b8678a7701be3bbc413067d0b007dac79cb1f199d854fbfa6'/);
+  assert.match(runner, /lock_timeout=5s -c statement_timeout=120s/);
+  assert.match(runner, /grep -qx 'COMMIT'/);
+  assert.match(runner, /history\.phase5dC == 0[\s\S]*evaluated: 356, exact: 356, missing: 0/);
+  assert.match(runner, /insert into supabase_migrations\.schema_migrations\(version\) values \('20261207120000'\)/);
+  assert.match(runner, /history\.phase5dC == 1/);
+  assert.doesNotMatch(runner, /set -u|supabase db push|20261208120000|20261209120000/);
+});
