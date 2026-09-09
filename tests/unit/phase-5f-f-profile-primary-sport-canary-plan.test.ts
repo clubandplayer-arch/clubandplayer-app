@@ -8,8 +8,26 @@ test('5F-F canary plan is fail-closed before deploy and remote write', () => {
   for (const prerequisite of ['deploy', 'account canary', 'snapshot', 'ripristino', 'autorizzazione esplicita']) {
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
-  assert.match(plan, /READY_FOR_EXPLICIT_REMOTE_AUTHORIZATION/);
-  assert.match(plan, /NESSUNA OPERAZIONE REMOTA ESEGUITA/);
+  assert.match(plan, /CANARY NON ESEGUITO/);
+  assert.match(plan, /NOT AUTHORIZED \/ NOT EXECUTED/);
+});
+
+test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
+  assert.match(plan, /Checkpoint post-deploy dominio canonico.*PASS USER-REPORTED/s);
+  assert.match(plan, /hasUrl=true/);
+  assert.match(plan, /hasAnon=true/);
+  assert.match(plan, /mode=production/);
+  assert.match(plan, /build, deploy e migration non devono essere ripetuti/i);
+  assert.match(plan, /Questo PASS non autorizza il canary/);
+});
+
+test('5F-F stops at one disposable identity before any combined canary write', () => {
+  assert.match(plan, /un solo account Production già esistente/);
+  assert.match(plan, /auth\.users\.id/);
+  assert.match(plan, /non comunicare email, password, token/);
+  assert.match(plan, /un PATCH Profile/);
+  assert.match(plan, /un PUT di sostituzione esperienze/);
+  assert.match(plan, /Nessuna di queste scritture è autorizzata ora/);
 });
 
 test('5F-F selects Production and pins the reviewed runtime revision', () => {
@@ -51,7 +69,7 @@ test('5F-F uses only a disposable profile and accounts for trigger side effects'
 });
 
 test('5F-F defines executable commands and stop conditions without executing them', () => {
-  for (const command of ['git status --short', 'curl --fail-with-body', '-X PATCH']) assert.ok(plan.includes(command));
+  for (const command of ['curl --fail-with-body', '-X PATCH']) assert.ok(plan.includes(command));
   assert.match(plan, /Fermarsi senza retry/);
   assert.match(plan, /non usare `supabase db push`, migration repair/);
 });

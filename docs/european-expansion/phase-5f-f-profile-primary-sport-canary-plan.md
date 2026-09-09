@@ -1,16 +1,16 @@
-# FASE 5F-F — Review e procedura canary primary sport Profile
+# FASE 5F-F — Review e procedura canary runtime Profile ed esperienze
 
-Data: 2026-09-08  
-Stato: **REVIEW PASS; PROCEDURA PRONTA PER APPROVAZIONE — NESSUNA OPERAZIONE REMOTA ESEGUITA**
+Data: 2026-09-09
+Stato: **DEPLOY PRODUCTION PASS — CANARY NON ESEGUITO; IDENTIFICAZIONE DISPOSABLE PENDING**
 
 ## Decisioni approvate
 
-- Il contratto 5F-E è approvato funzionalmente, ma non ancora verificato da un PATCH remoto.
+- I contratti runtime Profile ed esperienze sono approvati funzionalmente, ma non ancora verificati da scritture remote.
 - Il canary userà esclusivamente un profilo di test dedicato e disposable. Il profilo reale osservato con `sport="Calcio"` e riferimenti canonici null è escluso.
 - Non è previsto alcun ripristino amministrativo del profilo reale e non sarà eseguito alcun backfill.
-- Restano esclusi merge, deploy, creazione remota dell'account, PATCH remoti e modifiche di schema finché non saranno autorizzati separatamente.
+- Il deploy Production autorizzato è concluso. Restano esclusi creazione remota dell'account, PATCH/PUT remoti, teardown e modifiche di schema finché non saranno autorizzati separatamente.
 
-Il perimetro resta owner-scoped e comprende soltanto `sport`, `sport_id`, `sport_discipline_id` e `sport_variant_id`. Rimangono invariati i codici opachi del contratto: 400 per input/riferimenti invalidi, 403 per divieto RLS e 500 per errore inatteso.
+Il perimetro resta owner-scoped. Profile comprende soltanto `sport`, `sport_id`, `sport_discipline_id` e `sport_variant_id`; esperienze comprende una sostituzione atomica della lista del medesimo owner, preservando `club_name`, `sport`, `role`, `category`, `start_year` ed `end_year` e aggiungendo soltanto i tre riferimenti sportivi canonici. Rimangono invariati i codici opachi del contratto: 400 per input/riferimenti invalidi, 403 per divieto RLS e 500 per errore inatteso.
 
 ## Ambiente e revisione proposta
 
@@ -28,11 +28,19 @@ Il prossimo passaggio proposto è un nuovo deployment **Vercel Production** del 
 
 Handoff minimo per l'operatore Vercel: aprire **Vercel Dashboard → progetto che serve `www.clubandplayer.com` → Deployments**, cercare il deployment il cui **Source commit** è esattamente `36dfa9860d9d12f5373ea3a85d76f706b4d718a4`, aprirlo e scegliere **Promote to Production**. Prima della conferma controllare che la destinazione sia **Production** e che le Environment Variables Production includano `NEXT_PUBLIC_SUPABASE_URL` con host `izzfjrcabtixxsrnkzro.supabase.co`; non modificare variabili e non selezionare un deployment con SHA differente. Se lo SHA non compare nell'elenco, fermarsi senza creare deployment da un branch con HEAD differente. Dopo una promozione riuscita comunicare soltanto l'URL immutabile del deployment; URL canonico, ambiente, SHA e project ref verranno verificati dal relativo `/api/env` prima di qualsiasi canary.
 
+**Checkpoint post-deploy dominio canonico 2026-09-09 — PASS USER-REPORTED.** Dopo la promozione, `https://www.clubandplayer.com/api/env` ha restituito `hasUrl=true`, `hasAnon=true`, `mode=production`, SHA `36dfa9860d9d12f5373ea3a85d76f706b4d718a4` e host Supabase `izzfjrcabtixxsrnkzro.supabase.co`. URL canonico, ambiente, revisione e database collegato coincidono con il target autorizzato. Il deploy runtime 5F è concluso; build, deploy e migration non devono essere ripetuti. Questo PASS non autorizza il canary.
+
+## Prossimo gate singolo — identificazione del disposable
+
+Prima di token, snapshot o scritture, occorre identificare **un solo account Production già esistente**, creato esclusivamente per test e non riconducibile a una persona reale. Comunicare soltanto il suo `auth.users.id` UUID non sensibile e confermare nello stesso messaggio che è `athlete` oppure `staff`, disposable e non admin; non comunicare email, password, token o altri dati personali.
+
+Dopo l'identificazione, il gate read-only qualificherà cardinalità owner, baseline Profile/esperienze, assenza di privilegi admin e mapping sportivo. Soltanto se il gate passa verrà richiesto separatamente il permesso per il seguente perimetro mutativo minimo: **un PATCH Profile**, **un PUT di sostituzione esperienze**, osservazioni read-after-write e **teardown del disposable**. Nessuna di queste scritture è autorizzata ora.
+
 ## Informazioni ancora strettamente necessarie
 
-1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con la label legacy scelta già salvata, riferimenti canonici null e conferma che non sia amministratore;
+1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
 2. token/sessione dell'account disponibile **solo come secret del Codespace**, mai riportato nel documento o nei log;
-3. URL Production e identificatore immutabile del deployment;
+3. URL Production e identificatore immutabile del deployment — **PASS**;
 4. una label legacy con mapping univoco attivo, oppure una catena canonicale attiva, verificata subito prima del test;
 5. procedura già approvata per eliminare/disabilitare l'account disposable al termine.
 
@@ -40,14 +48,13 @@ La creazione dell'account e la sua eliminazione/disabilitazione sono operazioni 
 
 ## Prerequisiti fail-closed
 
-1. eseguire `git status --short` e ottenere output vuoto;
-2. verificare entrambe le revisioni e le route con `scripts/verify-phase-5f-runtime-release.sh "$RELEASE_COMMIT"`;
-3. confermare nel deployment provider che `$RELEASE_COMMIT` corrisponda al deployment Production selezionato;
-4. rieseguire il report read-only 5F-C: schema ready, history 5F-A pari a uno e nove trigger abilitati/invariati;
-5. verificare che l'account canary athlete/staff possieda esattamente una riga `profiles`, non sia admin, non sia usato da persone reali e abbia già `sport` uguale alla label scelta con i tre ID null;
-6. salvare fuori dai log lo snapshot dell'intera riga Profile e il conteggio delle notifiche del canary;
-7. verificare mapping e catena attivi;
-8. ottenere autorizzazioni esplicite per deploy, creazione account se necessaria, singolo canary e teardown.
+1. stato repository e verifica delle revisioni/route — **PASS già registrato; non ripetere salvo cambio SHA**;
+2. deployment provider e dominio canonico sullo SHA Production selezionato — **PASS già registrato**;
+3. rieseguire il report read-only 5F-C: schema ready, history 5F-A pari a uno e nove trigger abilitati/invariati;
+4. verificare che l'account canary athlete/staff possieda esattamente una riga `profiles`, non sia admin, non sia usato da persone reali e abbia già `sport` uguale alla label scelta con i tre ID null;
+5. salvare fuori dai log lo snapshot dell'intera riga Profile, dell'intera lista esperienze e il conteggio delle notifiche del canary;
+6. verificare mapping e catena attivi;
+7. ottenere autorizzazioni esplicite per il PATCH Profile, il PUT esperienze e il teardown.
 
 Qualunque mismatch è uno **STOP**. Non correggere schema, history, trigger o dati durante il canary.
 
@@ -58,13 +65,10 @@ I valori sensibili devono essere caricati come secret e l'history della shell di
 ```bash
 set +o history
 set -euo pipefail
-export RELEASE_COMMIT='<sha-del-deploy-production>'
-export PROD_BASE_URL='https://<production-host>'
+export RELEASE_COMMIT='36dfa9860d9d12f5373ea3a85d76f706b4d718a4'
+export PROD_BASE_URL='https://www.clubandplayer.com'
 export CANARY_LEGACY_SPORT='<legacy-label-con-mapping-univoco-attivo>'
 : "${CANARY_TOKEN:?caricare CANARY_TOKEN come secret del Codespace}"
-
-git status --short
-scripts/verify-phase-5f-runtime-release.sh "$RELEASE_COMMIT"
 
 curl --fail-with-body --silent --show-error \
   -H "Authorization: Bearer $CANARY_TOKEN" \
@@ -115,4 +119,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il piano è **READY_FOR_EXPLICIT_REMOTE_AUTHORIZATION** con la scelta disposable recepita. Il prossimo e unico controllo concreto è fornire le cinque informazioni minime sopra e approvare separatamente deployment, disponibilità/creazione del disposable, singolo PATCH e teardown. Nessuna di queste operazioni è stata eseguita.
+Il deploy è **PASS** e il canary resta **NOT AUTHORIZED / NOT EXECUTED**. Il prossimo e unico controllo concreto è ricevere l'UUID non sensibile di un account Production già esistente insieme alla conferma `athlete|staff`, disposable, non reale e non admin. Nessun token o altro dato è richiesto in questo passaggio; nessuna scrittura verrà eseguita prima del gate read-only e della successiva autorizzazione esplicita al perimetro Profile + esperienze + teardown.
