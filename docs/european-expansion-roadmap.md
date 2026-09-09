@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Ottenere attestazione disposable e autorizzazione esplicita al canary 5G accorpato sui due account qualificati** |
+| Next safe action | **Caricare e validare localmente i due token canary 5G nel terminale Codespace; nessuna richiesta HTTP in questo passaggio** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -717,6 +717,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Account candidati canary 5G — IDENTIFICATI / QUALIFICAZIONE READ-ONLY PENDING.** Club `870bb095-9f8b-4800-a8b9-3e137714e8d0`; Athlete/Player `2c988bc3-5245-45dc-8184-8582ab3b0e5a`. `scripts/run-phase-5g-canary-qualification.sh` controlla in una transazione read-only identità distinte, cardinalità auth/Profile, tipi account, segnali admin, baseline Opportunities/Applications vuota e un contesto football/association-football/eleven-a-side/goalkeeper canonico univoco. Il report non emette PII e non effettua write. Idoneità disposable e autorizzazione al canary restano separate e pendenti.
 
 **Qualificazione account canary 5G — PASS READ-ONLY USER-REPORTED.** `club_auth=1`, `applicant_auth=1`, un Profile ciascuno, tipi `club` e `athlete`, baseline Opportunities/Applications/received tutta zero, contesto canonico univoco e `read_only=on`. Nessuna write è stata eseguita. Restano obbligatorie la conferma umana che entrambi gli account siano fittizi/dedicati/eliminabili e l’autorizzazione separata al canary. Perimetro proposto: una POST Opportunity canonical-first goalkeeper con compatibility legacy, una lettura dettaglio e un filtro canonico, una POST Application dell’Athlete, letture `me`, `received` e owner-only, quindi eliminazione dell’Opportunity (con Application dipendente) e teardown ordinario dei due account con verifica finale del residuo. Nessun altro dato o account è incluso.
+
+**Attestazione e autorizzazione canary 5G — RICEVUTE.** L’utente conferma che entrambi gli account sono fittizi, dedicati ed eliminabili con i loro dati e autorizza esclusivamente il canary Production già delimitato e il teardown finale. Il primo step non esegue write né richieste remote: `source scripts/prepare-phase-5g-canary-secrets.sh` acquisisce i due access token tramite prompt nascosti, verifica localmente subject e scadenza e li conserva soltanto nel terminale corrente. Token e password non devono essere condivisi in chat.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
