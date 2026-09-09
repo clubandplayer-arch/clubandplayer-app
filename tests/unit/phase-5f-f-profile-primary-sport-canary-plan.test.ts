@@ -21,6 +21,16 @@ test('5F-F selects Production and pins the reviewed runtime revision', () => {
   assert.match(plan, /Preview resta non verificato/);
 });
 
+test('5F-F records the Codespace pass and rejects the older Production deployment', () => {
+  assert.match(plan, /PASS USER-REPORTED/);
+  assert.match(plan, /RELEASE_VERIFY_EXIT_CODE=0/);
+  assert.match(plan, /NEW DEPLOY REQUIRED/);
+  assert.match(plan, /772a45bb6b279409da48ffb08ad39510bf359651/);
+  assert.match(plan, /https:\/\/www\.clubandplayer\.com/);
+  assert.match(plan, /izzfjrcabtixxsrnkzro/);
+  assert.match(plan, /non è utilizzabile per il canary/);
+});
+
 test('5F-F uses only a disposable profile and accounts for trigger side effects', () => {
   assert.match(plan, /profilo di test dedicato e disposable/);
   assert.match(plan, /profilo reale.*è escluso/);
