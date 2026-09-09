@@ -133,6 +133,14 @@ test('5F-F Step 7 has a no-network recovery diagnostic that does not print the d
   assert.doesNotMatch(step7, /echo "\$PRODUCTION_DATABASE_URL"|printf[^\n]*PRODUCTION_DATABASE_URL/);
 });
 
+test('5F-F Step 7 records the missing DB secret and reloads it through hidden input only', () => {
+  assert.match(plan, /db_secret=missing baseline=present psql=present report=present/);
+  assert.match(plan, /read -rsp 'PRODUCTION_DATABASE_URL \(input nascosto\): '/);
+  assert.match(plan, /PHASE_5F_CANARY_STEP7_DB_SECRET_READY/);
+  assert.match(plan, /izzfjrcabtixxsrnkzro/);
+  assert.doesNotMatch(plan, /export PRODUCTION_DATABASE_URL=['"]postgres/);
+});
+
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {
   assert.match(plan, /b5ba567a-194b-4e07-afe7-f8f9ce29a808/);
   assert.match(plan, /Staff con ruolo legacy `Fotografo`/);

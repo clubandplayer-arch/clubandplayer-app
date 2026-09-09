@@ -470,6 +470,28 @@ printf 'PHASE_5F_CANARY_STEP7_LOCAL_READINESS db_secret=%s baseline=%s psql=%s r
 
 Questo marker è il solo dato necessario per distinguere un prerequisito locale mancante da un errore avvenuto durante `psql`. Non contiene segreti e non esegue il report.
 
+**Checkpoint recovery Step 7 2026-09-09 — LOCAL READINESS USER-REPORTED.** Il marker ha restituito `db_secret=missing baseline=present psql=present report=present`: baseline, client e report sono disponibili, mentre nel nuovo processo shell manca soltanto `PRODUCTION_DATABASE_URL`. Nessuna connessione o query è stata eseguita.
+
+Recuperare la connection string del database Production dal progetto Supabase `izzfjrcabtixxsrnkzro`, pannello **Connect → Connection string** (preferire la Session pooler IPv4 se il collegamento diretto non è raggiungibile dal Codespace). Caricarla senza echo e senza inserirla nella history:
+
+```bash
+set +e
+set +u
+set +o history
+
+read -rsp 'PRODUCTION_DATABASE_URL (input nascosto): ' PRODUCTION_DATABASE_URL
+printf '\n'
+export PRODUCTION_DATABASE_URL
+
+if [ -n "${PRODUCTION_DATABASE_URL:-}" ]; then
+  printf 'PHASE_5F_CANARY_STEP7_DB_SECRET_READY\n'
+else
+  printf 'PHASE_5F_CANARY_STOP db_secret_empty\n'
+fi
+```
+
+Non incollare la connection string in chat e non eseguire ancora il report nello stesso passaggio. Il marker `DB_SECRET_READY` conferma soltanto che la variabile è valorizzata nel terminale corrente.
+
 ```bash
 set +u
 set -eo pipefail
