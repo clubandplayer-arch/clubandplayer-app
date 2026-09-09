@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5G — MIGRATION E RUNTIME VERIFICATI LOCALMENTE SU POSTGRESQL 16** |
-| Current active phase | **FASE 5G — OPPORTUNITIES/APPLICATIONS, IMPLEMENTAZIONE LOCALE CANONICAL-FIRST** |
-| Next safe action | **Verificare il candidato runtime 5G immutabile e richiedere autorizzazione separata per il deploy Vercel Production** |
+| Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
+| Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
+| Next safe action | **Identificare e qualificare read-only due nuovi account disposable, uno Club e uno Athlete/Player; nessuna write prima dell’autorizzazione** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -710,7 +710,9 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 
 **Preflight Production 5G — PASS READY USER-REPORTED / APPLY NON AUTORIZZATO.** Il runner read-only ha restituito `PASS_READY_FOR_EXCLUSIVE_APPLY`: history 5C=1, 5D-C=1, 5G=0, tabelle=7, chiavi=6, colonne=0, collisioni=0, vincoli=0 e `read_only=on`. Preparato `scripts/run-phase-5g-production-exclusive-apply.sh`, vincolato alla sola migration `20261210120000` e al checksum `bf6eb4a7f8bc202c78ab3759c3b1b5ea80610db276672dd6d3719792b4ab7c9f`: applica con timeout, richiede il post-check schema/no-backfill prima di registrare la sola history 5G e conclude con un controllo read-only finale. Il runner non è stato eseguito; apply e deploy richiedono autorizzazione mutativa esplicita.
 
-**Rollout schema Production 5G — COMPLETATO / PASS USER-REPORTED.** Il runner esclusivo ha verificato il checksum, applicato la sola migration con COMMIT, superato il post-check, registrato esclusivamente `20261210120000` e concluso con `PHASE_5G_PRODUCTION_SCHEMA_ROLLOUT_COMPLETE history_5g=1 columns=6 constraints=8 indexes=3 canonical_rows=0`. Non ripetere migration, history o controlli già superati; nessun backfill, altra migration o deploy è stato eseguito. Il runtime 5G non è ancora distribuito: il gate successivo è la verifica repository-only dell’immagine candidata e una nuova autorizzazione esplicita al deploy.
+**Rollout schema Production 5G — COMPLETATO / PASS USER-REPORTED.** Il runner esclusivo ha verificato il checksum, applicato la sola migration con COMMIT, superato il post-check, registrato esclusivamente `20261210120000` e concluso con `PHASE_5G_PRODUCTION_SCHEMA_ROLLOUT_COMPLETE history_5g=1 columns=6 constraints=8 indexes=3 canonical_rows=0`. Non ripetere migration, history o controlli già superati; nessun backfill, altra migration o deploy è stato eseguito. Il runtime è stato successivamente distribuito come registrato nel checkpoint seguente.
+
+**Post-deploy Production 5G — PASS USER-REPORTED.** Sul dominio canonico `https://www.clubandplayer.com`, `/api/env` restituisce SHA `5f99179c8a8e759e69bda15cdee12995811bbbd6`, `mode=production`, URL e anon key presenti e database `izzfjrcabtixxsrnkzro.supabase.co`. Build, deploy, migration e history non devono essere ripetuti. Per chiudere 5G resta un unico canary funzionale accorpato: un nuovo Club disposable crea una Opportunity con sport/position canonici e legacy dual-written, le letture e il filtro canonico la ritrovano; un nuovo Athlete/Player disposable invia una sola Application; `me`, `received` e lista owner confermano contesto ereditato e autorizzazioni; infine Application/Opportunity e i due account vengono rimossi e il residuo verificato. Prima di ogni write occorrono qualificazione read-only dei due UUID, attestazione di eliminabilità e autorizzazione esplicita. L’account Staff fotografo usato nella 5F è eliminato e vietato in questo canary.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
