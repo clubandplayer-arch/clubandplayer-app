@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Acquisire le tre baseline HTTP read-only 5G nel terminale che conserva i token; nessuna write** |
+| Next safe action | **Diagnosticare localmente il 401 Club usando le evidenze già salvate; nessuna nuova richiesta e nessuna write** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -721,6 +721,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Attestazione e autorizzazione canary 5G — RICEVUTE.** L’utente conferma che entrambi gli account sono fittizi, dedicati ed eliminabili con i loro dati e autorizza esclusivamente il canary Production già delimitato e il teardown finale. Il primo step non esegue write né richieste remote: `source scripts/prepare-phase-5g-canary-secrets.sh` acquisisce i due access token tramite prompt nascosti, verifica localmente subject e scadenza e li conserva soltanto nel terminale corrente. Token e password non devono essere condivisi in chat.
 
 **Canary secret gate 5G — PASS USER-REPORTED.** Nel terminale Codespace corrente `source scripts/prepare-phase-5g-canary-secrets.sh` ha validato subject e scadenza dei due token e restituito `PHASE_5G_CANARY_SECRETS_READY` per release `5f99179c8a8e759e69bda15cdee12995811bbbd6`. Nessuna richiesta HTTP o write è stata eseguita. Il prossimo blocco `scripts/run-phase-5g-canary-http-baseline.sh` effettua soltanto GET su `/api/env`, applicant `applications/me` e Club `applications/received`, richiede baseline vuote e conserva file privati in `/tmp`.
+
+**Canary baseline HTTP 5G — STOP FAIL-CLOSED / CLUB 401 USER-REPORTED.** Il blocco si è arrestato su `club_http_401`; nessuna Opportunity o Application è stata creata e non serve teardown dati. Non effettuare retry automatici. I file `/tmp/phase-5g-canary-env-before.json`, `/tmp/phase-5g-canary-applicant-applications-before.json` e `/tmp/phase-5g-canary-club-received-before.json` restano evidenza privata. Il prossimo singolo passaggio è `scripts/diagnose-phase-5g-canary-http-baseline.sh`, esclusivamente locale e senza rete: ricontrolla subject/scadenza del token Club e stampa soltanto forma/code limitato e hash delle tre risposte.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
