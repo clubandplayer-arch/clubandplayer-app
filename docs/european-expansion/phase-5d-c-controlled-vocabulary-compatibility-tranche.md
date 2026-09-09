@@ -168,4 +168,16 @@ La versione 5D-C è cronologicamente precedente alle versioni 5F già registrate
 
 **PASS REPOSITORY-ONLY, NESSUN BLOCKER LOCALE.** I test statici/contratto pertinenti passano. Il runner PostgreSQL esistente resta il gate runtime corretto, ma non è rieseguibile in questo container perché manca `pg_ctlcluster`; il PASS PostgreSQL 16.15 double-apply/drift già registrato non viene sostituito né dichiarato nuovamente eseguito.
 
-Il prossimo singolo passaggio operativo è preparare ed eseguire, previa autorizzazione separata, un controllo Production **read-only** di history 5C/5D-C/5F, presenza/candidate key delle otto tabelle, code foundation richiesti e collisioni sulle natural key. Solo un PASS di quel controllo potrà presentare l'apply esclusivo esatto di `20261207120000`; 5D-E-I resta fuori perimetro.
+Il preflight è `scripts/sports/reports/phase-5d-c-production-preflight-read-only.sql`. Riceve il manifest compatto come variabile `psql`, valuta tutti i 356 record e restituisce una sola riga JSON con history 5C/5D-C/5F, otto tabelle e otto chiavi richieste, riferimenti foundation mancanti, record exact/missing e collisioni. Non contiene DDL/DML, lock o chiamate a funzioni applicative; usa `BEGIN TRANSACTION READ ONLY` e `ROLLBACK`.
+
+Eseguire dal Codespace con un solo comando:
+
+```bash
+bash scripts/run-phase-5d-c-production-preflight.sh
+```
+
+Il runner usa `set -eo pipefail` e non `set -u`, disabilita la history e richiede prima la URL senza password tramite input nascosto, poi la password direttamente tramite il prompt `psql -W`. La URL deve quindi essere del tipo `postgresql://<user>@<host>:<port>/<database>`, senza segmento password. Output completo privato: `/tmp/phase-5d-c-production-preflight.json`; condividere soltanto il marker `PHASE_5D_C_PRODUCTION_PREFLIGHT_*`.
+
+Unico esito che abilita la preparazione dell'apply: `PASS_READY_FOR_EXCLUSIVE_APPLY` con 5C/5F history singola, 5D-C history zero, otto tabelle/chiavi, 356 record valutati, zero collisioni e zero riferimenti mancanti. `PASS_ALREADY_APPLIED` impone invece STOP perché contraddice il checkpoint corrente. Qualunque `BLOCKED_*` ferma il flusso senza correzioni.
+
+Dopo un PASS ready, la procedura mutativa da presentare separatamente sarà: riconfermare gli hash; applicare con `psql` esclusivamente `20261207120000_seed_controlled_sports_vocabulary.sql` (mai `db push`); eseguire un post-check read-only che richieda 356 exact/zero missing/zero collisioni mentre history è ancora zero; registrare esclusivamente la versione `20261207120000`; ripetere il post-check richiedendo history uno. Apply, post-check mutativo/history e relativa autorizzazione restano fuori dal preflight corrente. 5D-E-I resta fuori perimetro.

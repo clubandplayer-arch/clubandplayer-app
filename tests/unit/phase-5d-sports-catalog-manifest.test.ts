@@ -194,3 +194,26 @@ test('5D-C seed migration is additive, fail-closed and does not touch runtime or
   assert.match(sql, /on conflict[\s\S]*do nothing/);
   assert.match(sql, /raise exception '5d-c player legacy mapping payload mismatch'/);
 });
+
+test('5D-C Production preflight checks the complete manifest without writes', () => {
+  const sql = readFileSync(
+    'scripts/sports/reports/phase-5d-c-production-preflight-read-only.sql',
+    'utf8',
+  ).toLowerCase();
+  assert.match(sql, /begin transaction read only;/);
+  assert.match(sql, /rollback;/);
+  assert.match(sql, /:'manifest_json'::jsonb/);
+  assert.match(sql, /manifest_records <> 356/);
+  assert.match(sql, /required_tables_present <> 8 or required_keys_present <> 8/);
+  assert.match(sql, /collisions <> 0/);
+  assert.match(sql, /missing_foundation_refs <> 0/);
+  assert.match(sql, /pass_ready_for_exclusive_apply/);
+  assert.doesNotMatch(sql, /\b(?:insert|update|delete|alter|create|drop|truncate)\b/);
+
+  const runner = readFileSync('scripts/run-phase-5d-c-production-preflight.sh', 'utf8');
+  assert.match(runner, /set -eo pipefail/);
+  assert.match(runner, /set \+u/);
+  assert.match(runner, /read -rsp/);
+  assert.match(runner, /psql "\$PRODUCTION_DATABASE_URL" -W/);
+  assert.doesNotMatch(runner, /set -u|set -x|echo "\$PRODUCTION_DATABASE_URL"/);
+});
