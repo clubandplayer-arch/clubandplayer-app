@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5F — SCHEMA E GATE RUNTIME PRODUCTION COMPLETATI** |
 | Current active phase | **FASE 5D — GATE DATI 5D-C; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Eseguire il preflight Production read-only 5D-C autorizzato con il runner esistente; nessun apply/seed/backfill** |
+| Next safe action | **Eseguire nel Codespace il rollout esclusivo 5D-C autorizzato; arresto senza retry su errore** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -599,6 +599,8 @@ Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Produ
 **Primo run + remediation preflight 5D-C 2026-09-09 — BLOCKED LOCALE CORRETTO / RERUN READ-ONLY PENDING.** Production ha confermato read-only, history 5C/5F singola e 5D-C zero, otto tabelle/chiavi, zero collisioni e zero riferimenti foundation mancanti, ma il report valutava solo i 136 catalog record indipendenti. I JOIN interni escludevano 97 applicability e 123 mapping perché position/role target non sono ancora seedati. Sostituiti con LEFT JOIN: tutti i 356 record restano ora classificabili senza abbassare la soglia. Il runner stampa il diagnostico anche per `BLOCKED_*` e restituisce exit 1. Nessuna modifica Production; apply/history restano non autorizzati.
 
 **Preflight Production 5D-C corretto 2026-09-09 — PASS READY / APPLY NON AUTORIZZATO.** History 5C/5F singola e 5D-C zero, tabelle/chiavi 8/8, 356 record valutati tutti missing, zero exact/collision e zero riferimenti foundation mancanti, read-only on. Preparato il runner definitivo: checksum, timeout, apply esclusivo della sola `20261207120000`, post-check 356 exact prima della history, registrazione condizionata della sola versione e post-check finale history 1. Non eseguito; richiede autorizzazione mutativa separata. Nessun backfill, 5F o 5D-E-I.
+
+**Autorizzazione rollout Production 5D-C 2026-09-09 — RICEVUTA / HANDOFF CODESPACE.** Autorizzato il solo runner `scripts/run-phase-5d-c-production-exclusive-apply.sh`: migration/hash fissati, 356 record, post-check pre-history, registrazione della sola `20261207120000` subordinata al PASS e verifica finale. Esclusi altre migration, backfill, deploy, 5F e retry automatici. Esecuzione non effettuata dall'agente; il prossimo dato è esclusivamente il marker PASS/errore del runner eseguito nel Codespace dell'utente.
 
 #### FASE 5D-D — Source registry organizations/competitions
 
