@@ -208,6 +208,8 @@ test('5D-C Production preflight checks the complete manifest without writes', ()
   assert.match(sql, /collisions <> 0/);
   assert.match(sql, /missing_foundation_refs <> 0/);
   assert.match(sql, /pass_ready_for_exclusive_apply/);
+  assert.equal((sql.match(/left join public\.player_positions/g) ?? []).length >= 2, true);
+  assert.match(sql, /left join public\.staff_roles sr/);
   assert.doesNotMatch(sql, /\b(?:insert|update|delete|alter|create|drop|truncate)\b/);
 
   const runner = readFileSync('scripts/run-phase-5d-c-production-preflight.sh', 'utf8');
@@ -215,5 +217,7 @@ test('5D-C Production preflight checks the complete manifest without writes', ()
   assert.match(runner, /set \+u/);
   assert.match(runner, /read -rsp/);
   assert.match(runner, /psql "\$PRODUCTION_DATABASE_URL" -W/);
+  assert.match(runner, /case "\$CLASSIFICATION" in/);
+  assert.match(runner, /\*\) exit 1/);
   assert.doesNotMatch(runner, /set -u|set -x|echo "\$PRODUCTION_DATABASE_URL"/);
 });

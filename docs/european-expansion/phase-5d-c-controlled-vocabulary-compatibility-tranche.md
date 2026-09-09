@@ -181,3 +181,11 @@ Il runner usa `set -eo pipefail` e non `set -u`, disabilita la history e richied
 Unico esito che abilita la preparazione dell'apply: `PASS_READY_FOR_EXCLUSIVE_APPLY` con 5C/5F history singola, 5D-C history zero, otto tabelle/chiavi, 356 record valutati, zero collisioni e zero riferimenti mancanti. `PASS_ALREADY_APPLIED` impone invece STOP perché contraddice il checkpoint corrente. Qualunque `BLOCKED_*` ferma il flusso senza correzioni.
 
 Dopo un PASS ready, la procedura mutativa da presentare separatamente sarà: riconfermare gli hash; applicare con `psql` esclusivamente `20261207120000_seed_controlled_sports_vocabulary.sql` (mai `db push`); eseguire un post-check read-only che richieda 356 exact/zero missing/zero collisioni mentre history è ancora zero; registrare esclusivamente la versione `20261207120000`; ripetere il post-check richiedendo history uno. Apply, post-check mutativo/history e relativa autorizzazione restano fuori dal preflight corrente. 5D-E-I resta fuori perimetro.
+
+### Correzione del preflight dopo il primo risultato Production
+
+Il primo run read-only ha restituito `BLOCKED_MANIFEST_CONTRACT`, con history e prerequisiti corretti ma `evaluated=136`, `missing=136`, `exact=0`, `collisions=0` e zero riferimenti foundation mancanti. I 136 record coincidevano esattamente con i cinque cataloghi indipendenti (3 gender + 4 format + 6 scope + 97 position + 26 staff role); mancavano dalla valutazione 97 applicability e 123 mapping legacy.
+
+La causa era locale nel report: i tre CTE dei record dipendenti usavano `JOIN` interni verso `player_positions`/`staff_roles`. Poiché il seed non è ancora applicato, le posizioni e i ruoli attesi non esistono ancora e gli inner join eliminavano le 220 righe invece di classificarle `missing`. La correzione usa `LEFT JOIN`, mantenendo ogni record manifest nella valutazione; la soglia resta rigorosamente 356 e non è stata abbassata.
+
+Il runner ora stampa sempre il marker diagnostico dopo una query SQL valida. Le classificazioni PASS terminano con exit 0; ogni `BLOCKED_*` stampa prima history/schema/evaluated/exact/missing/collisions/foundation e termina con exit 1. Nessun dato Production è stato modificato e il risultato precedente non autorizza apply, seed, backfill o history.

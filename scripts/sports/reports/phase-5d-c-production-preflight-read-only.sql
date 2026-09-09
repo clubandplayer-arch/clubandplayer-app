@@ -107,8 +107,8 @@ scope_evaluation as (
     when a.id is null then 'missing'
     when a.is_active then 'exact' else 'collision' end as state
   from records r
-  join public.player_positions p on p.code = split_part(r.record -> 'references' ->> 'position', ':', 2)
-  join public.sports s on s.code = split_part(r.record -> 'references' ->> 'sport', ':', 2)
+  left join public.player_positions p on p.code = split_part(r.record -> 'references' ->> 'position', ':', 2)
+  left join public.sports s on s.code = split_part(r.record -> 'references' ->> 'sport', ':', 2)
   left join public.sport_disciplines d on d.sport_id = s.id and d.code = nullif(split_part(r.record -> 'references' ->> 'discipline', ':', 2), '')
   left join public.sport_variants v on v.discipline_id = d.id and v.code = nullif(split_part(r.record -> 'references' ->> 'variant', ':', 2), '')
   left join public.player_position_applicability a
@@ -122,8 +122,8 @@ player_mapping_evaluation as (
     when m.source_value = r.record -> 'attributes' ->> 'sourceValue'
      and m.position_id = p.id and m.is_active then 'exact' else 'collision' end as state
   from records r
-  join public.player_positions p on p.code = split_part(r.record -> 'references' ->> 'position', ':', 2)
-  join public.sports s on s.code = split_part(r.record -> 'references' ->> 'sport', ':', 2)
+  left join public.player_positions p on p.code = split_part(r.record -> 'references' ->> 'position', ':', 2)
+  left join public.sports s on s.code = split_part(r.record -> 'references' ->> 'sport', ':', 2)
   left join public.sport_disciplines d on d.sport_id = s.id and d.code = nullif(split_part(r.record -> 'references' ->> 'discipline', ':', 2), '')
   left join public.sport_variants v on v.discipline_id = d.id and v.code = nullif(split_part(r.record -> 'references' ->> 'variant', ':', 2), '')
   left join public.legacy_player_position_mappings m
@@ -137,7 +137,7 @@ staff_mapping_evaluation as (
     when m.source_value = r.record -> 'attributes' ->> 'sourceValue'
      and m.staff_role_id = sr.id and m.is_active then 'exact' else 'collision' end as state
   from records r
-  join public.staff_roles sr on sr.code = split_part(r.record -> 'references' ->> 'staffRole', ':', 2)
+  left join public.staff_roles sr on sr.code = split_part(r.record -> 'references' ->> 'staffRole', ':', 2)
   left join public.legacy_staff_role_mappings m
     on m.normalized_source_value = r.record -> 'attributes' ->> 'normalizedSourceValue'
   where r.record ->> 'kind' = 'legacy_staff_role_mapping'
