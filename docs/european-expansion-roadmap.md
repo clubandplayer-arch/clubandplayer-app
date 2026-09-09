@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Eseguire una sola POST Opportunity canonical-first e le due letture di verifica; fermarsi prima dell’Application** |
+| Next safe action | **Diagnosticare localmente il 500 della POST Opportunity dalle evidenze preservate; nessun retry, Application o teardown prematuro** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -729,6 +729,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Sostituzione token Club 5G — PASS USER-REPORTED.** `source scripts/replace-phase-5g-canary-club-token.sh` ha validato il nuovo token e restituito `PHASE_5G_CANARY_CLUB_TOKEN_REPLACED` per il Club autorizzato. Nessuna rete o write è stata eseguita. Il prossimo blocco `scripts/run-phase-5g-canary-club-baseline-after-token-replacement.sh` archivia la risposta 401, riusa senza rete le evidenze env/applicant già 200 ed effettua una sola GET Club `applications/received`; nessun retry automatico.
 
 **Baseline HTTP canary 5G — PASS USER-REPORTED.** Con il token Club sostituito, la singola GET `applications/received` è 200; `/api/env` e applicant `applications/me` restano 200 dalle evidenze preservate. Entrambe le baseline applicative hanno SHA-256 `8fe32e407a1038ee38753b70e5374b3a46d6ae9d5f16cd5b73c53abaca8f5ed0`. Il precedente 401 resta archiviato con SHA-256 `3be5b8e53fdc8b0a2996590589456db33504977f3d1ce9bb75016c8a707e1a71`. Il prossimo blocco autorizzato `scripts/run-phase-5g-canary-opportunity.sh` usa il contesto privato qualificato, esegue una sola POST Opportunity e verifica response, dettaglio e filtro canonico; non crea ancora Application e non esegue retry.
+
+**Canary Opportunity 5G — STOP FAIL-CLOSED / CREATE 500 USER-REPORTED.** La singola POST autorizzata ha restituito `opportunity_create_http_500`; dettaglio, filtro e Application non sono stati eseguiti. Vietato ripetere la POST. Payload e risposta restano privati in `/tmp/phase-5g-canary-opportunity-payload.json` e `/tmp/phase-5g-canary-opportunity-create.json`. Prima del teardown occorre stabilire la causa e l’eventuale presenza di un ID/residuo. Il prossimo singolo step `scripts/diagnose-phase-5g-canary-opportunity-create.sh` usa soltanto questi file locali e stampa forma, code/messaggio limitati, presenza ID e hash; nessuna rete o write.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
