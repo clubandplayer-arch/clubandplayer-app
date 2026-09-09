@@ -39,32 +39,65 @@ columns_state as (
   from required_columns r left join information_schema.columns c
     on c.table_schema='public' and c.table_name='opportunities' and c.column_name=r.name
 ),
-required_constraints(name) as (values
-  ('opportunities_canonical_sport_fk'),('opportunities_canonical_discipline_sport_fk'),
-  ('opportunities_canonical_variant_discipline_fk'),('opportunities_player_position_fk'),
-  ('opportunities_staff_role_fk'),('opportunities_gender_code_fk'),
-  ('opportunities_canonical_sport_shape_check'),('opportunities_canonical_role_shape_check')
+required_constraints(name,kind,target,fragment) as (values
+  ('opportunities_canonical_sport_fk','f','sports',null),
+  ('opportunities_canonical_discipline_sport_fk','f','sport_disciplines',null),
+  ('opportunities_canonical_variant_discipline_fk','f','sport_variants',null),
+  ('opportunities_player_position_fk','f','player_positions',null),
+  ('opportunities_staff_role_fk','f','staff_roles',null),
+  ('opportunities_gender_code_fk','f','gender_categories',null),
+  ('opportunities_canonical_sport_shape_check','c',null,'sport_variant_id'),
+  ('opportunities_canonical_role_shape_check','c',null,'player_position_id')
 ),
 constraints_state as (
-  select count(c.oid) as present
+  select count(c.oid) as present,
+    count(*) filter (where c.oid is not null and (
+      not c.convalidated
+      or c.contype <> r.kind::"char"
+      or (r.kind='f' and (c.confdeltype <> 'r' or c.confrelid <> ('public.'||r.target)::regclass))
+      or (r.kind='c' and position(r.fragment in pg_get_constraintdef(c.oid))=0)
+    )) as collisions
   from required_constraints r left join pg_constraint c
     on c.conname=r.name and c.conrelid='public.opportunities'::regclass
+),
+required_indexes(name) as (values
+  ('opportunities_canonical_sport_idx'),
+  ('opportunities_player_position_idx'),
+  ('opportunities_staff_role_idx')
+),
+indexes_state as (
+  select count(c.oid) as present
+  from required_indexes r left join pg_class c
+    on c.relname=r.name and c.relnamespace='public'::regnamespace and c.relkind in ('i','I')
+),
+data_state as (
+  select count(*) filter (where
+    to_jsonb(o)->>'sport_id' is not null
+    or to_jsonb(o)->>'sport_discipline_id' is not null
+    or to_jsonb(o)->>'sport_variant_id' is not null
+    or to_jsonb(o)->>'player_position_id' is not null
+    or to_jsonb(o)->>'staff_role_id' is not null
+    or to_jsonb(o)->>'gender_code' is not null
+  ) as canonical_rows from public.opportunities o
 ),
 state as (
   select h.*, t.present as tables_present, k.present as keys_present,
     col.present as columns_present, col.collisions as column_collisions,
-    con.present as constraints_present
+    con.present as constraints_present, con.collisions as constraint_collisions,
+    idx.present as indexes_present, d.canonical_rows
   from history h cross join tables_state t cross join keys_state k
     cross join columns_state col cross join constraints_state con
+    cross join indexes_state idx cross join data_state d
 )
 select jsonb_build_object(
   'classification', case
     when current_setting('transaction_read_only') <> 'on' then 'BLOCKED_NOT_READ_ONLY'
     when phase5c <> 1 or phase5dc <> 1 then 'BLOCKED_HISTORY_PREREQUISITES'
     when tables_present <> 7 or keys_present <> 6 then 'BLOCKED_SCHEMA_PREREQUISITES'
-    when column_collisions <> 0 then 'BLOCKED_COLUMN_COLLISION'
-    when phase5g=0 and columns_present=0 and constraints_present=0 then 'PASS_READY_FOR_EXCLUSIVE_APPLY'
-    when phase5g=1 and columns_present=6 and constraints_present=8 then 'PASS_ALREADY_APPLIED'
+    when column_collisions <> 0 or constraint_collisions <> 0 then 'BLOCKED_SCHEMA_COLLISION'
+    when phase5g=0 and columns_present=0 and constraints_present=0 and indexes_present=0 then 'PASS_READY_FOR_EXCLUSIVE_APPLY'
+    when phase5g=0 and columns_present=6 and constraints_present=8 and indexes_present=3 and canonical_rows=0 then 'PASS_SCHEMA_READY_FOR_HISTORY'
+    when phase5g=1 and columns_present=6 and constraints_present=8 and indexes_present=3 then 'PASS_ALREADY_APPLIED'
     else 'BLOCKED_PARTIAL_OR_HISTORY_DRIFT'
   end,
   'transactionReadOnly', current_setting('transaction_read_only'),
@@ -73,9 +106,9 @@ select jsonb_build_object(
   'schema', jsonb_build_object(
     'requiredTablesPresent',tables_present,'requiredKeysPresent',keys_present,
     'columnsPresent',columns_present,'columnCollisions',column_collisions,
-    'constraintsPresent',constraints_present
+    'constraintsPresent',constraints_present,'constraintCollisions',constraint_collisions,
+    'indexesPresent',indexes_present,'canonicalRows',canonical_rows
   )
 ) from state;
 
 rollback;
-
