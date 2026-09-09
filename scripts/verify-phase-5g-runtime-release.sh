@@ -5,13 +5,19 @@ set +u
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-CANDIDATE="${1:-HEAD}"
-RUNTIME_REVISION='2943f2b'
+if [ "$#" -ne 1 ] || [ -z "${1:-}" ]; then
+  printf 'Usage: %s <remote-candidate-sha>\n' "$0" >&2
+  exit 64
+fi
+
+CANDIDATE="$1"
+RUNTIME_REVISION='905763b8'
 MIGRATION='supabase/migrations/20261210120000_opportunity_canonical_sports_context.sql'
 EXPECTED_MIGRATION_SHA256='bf6eb4a7f8bc202c78ab3759c3b1b5ea80610db276672dd6d3719792b4ab7c9f'
 
 COMMIT="$(git rev-parse --verify "${CANDIDATE}^{commit}")"
-git merge-base --is-ancestor "$RUNTIME_REVISION" "$COMMIT"
+RUNTIME_COMMIT="$(git rev-parse --verify "${RUNTIME_REVISION}^{commit}")"
+git merge-base --is-ancestor "$RUNTIME_COMMIT" "$COMMIT"
 
 check_marker() {
   local path="$1" marker="$2"
@@ -30,4 +36,3 @@ ACTUAL_MIGRATION_SHA256="$(git show "$COMMIT:$MIGRATION" | sha256sum | cut -d' '
 
 printf 'PHASE_5G_RUNTIME_RELEASE_PASS commit=%s migration_sha256=%s\n' \
   "$COMMIT" "$ACTUAL_MIGRATION_SHA256"
-
