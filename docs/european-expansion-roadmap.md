@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Caricare e validare localmente i due token canary 5G nel terminale Codespace; nessuna richiesta HTTP in questo passaggio** |
+| Next safe action | **Acquisire le tre baseline HTTP read-only 5G nel terminale che conserva i token; nessuna write** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -719,6 +719,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Qualificazione account canary 5G — PASS READ-ONLY USER-REPORTED.** `club_auth=1`, `applicant_auth=1`, un Profile ciascuno, tipi `club` e `athlete`, baseline Opportunities/Applications/received tutta zero, contesto canonico univoco e `read_only=on`. Nessuna write è stata eseguita. Restano obbligatorie la conferma umana che entrambi gli account siano fittizi/dedicati/eliminabili e l’autorizzazione separata al canary. Perimetro proposto: una POST Opportunity canonical-first goalkeeper con compatibility legacy, una lettura dettaglio e un filtro canonico, una POST Application dell’Athlete, letture `me`, `received` e owner-only, quindi eliminazione dell’Opportunity (con Application dipendente) e teardown ordinario dei due account con verifica finale del residuo. Nessun altro dato o account è incluso.
 
 **Attestazione e autorizzazione canary 5G — RICEVUTE.** L’utente conferma che entrambi gli account sono fittizi, dedicati ed eliminabili con i loro dati e autorizza esclusivamente il canary Production già delimitato e il teardown finale. Il primo step non esegue write né richieste remote: `source scripts/prepare-phase-5g-canary-secrets.sh` acquisisce i due access token tramite prompt nascosti, verifica localmente subject e scadenza e li conserva soltanto nel terminale corrente. Token e password non devono essere condivisi in chat.
+
+**Canary secret gate 5G — PASS USER-REPORTED.** Nel terminale Codespace corrente `source scripts/prepare-phase-5g-canary-secrets.sh` ha validato subject e scadenza dei due token e restituito `PHASE_5G_CANARY_SECRETS_READY` per release `5f99179c8a8e759e69bda15cdee12995811bbbd6`. Nessuna richiesta HTTP o write è stata eseguita. Il prossimo blocco `scripts/run-phase-5g-canary-http-baseline.sh` effettua soltanto GET su `/api/env`, applicant `applications/me` e Club `applications/received`, richiede baseline vuote e conserva file privati in `/tmp`.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
