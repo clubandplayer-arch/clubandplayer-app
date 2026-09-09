@@ -30,6 +30,15 @@ test('5F-F stops at one disposable identity before any combined canary write', (
   assert.match(plan, /Nessuna di queste scritture è autorizzata ora/);
 });
 
+test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {
+  assert.match(plan, /b5ba567a-194b-4e07-afe7-f8f9ce29a808/);
+  assert.match(plan, /Staff con ruolo legacy `Fotografo`/);
+  assert.match(plan, /QUALIFICAZIONE TECNICA PENDING/);
+  assert.match(plan, /phase-5f-canary-account-qualification-read-only\.sql/);
+  assert.match(plan, /PASS_READ_ONLY_TECHNICAL_QUALIFICATION_DISPOSABLE_ATTESTATION_PENDING/);
+  assert.match(plan, /prossimo singolo dato necessario è la cella JSON/i);
+});
+
 test('5F-F selects Production and pins the reviewed runtime revision', () => {
   assert.match(plan, /ambiente proposto è \*\*Production\*\*/);
   assert.match(plan, /ad9862991d9d6d3c8992796c976601e6e3f917ea/);

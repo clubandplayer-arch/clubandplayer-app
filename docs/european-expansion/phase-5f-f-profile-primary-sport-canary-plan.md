@@ -36,6 +36,23 @@ Prima di token, snapshot o scritture, occorre identificare **un solo account Pro
 
 Dopo l'identificazione, il gate read-only qualificherà cardinalità owner, baseline Profile/esperienze, assenza di privilegi admin e mapping sportivo. Soltanto se il gate passa verrà richiesto separatamente il permesso per il seguente perimetro mutativo minimo: **un PATCH Profile**, **un PUT di sostituzione esperienze**, osservazioni read-after-write e **teardown del disposable**. Nessuna di queste scritture è autorizzata ora.
 
+**Account proposto 2026-09-09 — IDENTIFICATO / QUALIFICAZIONE TECNICA PENDING.** L'utente indica `b5ba567a-194b-4e07-afe7-f8f9ce29a808` come Staff con ruolo legacy `Fotografo`. L'idoneità disposable/non reale non è ancora attestata e non viene inferita dal ruolo. Una lettura anonima del solo endpoint pubblico ha restituito una lista vuota, compatibile con un profilo non pubblicato ma insufficiente a provare esistenza, cardinalità, privilegi o baseline; la route owner-only esperienze ha correttamente risposto 401 senza sessione. Nessuna scrittura è stata tentata.
+
+Il report `scripts/sports/reports/phase-5f-canary-account-qualification-read-only.sql` esegue in una transazione `READ ONLY` la sola qualifica tecnica richiesta: esistenza auth singola, un solo Profile Staff/Fotografo, assenza di segnali admin auth/Profile, canonical Profile null, conteggio e stato canonicale delle esperienze, e mapping legacy sportivo attivo/univoco/coerente. Non restituisce email, nomi, club o location e termina con `ROLLBACK`. Il PASS tecnico mantiene intenzionalmente `DISPOSABLE_ATTESTATION_PENDING`.
+
+Questo workspace non dispone di una connessione Production e non può completare direttamente il report privilegiato. Eseguirlo nel Codespace che conserva `PRODUCTION_DATABASE_URL` come secret, senza stampare la URL:
+
+```bash
+set +o history
+set -euo pipefail
+: "${PRODUCTION_DATABASE_URL:?caricare il secret Production senza stamparlo}"
+psql "$PRODUCTION_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+  -v canary_user_id='b5ba567a-194b-4e07-afe7-f8f9ce29a808' \
+  -f scripts/sports/reports/phase-5f-canary-account-qualification-read-only.sql
+```
+
+Il prossimo singolo dato necessario è la cella JSON `phase_5f_canary_account_qualification` completa. Qualunque classificazione diversa da `PASS_READ_ONLY_TECHNICAL_QUALIFICATION_DISPOSABLE_ATTESTATION_PENDING`, `transactionReadOnly` diverso da `on` o `writesPerformed` diverso da `false` è uno STOP senza retry. Non inviare URL database, key o token.
+
 ## Informazioni ancora strettamente necessarie
 
 1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
@@ -119,4 +136,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy è **PASS** e il canary resta **NOT AUTHORIZED / NOT EXECUTED**. Il prossimo e unico controllo concreto è ricevere l'UUID non sensibile di un account Production già esistente insieme alla conferma `athlete|staff`, disposable, non reale e non admin. Nessun token o altro dato è richiesto in questo passaggio; nessuna scrittura verrà eseguita prima del gate read-only e della successiva autorizzazione esplicita al perimetro Profile + esperienze + teardown.
+Il deploy è **PASS** e il canary resta **NOT AUTHORIZED / NOT EXECUTED**. L'account Staff/Fotografo è identificato, ma la qualificazione tecnica e l'attestazione disposable sono entrambe pendenti. Il prossimo e unico controllo concreto è ricevere la cella JSON del report read-only; nessun token applicativo è richiesto e nessuna scrittura verrà eseguita prima del PASS tecnico, della conferma disposable e della successiva autorizzazione esplicita al perimetro Profile + esperienze + teardown.
