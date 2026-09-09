@@ -5,6 +5,7 @@ import test from 'node:test';
 const report = readFileSync('scripts/sports/reports/phase-5f-canary-teardown-verification-read-only.sql', 'utf8');
 
 test('5F teardown verification is parameterized, read-only and fail-closed', () => {
+  assert.match(report, /Usage: psql -X -qAt/);
   assert.match(report, /begin transaction read only;/i);
   assert.match(report, /rollback;/i);
   assert.match(report, /:'canary_user_id'::uuid/);

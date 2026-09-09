@@ -141,6 +141,11 @@ test('5F-F Step 7 records the missing DB secret and reloads it through hidden in
   assert.doesNotMatch(plan, /export PRODUCTION_DATABASE_URL=['"]postgres/);
 });
 
+test('5F-F Step 7 records secret readiness and keeps psql output JSON-only', () => {
+  assert.match(plan, /Checkpoint recovery Step 7.*DB SECRET READY USER-REPORTED/s);
+  assert.match(plan, /psql "\$PRODUCTION_DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1/);
+});
+
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {
   assert.match(plan, /b5ba567a-194b-4e07-afe7-f8f9ce29a808/);
   assert.match(plan, /Staff con ruolo legacy `Fotografo`/);

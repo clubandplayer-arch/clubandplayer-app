@@ -492,6 +492,8 @@ fi
 
 Non incollare la connection string in chat e non eseguire ancora il report nello stesso passaggio. Il marker `DB_SECRET_READY` conferma soltanto che la variabile è valorizzata nel terminale corrente.
 
+**Checkpoint recovery Step 7 2026-09-09 — DB SECRET READY USER-REPORTED.** `PRODUCTION_DATABASE_URL` è valorizzata tramite input nascosto nel terminale che conserva baseline, `psql` e report. La connection string non è stata condivisa e nessuna query è stata ancora eseguita.
+
 ```bash
 set +u
 set -eo pipefail
@@ -513,7 +515,7 @@ fi
 
 CANARY_PROFILE_ID="$(jq -er '.data.id | select(type == "string" and test("^[0-9a-fA-F-]{36}$"))' "$PROFILE_BEFORE")"
 
-psql "$PRODUCTION_DATABASE_URL" -X -At -v ON_ERROR_STOP=1 \
+psql "$PRODUCTION_DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 \
   -v canary_user_id="$CANARY_USER_ID" \
   -v canary_profile_id="$CANARY_PROFILE_ID" \
   -f scripts/sports/reports/phase-5f-canary-teardown-verification-read-only.sql \

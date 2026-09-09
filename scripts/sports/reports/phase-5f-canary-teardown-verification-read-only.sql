@@ -1,5 +1,5 @@
 -- FASE 5F: verify removal of one disposable canary account without writes or PII.
--- Usage: psql -X -At -v ON_ERROR_STOP=1 -v canary_user_id='<uuid>' -v canary_profile_id='<uuid>' -f <this-file>
+-- Usage: psql -X -qAt -v ON_ERROR_STOP=1 -v canary_user_id='<uuid>' -v canary_profile_id='<uuid>' -f <this-file>
 begin transaction read only;
 
 with input as (
