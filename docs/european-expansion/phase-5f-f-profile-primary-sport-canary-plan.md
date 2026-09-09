@@ -494,6 +494,17 @@ Non incollare la connection string in chat e non eseguire ancora il report nello
 
 **Checkpoint recovery Step 7 2026-09-09 — DB SECRET READY USER-REPORTED.** `PRODUCTION_DATABASE_URL` è valorizzata tramite input nascosto nel terminale che conserva baseline, `psql` e report. La connection string non è stata condivisa e nessuna query è stata ancora eseguita.
 
+**Checkpoint recovery Step 7 2026-09-09 — TERMINAL EXIT 1 USER-REPORTED.** L'esecuzione inline ha terminato nuovamente la shell prima di produrre un marker; l'esito del report resta quindi ignoto. Non rilanciare il blocco inline. Usare esclusivamente `bash scripts/verify-phase-5f-canary-teardown.sh`: il wrapper disabilita `errexit`, richiede nuovamente il secret con input nascosto se la nuova shell non lo conserva, salva stderr in `/tmp`, restituisce sempre il controllo al terminale e produce un marker PASS/STOP senza stampare credenziali.
+
+```bash
+set +e
+set +u
+set +o history
+bash scripts/verify-phase-5f-canary-teardown.sh
+```
+
+In caso di `PHASE_5F_CANARY_STOP`, non mostrare il contenuto degli evidence file e non ripetere la query: comunicare soltanto il marker, incluso il percorso evidence.
+
 ```bash
 set +u
 set -eo pipefail
