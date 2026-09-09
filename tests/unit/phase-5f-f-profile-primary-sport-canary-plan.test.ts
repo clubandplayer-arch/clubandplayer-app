@@ -11,7 +11,7 @@ test('5F-F canary plan records authorization while remaining not executed', () =
     assert.match(plan, new RegExp(prerequisite, 'i'));
   }
   assert.match(plan, /CANARY AUTORIZZATO MA NON ESEGUITO/);
-  assert.match(plan, /AUTHORIZED \/ BASELINE HTTP PENDING/);
+  assert.match(plan, /AUTHORIZED \/ PROFILE PATCH PENDING/);
 });
 
 test('5F-F records the canonical-domain post-deploy PASS without reopening deploy work', () => {
@@ -66,8 +66,22 @@ test('5F-F Step 2 captures two authenticated GET baselines without writing or le
   assert.match(plan, /EXPERIENCES_STATUS.*!= '200'/s);
   assert.match(plan, /PHASE_5F_CANARY_BASELINE_HTTP_PASS/);
   assert.match(plan, /non incollare i JSON o il token/);
-  const step2 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 2 soltanto'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  const step2 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 2 soltanto'), plan.indexOf('## Esecuzione guidata — Step 3 Profile completo'));
   assert.doesNotMatch(step2, /-X PATCH|--request PATCH|method: 'PATCH'/);
+});
+
+test('5F-F Step 3 pins baselines and performs one Profile PATCH with fail-closed comparisons', () => {
+  assert.match(plan, /Checkpoint Step 2.*PASS USER-REPORTED/s);
+  assert.match(plan, /7646c11e47c833ca306a125ad399733d0bb15ee884a5d015472bed91415850f5/);
+  assert.match(plan, /5f804c35bbaa20fbb75d111c4b6936820e95c6c813fb7544bd5bd2400b7c29e9/);
+  const step3 = plan.slice(plan.indexOf('## Esecuzione guidata — Step 3 Profile completo'), plan.indexOf('## Informazioni ancora strettamente necessarie'));
+  assert.equal((step3.match(/--request PATCH/g) ?? []).length, 1);
+  assert.match(step3, /\{sport: \$sport\}/);
+  assert.match(step3, /cmp -s/);
+  assert.match(step3, /PHASE_5F_CANARY_PROFILE_PASS/);
+  assert.match(step3, /PHASE_5F_CANARY_STOP profile_comparison/);
+  assert.doesNotMatch(step3, /api\/profiles\/me\/experiences"\)"[\s\S]*--request PATCH/);
+  assert.doesNotMatch(step3, /--request DELETE|-X DELETE|\/experiences[^\n]*--request PATCH/);
 });
 
 test('5F-F records the proposed Staff account and stops on the privileged read-only report', () => {

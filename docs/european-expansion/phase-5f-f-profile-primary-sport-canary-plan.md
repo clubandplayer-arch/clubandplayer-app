@@ -139,6 +139,115 @@ printf 'PHASE_5F_CANARY_BASELINE_HTTP_PASS profile=%s experiences=%s count=%s pr
 
 Se un `jq` fallisce, il blocco stampa `PHASE_5F_CANARY_STOP baseline_shape`, conserva entrambi i file e si ferma senza PATCH o teardown. Se passa, comunicare soltanto la riga `PHASE_5F_CANARY_BASELINE_HTTP_PASS`; non incollare i JSON o il token. Lo Step 3 preparerà e mostrerà il payload Profile esatto prima della prima scrittura autorizzata.
 
+**Checkpoint Step 2 2026-09-09 — PASS USER-REPORTED.** Entrambi i GET hanno restituito 200, la baseline esperienze contiene una riga e i file privati hanno SHA-256 Profile `7646c11e47c833ca306a125ad399733d0bb15ee884a5d015472bed91415850f5` ed esperienze `5f804c35bbaa20fbb75d111c4b6936820e95c6c813fb7544bd5bd2400b7c29e9`. I file e il token restano nello stesso terminale. Nessuna scrittura è stata eseguita.
+
+## Esecuzione guidata — Step 3 Profile completo
+
+Questo blocco verifica gli hash della baseline già acquisita, deriva `{ "sport": <baseline> }` senza mostrarlo, invia **esattamente un PATCH Profile**, quindi acquisisce un GET Profile e un GET esperienze. Accetta soltanto legacy sport invariato, `sport_id` UUID non null, catena discipline/variant strutturalmente coerente, `updated_at` modificato, ogni altro campo Profile invariato ed esperienze byte-identiche alla baseline. Non contiene retry, PATCH esperienze o teardown.
+
+Eseguire nello stesso terminale, senza `set -u`:
+
+```bash
+set +u
+set -eo pipefail
+umask 077
+
+: "${CANARY_TOKEN:?CANARY_TOKEN non presente in questo terminale}"
+: "${CANARY_USER_ID:?CANARY_USER_ID non presente in questo terminale}"
+: "${PROD_BASE_URL:?PROD_BASE_URL non presente in questo terminale}"
+
+PROFILE_BEFORE="${PROFILE_BEFORE:-/tmp/phase-5f-canary-profile-before.json}"
+EXPERIENCES_BEFORE="${EXPERIENCES_BEFORE:-/tmp/phase-5f-canary-experiences-before.json}"
+PROFILE_PATCH_PAYLOAD='/tmp/phase-5f-canary-profile-patch-payload.json'
+PROFILE_PATCH_RESPONSE='/tmp/phase-5f-canary-profile-patch-response.json'
+PROFILE_AFTER='/tmp/phase-5f-canary-profile-after.json'
+EXPERIENCES_AFTER='/tmp/phase-5f-canary-experiences-after-profile.json'
+
+EXPECTED_PROFILE_BEFORE_SHA256='7646c11e47c833ca306a125ad399733d0bb15ee884a5d015472bed91415850f5'
+EXPECTED_EXPERIENCES_BEFORE_SHA256='5f804c35bbaa20fbb75d111c4b6936820e95c6c813fb7544bd5bd2400b7c29e9'
+
+if [ "$(sha256sum "$PROFILE_BEFORE" | cut -d' ' -f1)" != "$EXPECTED_PROFILE_BEFORE_SHA256" ] \
+  || [ "$(sha256sum "$EXPERIENCES_BEFORE" | cut -d' ' -f1)" != "$EXPECTED_EXPERIENCES_BEFORE_SHA256" ]; then
+  printf 'PHASE_5F_CANARY_STOP baseline_hash_drift\n'
+  false
+fi
+
+if ! jq -ce '
+    .data.sport as $sport
+    | select(($sport | type) == "string" and ($sport | length) > 0)
+    | {sport: $sport}
+  ' "$PROFILE_BEFORE" >"$PROFILE_PATCH_PAYLOAD"; then
+  printf 'PHASE_5F_CANARY_STOP profile_payload\n'
+  false
+fi
+
+PATCH_STATUS="$(curl --silent --show-error --proto '=https' --tlsv1.2 \
+  --request PATCH --output "$PROFILE_PATCH_RESPONSE" --write-out '%{http_code}' \
+  -H "Authorization: Bearer $CANARY_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary "@$PROFILE_PATCH_PAYLOAD" \
+  "$PROD_BASE_URL/api/profiles/me")"
+
+if [ "$PATCH_STATUS" != '200' ]; then
+  printf 'PHASE_5F_CANARY_STOP profile_patch_http=%s\n' "$PATCH_STATUS"
+  false
+fi
+
+PROFILE_AFTER_STATUS="$(curl --silent --show-error --proto '=https' --tlsv1.2 \
+  --output "$PROFILE_AFTER" --write-out '%{http_code}' \
+  -H "Authorization: Bearer $CANARY_TOKEN" \
+  "$PROD_BASE_URL/api/profiles/me")"
+
+EXPERIENCES_AFTER_STATUS="$(curl --silent --show-error --proto '=https' --tlsv1.2 \
+  --output "$EXPERIENCES_AFTER" --write-out '%{http_code}' \
+  -H "Authorization: Bearer $CANARY_TOKEN" \
+  "$PROD_BASE_URL/api/profiles/me/experiences")"
+
+if [ "$PROFILE_AFTER_STATUS" != '200' ] || [ "$EXPERIENCES_AFTER_STATUS" != '200' ]; then
+  printf 'PHASE_5F_CANARY_STOP profile_verify_http profile=%s experiences=%s\n' \
+    "$PROFILE_AFTER_STATUS" "$EXPERIENCES_AFTER_STATUS"
+  false
+fi
+
+jq -S '.data | del(.updated_at, .sport_id, .sport_discipline_id, .sport_variant_id)' \
+  "$PROFILE_BEFORE" > /tmp/phase-5f-canary-profile-before-stable.json
+jq -S '.data | del(.updated_at, .sport_id, .sport_discipline_id, .sport_variant_id)' \
+  "$PROFILE_AFTER" > /tmp/phase-5f-canary-profile-after-stable.json
+
+if ! jq -e --arg user "$CANARY_USER_ID" --slurpfile before "$PROFILE_BEFORE" '
+    .data.user_id == $user
+    and .data.sport == $before[0].data.sport
+    and (.data.sport_id | type) == "string"
+    and (.data.sport_id | test("^[0-9a-fA-F-]{36}$"))
+    and (.data.sport_discipline_id == null or ((.data.sport_discipline_id | type) == "string" and (.data.sport_discipline_id | test("^[0-9a-fA-F-]{36}$"))))
+    and (.data.sport_variant_id == null or (.data.sport_discipline_id != null and (.data.sport_variant_id | type) == "string" and (.data.sport_variant_id | test("^[0-9a-fA-F-]{36}$"))))
+    and (.data.updated_at | type) == "string"
+    and .data.updated_at != $before[0].data.updated_at
+  ' "$PROFILE_PATCH_RESPONSE" >/dev/null \
+  || ! jq -e --slurpfile patch "$PROFILE_PATCH_RESPONSE" '
+    .data.user_id == $patch[0].data.user_id
+    and .data.sport == $patch[0].data.sport
+    and .data.sport_id == $patch[0].data.sport_id
+    and .data.sport_discipline_id == $patch[0].data.sport_discipline_id
+    and .data.sport_variant_id == $patch[0].data.sport_variant_id
+  ' "$PROFILE_AFTER" >/dev/null \
+  || ! cmp -s /tmp/phase-5f-canary-profile-before-stable.json /tmp/phase-5f-canary-profile-after-stable.json \
+  || [ "$(sha256sum "$EXPERIENCES_AFTER" | cut -d' ' -f1)" != "$EXPECTED_EXPERIENCES_BEFORE_SHA256" ]; then
+  printf 'PHASE_5F_CANARY_STOP profile_comparison\n'
+  false
+fi
+
+PROFILE_AFTER_SHA256="$(sha256sum "$PROFILE_AFTER" | cut -d' ' -f1)"
+CANONICAL_CONTEXT_SHA256="$(jq -c '.data | {sport,sport_id,sport_discipline_id,sport_variant_id}' \
+  "$PROFILE_AFTER" | sha256sum | cut -d' ' -f1)"
+
+printf 'PHASE_5F_CANARY_PROFILE_PASS patch=%s profile_get=%s experiences_get=%s profile_after_sha256=%s canonical_context_sha256=%s\n' \
+  "$PATCH_STATUS" "$PROFILE_AFTER_STATUS" "$EXPERIENCES_AFTER_STATUS" \
+  "$PROFILE_AFTER_SHA256" "$CANONICAL_CONTEXT_SHA256"
+```
+
+Se compare `PHASE_5F_CANARY_STOP`, non rilanciare alcuna richiesta: conservare tutti i file `/tmp` e fermarsi senza PATCH esperienze o teardown. Se passa, comunicare soltanto `PHASE_5F_CANARY_PROFILE_PASS ...`; non incollare payload, JSON, sport o token. Lo Step 4 userà la baseline esperienze già conservata per l'unica sostituzione atomica autorizzata.
+
 ## Informazioni ancora strettamente necessarie
 
 1. identificatore non sensibile dell'account disposable athlete/staff già creato tramite il normale flusso applicativo, con conferma che non appartenga a una persona reale e non sia amministratore;
@@ -222,4 +331,4 @@ Dopo la raccolta delle evidenze, revocare la sessione e disabilitare o eliminare
 
 ## Esito della review e prossimo controllo
 
-Il deploy, la qualificazione tecnica, l'attestazione disposable e lo Step 1 sono **PASS**; il canary è **AUTHORIZED / BASELINE HTTP PENDING**. Il prossimo e unico passaggio è lo Step 2 sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun avanzamento automatico a scritture o teardown.
+Il deploy, la qualificazione tecnica, l'attestazione disposable e gli Step 1–2 sono **PASS**; il canary è **AUTHORIZED / PROFILE PATCH PENDING**. Il prossimo e unico passaggio è lo Step 3 completo sopra. Una divergenza impone STOP, conservazione delle evidenze e nessun avanzamento automatico a esperienze o teardown.
