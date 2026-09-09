@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5F — SCHEMA E GATE RUNTIME PRODUCTION COMPLETATI** |
 | Current active phase | **FASE 5D — GATE DATI 5D-C; 5D-E-I RESTA APERTA/NON INIZIATA PRIMA DELL'APPROVAZIONE DATI SELECTOR** |
-| Next safe action | **Revisionare il gate/apply controllato 5D-C senza ripetere deploy, canary o migration 5F** |
+| Next safe action | **Eseguire, previa autorizzazione separata, il preflight Production read-only 5D-C; nessun apply/seed/backfill** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -584,13 +584,15 @@ Codice modificato: **SÌ — tooling isolato e unit test**. API/UI/runtime: **NO
 
 #### FASE 5D-C — Controlled vocabulary e compatibility tranche
 
-**Stato: IMPLEMENTATA E TESTATA LOCALMENTE — REVIEW UMANA PENDING; MIGRATION NON APPLICATA REMOTAMENTE.** Deliverable: `docs/european-expansion/phase-5d-c-controlled-vocabulary-compatibility-tranche.md`.
+**Stato: REVIEW REPOSITORY-ONLY PASS; REVIEW UMANA/R2 PASS; MIGRATION NON APPLICATA REMOTAMENTE.** Deliverable: `docs/european-expansion/phase-5d-c-controlled-vocabulary-compatibility-tranche.md`.
 
 Il manifest controllato contiene 356 record: 3 gender category, 4 format, 6 territorial scope, 97 posizioni Player scoped, 26 ruoli Staff trasversali, 97 applicability Player e 123 mapping legacy esatti. Non contiene organization, competition, level, age class, season, edition, group o categorie italiane reinterpretate. La migration `20261207120000_seed_controlled_sports_vocabulary.sql` è stata applicata due volte su PostgreSQL 16.15 locale con conteggi invarianti; un conflitto sintetico divergente è stato rifiutato con rollback.
 
 Migration creata/testata/applicata: **SÌ / SÌ LOCALE PASS / NO REMOTO**. Production interrogata/modificata: **NO / NO**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web/API/UI: nessun impatto runtime. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica manuale 5D-C: **PASS USER-REPORTED**; non applicare ancora la migration. 5D-D è stata autorizzata e resta separata da qualunque import.
 
 **5D-C-R2 — COMPLETATA / PASS USER-REPORTED.** La review umana è passata solo parzialmente: la card Registro società era ancora italiana e i ruoli Player non calcistici mostravano valori legacy italiani. La remediation localizza la card in IT/EN/ES/FR, dichiara il limite operativo “solo organizzazioni registrate in Italia” e l’estensione internazionale in lavorazione, e completa le label di tutti i ruoli presenti in `SPORTS_ROLES`. Valori persistiti, manifest e migration 5D-C restano invariati. Migration creata/testata/applicata in R1: **NO / NO / NO**. Production: **NON INTERROGATA / NON MODIFICATA**. RLS/grant/ownership/Applications/backfill: **NON MODIFICATI / NON ESEGUITO**. Web: **presentation-only**; API: **NESSUN IMPATTO**; Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Deliverable: `docs/european-expansion/phase-5d-c-r1-human-review-remediation.md`. Il recheck Preview di Club/Profile, Player/Profile, widget laterale, Console e Network è stato confermato PASS dall’utente; 5D-D è stata successivamente autorizzata. Il recheck R2 localizza inoltre lo sport nel widget “Profili che segui”. È confermato che categorie, federazioni e competizioni sono nomi propri nazionali: quelle italiane restano in italiano in ogni lingua UI e i futuri cataloghi esteri manterranno la rispettiva denominazione nazionale.
+
+**Review repository-only 5D-C 2026-09-09 — PASS / REMOTE APPLY NON AUTORIZZATO.** Manifest e migration conservano gli hash revisionati e i 356 record: 3 gender, 4 format, 6 scope, 97 position, 26 staff role, 97 applicability e 123 mapping legacy. Il seed è DML additivo sulle sole otto tabelle 5C, fail-closed/idempotente, non modifica dati utente o runtime 5F ed è compatibile con Profile/esperienze già distribuiti, che non consumano ancora position/role/category canonicali. Sblocca come prerequisito i contratti selector/write position-role e i futuri campi format/gender/scope di 5G–5I, ma non organization/competition/level/age/season. 5D-E-I resta separata e limitata alle sole lacune indispensabili dei cinque Paesi. Test statici/contratto PASS; runner PostgreSQL non rieseguito in questo container per assenza di `pg_ctlcluster`, mantenendo valido il PASS 16.15 già registrato. Prossimo step: preflight Production read-only separatamente autorizzato; nessun apply, seed o backfill eseguito.
 
 #### FASE 5D-D — Source registry organizations/competitions
 

@@ -2,7 +2,7 @@
 
 Data: 2026-09-07
 Dipendenze: FASE 5D-B completata; autorizzazione utente esplicita alla 5D-C.
-Stato: **IMPLEMENTATA E TESTATA LOCALMENTE — contenuto in attesa di revisione umana; migration NON APPLICATA remotamente**.
+Stato: **REVIEW REPOSITORY-ONLY PASS — migration NON APPLICATA remotamente; gate Production separato richiesto**.
 
 ## 1. Perimetro
 
@@ -136,3 +136,36 @@ L'esito deve essere comunicato come PASS oppure con l'elenco puntuale dei code/m
 ## 9. Mobile
 
 La repository Mobile non è stata aperta né modificata. Le stringhe legacy consumate dai client pubblicati restano invariate. Mobile parity FASE 5 resta **NOT STARTED / NON MODIFICATO**.
+
+## 10. Review repository-only successiva alla chiusura 5F
+
+La review del 2026-09-09 ha riconfermato senza modificare il payload:
+
+- hash manifest `38634744e6e87b670950042334e6f14192aa6a5af58669e2400b0996a649e52a` e hash migration `85367f245d3f216b8678a7701be3bbc413067d0b007dac79cb1f199d854fbfa6` invariati;
+- 356 record ripartiti in 3 gender category, 4 competition format, 6 territorial scope, 97 player position, 26 staff role, 97 applicability Player, 97 mapping Player legacy e 26 mapping Staff legacy;
+- copertura esatta 1:1 dei valori correnti `SPORTS_ROLES` e `STAFF_ROLES`, senza category inference;
+- DML limitato alle otto tabelle catalogo/mapping create dalla 5C; nessun accesso a Profile, esperienze, Opportunities, Applications, organization/competition, RLS, grant, trigger o function;
+- natural key risolte per code e assertion finali fail-closed: un payload identico è idempotente, mentre una collisione divergente abortisce la transazione.
+
+### Dati introdotti e funzionalità abilitate
+
+L'apply della sola `20261207120000_seed_controlled_sports_vocabulary.sql` materializzerà esclusivamente vocabulary generiche e compatibility mapping già elencate. Non creerà organizzazioni, competizioni, livelli, classi d'età, stagioni, edizioni, gruppi o categorie nazionali e non aggiornerà dati utente.
+
+Questi dati sono prerequisiti indispensabili, ma non attivano da soli nuove funzionalità nel runtime distribuito:
+
+1. position Player, role Staff, applicability e mapping esatti sbloccano i successivi contratti canonicali di selector/write per Profile ed esperienze e la loro futura proiezione in Opportunities/Applications;
+2. gender category, competition format e territorial scope sbloccano i successivi campi catalogo/contratti di Opportunities, Search e filtri soltanto dopo le rispettive integrazioni 5G–5I;
+3. organization, competition, level, age class e season restano dipendenze di tranche catalogo successive e non sono colmate dalla 5D-C;
+4. le lacune dati FR/ES/CH/SI/PL restano nella 5D-E-I separata: per avanzare non serve un censimento generale, ma soltanto le entry richieste dai selector e dai contratti concretamente implementati nelle tranche successive.
+
+### Compatibilità con schema e runtime Production 5F
+
+La migration dipende dalle tabelle e candidate key 5C e dai code Sport/Discipline/Variant della foundation già verificata. Non dipende dalle colonne Profile o dalla RPC esperienze aggiunte dalla 5F e non le modifica. In senso inverso, le route 5F distribuite leggono soltanto la tassonomia Sport/Discipline/Variant e mantengono position/role/category legacy: non interrogano le otto tabelle popolate dalla 5D-C. L'apply è quindi schema-compatible e non cambia il comportamento del runtime Production corrente.
+
+La versione 5D-C è cronologicamente precedente alle versioni 5F già registrate ma risulta ancora assente in Production. Per questo sono vietati `supabase db push` e l'applicazione della coda generale: un futuro rollout dovrà verificare stato/history/collisioni, applicare esclusivamente il file con hash fissato in una transazione controllata e registrare esclusivamente `20261207120000` dopo il post-check. Nessuna di queste operazioni remote è autorizzata da questa review.
+
+### Esito e prossimo passaggio
+
+**PASS REPOSITORY-ONLY, NESSUN BLOCKER LOCALE.** I test statici/contratto pertinenti passano. Il runner PostgreSQL esistente resta il gate runtime corretto, ma non è rieseguibile in questo container perché manca `pg_ctlcluster`; il PASS PostgreSQL 16.15 double-apply/drift già registrato non viene sostituito né dichiarato nuovamente eseguito.
+
+Il prossimo singolo passaggio operativo è preparare ed eseguire, previa autorizzazione separata, un controllo Production **read-only** di history 5C/5D-C/5F, presenza/candidate key delle otto tabelle, code foundation richiesti e collisioni sulle natural key. Solo un PASS di quel controllo potrà presentare l'apply esclusivo esatto di `20261207120000`; 5D-E-I resta fuori perimetro.
