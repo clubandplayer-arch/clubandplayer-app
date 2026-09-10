@@ -1,8 +1,8 @@
 // app/api/follows/suggestions/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { resolveAuthContext } from '@/lib/api/auth';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
@@ -110,33 +110,22 @@ export async function GET(req: NextRequest) {
 
   try {
     step = 'auth';
-    const supabase = await getSupabaseServerClient();
     let explicitGeography: CanonicalSearchGeographyScope | null = null;
-    const { data: userRes, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('[follows/suggestions] auth error', authError);
-      return errorResponse({
-        code: 'AUTH_REQUIRED',
-        message: 'Devi accedere per vedere i suggerimenti.',
-        status: 401,
-        error: authError,
-      });
-    }
-
-    if (!userRes?.user) {
+    const auth = await resolveAuthContext(req);
+    if (!auth) {
       return errorResponse({
         code: 'AUTH_REQUIRED',
         message: 'Devi accedere per vedere i suggerimenti.',
         status: 401,
       });
     }
+    const { supabase, user } = auth;
 
     step = 'meProfile';
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, account_type, status, country, city, province, region, interest_country, interest_city, interest_province, interest_region, sport, sport_id, sport_discipline_id, sport_variant_id')
-      .eq('user_id', userRes.user.id)
+      .eq('user_id', user.id)
       .maybeSingle();
 
     const role =

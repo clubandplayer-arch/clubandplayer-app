@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
+import { resolveAuthContext } from '@/lib/api/auth';
 import {
   applySuggestionGeographyFilter,
   loadViewerSuggestionGeography,
@@ -63,14 +63,12 @@ export async function GET(req: NextRequest) {
   const debugMode = url.searchParams.get('debug') === '1';
 
   try {
-    const supabase = await getSupabaseServerClient();
-    const profilesClient = supabase;
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user;
-
-    if (!user) {
+    const auth = await resolveAuthContext(req);
+    if (!auth) {
       return successResponse({ suggestions: [] as Suggestion[] });
     }
+    const { supabase, user } = auth;
+    const profilesClient = supabase;
 
     const { data: profile } = await supabase
       .from('profiles')
