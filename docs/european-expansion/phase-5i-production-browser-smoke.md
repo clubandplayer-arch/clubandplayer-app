@@ -9,7 +9,8 @@ replica migration, deploy, preflight 5G o smoke 5H.
 Prima di iniziare, aprire `https://www.clubandplayer.com/api/env` e verificare:
 
 - `mode` uguale a `production`;
-- `sha` uguale a `94b8f6291223afbd64e7dece3fc954ac9a8221b6`;
+- `sha` uguale al commit della correzione 5I promosso dall'operatore (non alla release
+  regressiva `94b8f6291223afbd64e7dece3fc954ac9a8221b6`);
 - `hasUrl` e `hasAnon` uguali a `true`.
 
 Interrompere lo smoke se uno dei valori non coincide.
@@ -92,7 +93,7 @@ La 5I è chiudibile solo con tutti questi risultati nello stesso giro:
 
 ```text
 PHASE_5I_PRODUCTION_BROWSER_SMOKE_PASS
-release=94b8f6291223afbd64e7dece3fc954ac9a8221b6
+release=<RELEASE_SHA_CON_FIX_5I>
 catalog=200 hierarchy_reset=pass search=200 opportunities_filter=200
 profile_patch=200 profile_reread=pass experience_patch=200 experience_reread=pass
 opportunity_post=201 opportunity_reread=pass opportunity_patch=200 opportunity_delete=200

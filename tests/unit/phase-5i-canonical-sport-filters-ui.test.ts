@@ -11,15 +11,19 @@ const profileForm = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf
 const pastExperiences = readFileSync('lib/profiles/pastExperiences.ts', 'utf8');
 
 test('5I catalog and selector expose an active hierarchical read-only vocabulary', () => {
-  for (const table of ['sports', 'sport_disciplines', 'sport_variants']) {
+  for (const table of ['sports', 'sport_disciplines', 'sport_variants', 'legacy_sport_mappings']) {
     assert.match(catalog, new RegExp(`from\\('${table}'\\)`));
   }
-  assert.equal((catalog.match(/\.eq\('is_active', true\)/g) ?? []).length, 3);
+  assert.equal((catalog.match(/\.eq\('is_active', true\)/g) ?? []).length, 4);
   assert.doesNotMatch(catalog, /\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
   assert.match(selector, /item\.sport_id === value\.sportId/);
   assert.match(selector, /item\.discipline_id === value\.disciplineId/);
-  assert.match(selector, /disciplineId: '', variantId: ''/);
-  assert.match(selector, /disciplineId: event\.target\.value, variantId: ''/);
+  assert.match(catalog, /legacy_display_label,sport_id,discipline_id,variant_id/);
+  assert.match(catalog, /legacySportOrder/);
+  assert.match(selector, /catalog\.legacySports/);
+  assert.match(selector, /disciplineId: legacySport\?\.disciplineId \?\? ''/);
+  assert.match(selector, /variantId: legacySport\?\.variantId \?\? ''/);
+  assert.match(selector, /disciplineId,\s*variantId: ''/);
 });
 
 test('Profile, Experience, and Opportunity forms submit canonical context with legacy compatibility', () => {
