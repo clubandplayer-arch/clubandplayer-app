@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Eseguire il teardown dati ordinato della Application `7e165c40-d620-4d09-8305-69b0a923af1c` e dell’Opportunity `00cfbc21-5afe-4e7d-92da-f2cce239da4c`; gli account restano separati fino al PASS** |
+| Next safe action | **Non ripetere DELETE Application: sostituire soltanto il token Club e completare DELETE+404 dell’Opportunity usando l’evidenza del teardown parziale** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -749,6 +749,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Application canary 5G ripreso — CREATE/APPLICANT READ ESEGUITI, CLUB READ STOP 401.** Con il token Applicant sostituito, la POST è avanzata oltre il gate 201 e la GET Applicant è stata completata prima che la GET Club restituisse 401. La Application può quindi esistere: è vietato rilanciare il runner completo o ripetere la POST. Il recupero preserva le risposte create/Applicant/401, sostituisce soltanto il token Club e usa `resume-phase-5g-canary-application-club-read.sh` per una singola GET owner-scoped, senza nuove write.
 
 **Application canary 5G — PASS USER-REPORTED.** La lettura Club ripresa ha restituito 200 e ha verificato la stessa Application `7e165c40-d620-4d09-8305-69b0a923af1c` sull’Opportunity `00cfbc21-5afe-4e7d-92da-f2cce239da4c`; Applicant `me` e Club `received` preservano ownership e proiettano lo stesso contesto canonicale dell’Opportunity. Il canary funzionale è completo; resta il teardown autorizzato. Il prossimo gate elimina prima la Application e poi l’Opportunity tramite le route ordinarie e conferma il 404 pubblico, senza eliminare ancora gli account.
+
+**Teardown dati 5G — APPLICATION ELIMINATA / OPPORTUNITY STOP 401.** Dopo la sostituzione del token Applicant, DELETE Application ha restituito 200; il runner ha quindi tentato DELETE Opportunity, fermandosi sul 401 Club prima della verifica 404. Il teardown è parziale: non ripetere la DELETE Application né il runner completo. Sostituire soltanto il token Club, poi `resume-phase-5g-canary-opportunity-teardown.sh` verifica l’evidenza Application `ok=true`, elimina esclusivamente l’Opportunity e ne conferma l’assenza pubblica.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
