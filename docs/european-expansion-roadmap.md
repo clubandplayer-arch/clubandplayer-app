@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Rigenerare le evidenze `/tmp` perse con il riavvio Codespace: prima qualification Production read-only, poi baseline HTTP; soltanto dopo rieseguire una volta il canary Opportunity** |
+| Next safe action | **Sostituire nella stessa shell soltanto il token Club rifiutato, quindi completare la singola GET Club della baseline; nessuna write o retry col token rifiutato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -739,6 +739,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Post-deploy correzione gender 5G — PASS USER-REPORTED.** Il dominio canonico `/api/env` restituisce `sha=cdb84458c61e72b75ee42a9327cd6510f357887e` e `mode=production`. Migration e history restano quelle già verificate e non vanno ripetute. Il runner Opportunity ora ricontrolla lo stesso SHA immediatamente prima della POST e si arresta senza write in caso di drift. Poiché la shell/token del giorno precedente non devono essere presunti validi, il prossimo singolo step è ricaricare i due token con `source scripts/prepare-phase-5g-canary-secrets.sh`; nessuna richiesta HTTP o write avviene durante il caricamento.
 
 **Ripresa canary 5G — STOP SICURO / EVIDENZE TEMPORANEE ASSENTI.** I token nuovi sono stati validati per entrambi gli account e per la release corretta, ma il runner si è arrestato prima di ogni richiesta mutativa con `evidence_missing_phase-5g-canary-accounts-qualification.json`: il riavvio del Codespace ha eliminato le evidenze in `/tmp`. Non è stata creata alcuna Opportunity. Devono essere rigenerate soltanto la qualification DB read-only e la baseline HTTP vuota; il runner baseline è ora vincolato anch’esso alla release corretta. Il prossimo singolo step è `bash scripts/run-phase-5g-canary-qualification.sh`; non ripetere migration, history, deploy o test già superati.
+
+**Qualification ripresa 5G — PASS READ-ONLY; BASELINE CLUB STOP 401.** Il report ha riconfermato entrambi gli account, profili/tipi, contesto canonico e tutte le baseline dati a zero con `read_only=on`. La successiva baseline HTTP ha ottenuto nuovamente 401 soltanto sulla GET Club e si è arrestata senza write; env e Applicant sono stati salvati, nessuna Opportunity/Application è stata creata. Non riprovare il token rifiutato. Il prossimo singolo step è caricare un nuovo token Club con `source scripts/replace-phase-5g-canary-club-token.sh`; il runner di completamento baseline preserva il 401, usa una sola nuova GET ed è vincolato allo SHA corretto.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 

@@ -12,6 +12,8 @@ test('replacement baseline preserves 401 evidence and performs exactly one GET',
 });
 
 test('replacement baseline requires all three empty/deployment invariants',()=>{
+  assert.match(script,/PHASE_5G_EXPECTED_RELEASE_SHA/);
+  assert.match(script,/cdb84458c61e72b75ee42a9327cd6510f357887e/);
   assert.match(script,/preserved_release_drift/);
   assert.match(script,/preserved_applicant_baseline_drift/);
   assert.match(script,/replacement_club_baseline_drift/);
