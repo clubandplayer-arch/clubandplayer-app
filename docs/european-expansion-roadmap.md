@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Eliminare i due account disposable soltanto dopo precheck HTTP con entrambe le sessioni; poi eseguire un unico report DB read-only finale** |
+| Next safe action | **Usare teardown account sequenziale: login Production Club e sua eliminazione; solo dopo login Production Applicant e sua eliminazione; infine report DB read-only** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -753,6 +753,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Teardown dati 5G — APPLICATION ELIMINATA / OPPORTUNITY STOP 401.** Dopo la sostituzione del token Applicant, DELETE Application ha restituito 200; il runner ha quindi tentato DELETE Opportunity, fermandosi sul 401 Club prima della verifica 404. Il teardown è parziale: non ripetere la DELETE Application né il runner completo. Sostituire soltanto il token Club, poi `resume-phase-5g-canary-opportunity-teardown.sh` verifica l’evidenza Application `ok=true`, elimina esclusivamente l’Opportunity e ne conferma l’assenza pubblica.
 
 **Teardown dati 5G — PASS USER-REPORTED.** La ripresa ha eliminato l’Opportunity residua e il dettaglio pubblico ha restituito 404; Application e Opportunity canary risultano quindi rimosse tramite le route ordinarie. Restano esattamente due gate per chiudere 5G: (1) precheck di entrambe le sessioni seguito dall’eliminazione dei due account disposable già autorizzata; (2) report Production read-only finale su auth/profili/Opportunity/Application residue. Nessuna migration, history, deploy o canary funzionale deve essere ripetuto.
+
+**Teardown account 5G — PRECHECK BLOCCATO DALLE SESSIONI ALTERNATE / ZERO DELETE.** Anche caricando entrambi i JWT da Production, il login sequenziale nello stesso browser sostituisce la sessione precedente: dopo il login Applicant il token Club restituisce 401. Il runner combinato si è fermato prima di qualsiasi DELETE. La procedura corretta non richiede due sessioni simultaneamente: elimina prima il Club con un token Production appena generato e un runner dedicato; solo dopo genera il token Applicant e lo elimina con un secondo runner che richiede l’evidenza `club ok=true`. Restano due gate logici: teardown account sequenziale e report DB read-only finale.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
