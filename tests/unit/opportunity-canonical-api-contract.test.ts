@@ -8,7 +8,10 @@ const mine = readFileSync('app/api/applications/me/route.ts', 'utf8');
 const received = readFileSync('app/api/applications/received/route.ts', 'utf8');
 
 test('canonical Opportunity filters take precedence and legacy sport remains a fallback', () => {
-  assert.match(collection, /if \(sportId\) query = query\.eq\('sport_id', sportId\);\s*else if \(sport\) query = query\.eq\('sport', sport\);/);
+  assert.match(collection, /applyCanonicalSportFilters/);
+  assert.match(collection, /disciplineId: disciplineId \|\| null/);
+  assert.match(collection, /variantId: variantId \|\| null/);
+  assert.match(collection, /sport,\s*\);/);
   for (const column of ['sport_discipline_id', 'sport_variant_id', 'player_position_id', 'staff_role_id', 'gender_code']) {
     assert.match(collection, new RegExp(`query\\.eq\\('${column}'`));
   }

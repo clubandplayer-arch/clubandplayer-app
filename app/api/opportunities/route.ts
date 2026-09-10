@@ -20,6 +20,7 @@ import { CanonicalSportWritePlanService } from '@/lib/taxonomy/canonicalSportWri
 import { planProfilePrimarySportRequest } from '@/lib/taxonomy/profilePrimarySportRuntimeContract';
 import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
 import { projectOpportunityCanonicalContext, resolveOpportunityRoleColumns } from '@/lib/opportunities/canonicalSportsContext.server';
+import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
 
@@ -155,10 +156,21 @@ export async function GET(req: NextRequest) {
   }
   if (clubId) query = query.or(`club_id.eq.${clubId},owner_id.eq.${clubId},created_by.eq.${clubId}`);
   if (club) query = query.ilike('club_name', `%${club}%`);
-  if (sportId) query = query.eq('sport_id', sportId);
-  else if (sport) query = query.eq('sport', sport);
-  if (disciplineId) query = query.eq('sport_discipline_id', disciplineId);
-  if (variantId) query = query.eq('sport_variant_id', variantId);
+  if (sportId) {
+    query = applyCanonicalSportFilters(
+      query,
+      {
+        sportId,
+        disciplineId: disciplineId || null,
+        variantId: variantId || null,
+      },
+      sport,
+    );
+  } else {
+    if (sport) query = query.eq('sport', sport);
+    if (disciplineId) query = query.eq('sport_discipline_id', disciplineId);
+    if (variantId) query = query.eq('sport_variant_id', variantId);
+  }
   if (playerPositionId) query = query.eq('player_position_id', playerPositionId);
   if (staffRoleId) query = query.eq('staff_role_id', staffRoleId);
   if (genderCode) query = query.eq('gender_code', genderCode);

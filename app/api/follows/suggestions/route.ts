@@ -21,6 +21,7 @@ import {
   applySuggestionGeographyFilter,
   loadViewerSuggestionGeography,
 } from '@/lib/search/suggestionGeography.server';
+import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-09-01-d4';
@@ -315,7 +316,13 @@ export async function GET(req: NextRequest) {
       const sportFilter: Array<(q: any) => any> = [];
 
       if (sportScope === 'mine' && viewerSportId) {
-        sportFilter.push((q) => q.eq('sport_id', viewerSportId));
+        sportFilter.push((q) =>
+          applyCanonicalSportFilters(
+            q,
+            { sportId: viewerSportId, disciplineId: null, variantId: null },
+            profile.sport,
+          ),
+        );
       } else if (sportScope === 'mine' && profile.sport) {
         const value = `%${escapeLike(profile.sport.trim())}%`;
         sportFilter.push((q) => q.ilike('sport', value));
