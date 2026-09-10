@@ -912,9 +912,11 @@ Le strutture devono essere country-aware e prevedere federazioni, enti, piramidi
 
 ## FASE 6 — European Profile Model Completion
 
-**Stato: NOT STARTED.**
+**Stato: IN CORSO — 6A AUDIT MIRATO CATEGORIE COMPLETATO; MATRICE CALCIO PRONTA PER REVIEW; NESSUN CATALOGO O RUNTIME MODIFICATO.**
 
 Obiettivo futuro: completare i modelli Club, Player, Staff, Fan e Institution con campi country-aware, sport, discipline, competizioni, organizzazioni, categorie, geografia, lingue e relocation/interests. Prima di qualsiasi modifica deve essere eseguito un audit per account type.
+
+**Decisione di scope 2026-09-10.** Il primo bisogno prodotto è stato ristretto ai livelli/categorie sportivi dipendenti dal country scelto e dallo sport, indipendenti dalla lingua UI. L'audit 6A ha censito i consumer di `CATEGORIES_BY_SPORT`, `club_league_category`, `category`, `required_category` e delle categorie esperienza e ha preparato la matrice documentale del solo Calcio per IT, FR, ES, CH, SI e PL. Residence e interessi possono al più suggerire un default futuro: il catalogo effettivo segue il country esplicito del contesto; le esperienze Player/Staff restano fuori dalla prima integrazione. Nessuna migration, seed, UI, API runtime, RLS, deploy o write remota è stata eseguita. Deliverable: [`phase-6a-football-country-category-audit.md`](european-expansion/phase-6a-football-country-category-audit.md). Il prossimo checkpoint proponibile è 6B, contratto read-only country+sport(+organizer) e piano evidence della prima tranche, soltanto dopo review.
 
 ## FASE 7 — International Opportunities & Scouting
 
