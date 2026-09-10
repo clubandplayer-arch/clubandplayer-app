@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5H — IMPLEMENTAZIONE REPOSITORY E VERIFICHE LOCALI COMPLETATE** |
 | Current active phase | **FASE 5H — ROLLOUT RUNTIME PENDENTE** |
-| Next safe action | **Review finale mirata, deploy del runtime 5H e smoke test canonical-first/legacy fallback; nessuna migration o backfill** |
+| Next safe action | **Eseguire una sola volta lo smoke autenticato read-only 5H; nessuna migration, backfill o ripetizione del deploy** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -763,6 +763,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 ### FASE 5H — Search / Discover / WhoToFollow
 
 **Review mirata e implementazione repository-only.** Global Search ora accetta `sportId`/`disciplineId`/`variantId` (anche snake_case), valida UUID e completezza gerarchica e applica filtri canonical-first a Opportunities e profili; il percorso Player risolve prima gli ID dalla tabella `profiles`, evitando di assumere nuove colonne nella view legacy `athletes_view`. Il filtro testuale `sport` resta fallback quando gli ID non sono presenti. Discover/follows suggestions e WhoToFollow selezionano il contesto canonico del viewer e preferiscono `sport_id` per l’affinità, mantenendo il confronto legacy soltanto per profili non ancora canonicalizzati. Nessuna migration, backfill, modifica RLS, deploy o query remota; organization/competition/level/age/season e 5D-E-I non sono necessari per questa affinità Sport e restano separati.
+
+**Rollout runtime 5H — SHA PRODUCTION VERIFICATO / SMOKE PUBBLICO PASS / SESSIONE RICHIESTA PER IL GATE FINALE.** `/api/env` su `www.clubandplayer.com` ha restituito `sha=199ccbeac489faae4e161e300b3e92d06b48f12f`, `mode=production`, `hasUrl=true` e `hasAnon=true`. Gli smoke GET pubblici hanno confermato: filtro canonicale singolo e catena completa HTTP 200 con echo degli ID; fallback legacy HTTP 200 senza ID canonici; UUID non valido e catena incompleta HTTP 400 fail-closed; WhoToFollow anonimo HTTP 200 con array vuoto e Discover anonimo HTTP 401 fail-closed. Il solo gate residuo è lo smoke autenticato read-only di Profile, Search canonicale con un ID realmente presente, Discover e WhoToFollow, raccolto in un unico runner senza metodi mutativi.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
