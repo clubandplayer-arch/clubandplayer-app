@@ -19,6 +19,11 @@ test('5I catalog and selector expose an active hierarchical read-only vocabulary
   assert.match(catalog, /legacy_display_label,sport_id,discipline_id,variant_id/);
   assert.match(catalog, /legacySportOrder/);
   assert.match(selector, /catalog\.legacySports/);
+  assert.match(selector, /catalog\?ui=single-sport-v3/);
+  assert.match(selector, /cache: 'no-store'/);
+  assert.match(selector, /payload\.legacySports\.length === 0/);
+  assert.match(catalog, /dynamic = 'force-dynamic'/);
+  assert.match(catalog, /revalidate = 0/);
   assert.match(selector, /disciplineId: legacySport\?\.disciplineId \?\? ''/);
   assert.match(selector, /variantId: legacySport\?\.variantId \?\? ''/);
   assert.doesNotMatch(selector, /idPrefix}-discipline/);

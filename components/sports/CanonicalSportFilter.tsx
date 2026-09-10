@@ -29,10 +29,12 @@ export default function CanonicalSportFilter({ idPrefix, value, onChange, labels
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/sports/catalog', { cache: 'force-cache', signal: controller.signal })
+    fetch('/api/sports/catalog?ui=single-sport-v3', { cache: 'no-store', signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
-        if (!response.ok || !payload?.ok) throw new Error('sport_catalog_unavailable');
+        if (!response.ok || !payload?.ok || !Array.isArray(payload.legacySports) || payload.legacySports.length === 0) {
+          throw new Error('sport_catalog_unavailable');
+        }
         const nextCatalog = {
           sports: Array.isArray(payload.sports) ? payload.sports : [],
           legacySports: Array.isArray(payload.legacySports) ? payload.legacySports : [],

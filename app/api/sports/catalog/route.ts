@@ -3,6 +3,8 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { SPORTS } from '@/lib/opps/constants';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   const supabase = await getSupabaseServerClient();
