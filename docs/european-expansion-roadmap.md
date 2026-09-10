@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Verificare e distribuire separatamente la correzione runtime gender_code 5G; non ripetere la POST sul runtime corrente** |
+| Next safe action | **Distribuire in Production il candidato remoto verificato `cdb84458c61e72b75ee42a9327cd6510f357887e`; non ripetere la POST prima che `/api/env` esponga esattamente questo SHA** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -733,6 +733,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Canary Opportunity 5G — STOP FAIL-CLOSED / CREATE 500 USER-REPORTED.** La singola POST autorizzata ha restituito `opportunity_create_http_500`; dettaglio, filtro e Application non sono stati eseguiti. Vietato ripetere la POST. Payload e risposta restano privati in `/tmp/phase-5g-canary-opportunity-payload.json` e `/tmp/phase-5g-canary-opportunity-create.json`. Prima del teardown occorre stabilire la causa e l’eventuale presenza di un ID/residuo. Il prossimo singolo step `scripts/diagnose-phase-5g-canary-opportunity-create.sh` usa soltanto questi file locali e stampa forma, code/messaggio limitati, presenza ID e hash; nessuna rete o write.
 
 **Diagnostica create 500 5G — CAUSA IDENTIFICATA / NESSUN RESIDUO.** La risposta è `DB_ERROR` sulla FK `opportunities_gender_code_fk`, senza ID. Il payload era integro; l’errore runtime assegnava a `gender_code` lo stesso valore legacy di `gender` (`uomo`/`donna`), mentre 5D-C espone i code `male`/`female`/`mixed`. La write è stata rollbackata dal database. Corretto localmente POST/PATCH: `gender` conserva la compatibilità legacy e `gender_code` usa la proiezione canonica. Prima di un nuovo canary serve test repository e un deploy esplicitamente autorizzato della correzione; nessun retry sul runtime difettoso.
+
+**Gate release correzione gender 5G — PASS USER-REPORTED.** Dopo l’aggiornamento fast-forward del branch condiviso, `scripts/verify-phase-5g-runtime-release.sh cdb84458c61e72b75ee42a9327cd6510f357887e` ha verificato ancestry e contenuto del candidato remoto, inclusa la separazione tra gender legacy e `gender_code` canonico, e ha confermato il checksum migration invariato `bf6eb4a7f8bc202c78ab3759c3b1b5ea80610db276672dd6d3719792b4ab7c9f`. Il prossimo singolo gate è distribuire esattamente questo candidato e accettare il deploy soltanto se `/api/env` restituisce lo stesso SHA in modalità Production; migration, history e canary write non devono essere ripetuti in questo passaggio.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
