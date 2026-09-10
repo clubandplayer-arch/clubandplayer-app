@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Eseguire una sola Application canary sull’Opportunity `00cfbc21-5afe-4e7d-92da-f2cce239da4c`, quindi verificare le letture owner-scoped Applicant/Club prima del teardown** |
+| Next safe action | **Sostituire nella stessa shell soltanto il token Applicant rifiutato, poi rieseguire una volta il gate Application; la POST 401 non ha creato dati** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -743,6 +743,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Qualification ripresa 5G — PASS READ-ONLY; BASELINE CLUB STOP 401.** Il report ha riconfermato entrambi gli account, profili/tipi, contesto canonico e tutte le baseline dati a zero con `read_only=on`. La successiva baseline HTTP ha ottenuto nuovamente 401 soltanto sulla GET Club e si è arrestata senza write; env e Applicant sono stati salvati, nessuna Opportunity/Application è stata creata. Non riprovare il token rifiutato. Il prossimo singolo step è caricare un nuovo token Club con `source scripts/replace-phase-5g-canary-club-token.sh`; il runner di completamento baseline preserva il 401, usa una sola nuova GET ed è vincolato allo SHA corretto.
 
 **Opportunity canary 5G corretto — PASS USER-REPORTED.** Dopo la sostituzione del token Club, la baseline HTTP è tornata PASS; la singola POST Opportunity ha restituito 201 e le letture detail/filter 200 per `00cfbc21-5afe-4e7d-92da-f2cce239da4c`, con contratto canonicale verificato dal runner. Il prossimo gate accorpato crea una sola Application con l’Applicant autorizzato e verifica che `applications/me` e `applications/received` restituiscano la stessa Application con il contesto canonicale proiettato dall’Opportunity. Nessuna modifica di stato o teardown è inclusa in quel gate.
+
+**Application canary 5G — STOP 401 APPLICANT / NESSUNA APPLICATION CREATA.** Il gate ha riconfermato lo SHA Production ma la POST autenticata Applicant è stata rifiutata con 401; il runner si è arrestato prima delle letture e la richiesta non ha prodotto una Application. Non riprovare lo stesso token. Il prossimo singolo step è `source scripts/replace-phase-5g-canary-applicant-token.sh`, che valida localmente subject e scadenza del nuovo token senza rete; dopo il marker PASS sarà sicuro rieseguire una sola volta il gate Application esistente.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
