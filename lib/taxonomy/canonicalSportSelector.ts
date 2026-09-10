@@ -24,23 +24,3 @@ export function hydrateCanonicalSportValue(
     legacySport: mapped.legacyValue,
   };
 }
-
-export function resolveLegacySportValue(
-  mappings: LegacySportMapping[],
-  sportId: string,
-  disciplineId: string,
-  variantId: string,
-  fallback: string,
-) {
-  const exact = mappings.find((item) => item.sportId === sportId
-    && (item.disciplineId ?? '') === disciplineId
-    && (item.variantId ?? '') === variantId);
-  if (exact) return exact.legacyValue;
-  const discipline = mappings.find((item) => item.sportId === sportId
-    && (item.disciplineId ?? '') === disciplineId
-    && !item.variantId);
-  if (discipline) return discipline.legacyValue;
-  const sport = mappings.find((item) => item.sportId === sportId
-    && !item.disciplineId && !item.variantId);
-  return sport?.legacyValue ?? fallback;
-}

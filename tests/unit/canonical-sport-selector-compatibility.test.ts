@@ -3,7 +3,6 @@ import test from 'node:test';
 
 import {
   hydrateCanonicalSportValue,
-  resolveLegacySportValue,
   type LegacySportMapping,
 } from '../../lib/taxonomy/canonicalSportSelector';
 
@@ -27,9 +26,16 @@ test('legacy sport selection hydrates the complete canonical chain', () => {
   });
 });
 
-test('variant and discipline changes restore the legacy keys used by roles and categories', () => {
-  assert.equal(resolveLegacySportValue(mappings, 'football', 'association', 'eleven', 'Calcio'), 'Calcio');
-  assert.equal(resolveLegacySportValue(mappings, 'football', 'association', 'eight', 'Calcio'), 'Calcio a 8');
-  assert.equal(resolveLegacySportValue(mappings, 'football', 'futsal', '', 'Calcio'), 'Futsal');
-  assert.equal(resolveLegacySportValue(mappings, 'volleyball', '', '', 'football'), 'Volley');
+test('each visible sport option carries its complete hidden canonical chain', () => {
+  for (const [legacySport, disciplineId, variantId] of [
+    ['Calcio', 'association', 'eleven'],
+    ['Calcio a 8', 'association', 'eight'],
+    ['Futsal', 'futsal', ''],
+  ]) {
+    assert.deepEqual(hydrateCanonicalSportValue(mappings, {
+      legacySport, sportId: '', disciplineId: '', variantId: '',
+    }), {
+      legacySport, sportId: 'football', disciplineId, variantId,
+    });
+  }
 });

@@ -432,10 +432,6 @@ export default function OpportunitiesClient() {
           labels={{
             sport: t('opportunities.sport'),
             allSports: t('search.allSports'),
-            discipline: t('sports.discipline'),
-            allDisciplines: t('sports.allDisciplines'),
-            variant: t('sports.variant'),
-            allVariants: t('sports.allVariants'),
             catalogUnavailable: t('sports.catalogUnavailable'),
           }}
         />

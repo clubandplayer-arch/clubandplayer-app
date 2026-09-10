@@ -16,14 +16,13 @@ test('5I catalog and selector expose an active hierarchical read-only vocabulary
   }
   assert.equal((catalog.match(/\.eq\('is_active', true\)/g) ?? []).length, 4);
   assert.doesNotMatch(catalog, /\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
-  assert.match(selector, /item\.sport_id === value\.sportId/);
-  assert.match(selector, /item\.discipline_id === value\.disciplineId/);
   assert.match(catalog, /legacy_display_label,sport_id,discipline_id,variant_id/);
   assert.match(catalog, /legacySportOrder/);
   assert.match(selector, /catalog\.legacySports/);
   assert.match(selector, /disciplineId: legacySport\?\.disciplineId \?\? ''/);
   assert.match(selector, /variantId: legacySport\?\.variantId \?\? ''/);
-  assert.match(selector, /disciplineId,\s*variantId: ''/);
+  assert.doesNotMatch(selector, /idPrefix}-discipline/);
+  assert.doesNotMatch(selector, /idPrefix}-variant/);
 });
 
 test('Profile, Experience, and Opportunity forms submit canonical context with legacy compatibility', () => {
@@ -40,10 +39,10 @@ test('Profile, Experience, and Opportunity forms submit canonical context with l
   assert.match(profileForm, /normalizedPastExperiences\.map\(buildExperienceFormPayload\)/);
 });
 
-test('canonical selector labels are localized in every supported locale', () => {
+test('single sport selector failure label is localized in every supported locale', () => {
   for (const locale of ['it', 'en', 'fr', 'es']) {
     const messages = readFileSync(`lib/i18n/messages/${locale}.ts`, 'utf8');
-    for (const key of ['sports.discipline', 'sports.allDisciplines', 'sports.variant', 'sports.allVariants', 'sports.catalogUnavailable']) {
+    for (const key of ['sports.catalogUnavailable']) {
       assert.match(messages, new RegExp(`['"]${key.replace('.', '\\.')}['"]`));
     }
   }

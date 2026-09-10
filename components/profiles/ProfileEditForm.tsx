@@ -1041,10 +1041,6 @@ export default function ProfileEditForm() {
                   labels={{
                     sport: t('profile.clubSport'),
                     allSports: t('profile.select'),
-                    discipline: t('sports.discipline'),
-                    allDisciplines: t('sports.allDisciplines'),
-                    variant: t('sports.variant'),
-                    allVariants: t('sports.allVariants'),
                     catalogUnavailable: t('sports.catalogUnavailable'),
                   }}
                 />
@@ -1230,10 +1226,6 @@ export default function ProfileEditForm() {
                   labels={{
                     sport: t('opportunities.sport'),
                     allSports: t('profile.select'),
-                    discipline: t('sports.discipline'),
-                    allDisciplines: t('sports.allDisciplines'),
-                    variant: t('sports.variant'),
-                    allVariants: t('sports.allVariants'),
                     catalogUnavailable: t('sports.catalogUnavailable'),
                   }}
                 />
@@ -1412,10 +1404,6 @@ export default function ProfileEditForm() {
                           labels={{
                             sport: t('opportunities.sport'),
                             allSports: t('profile.select'),
-                            discipline: t('sports.discipline'),
-                            allDisciplines: t('sports.allDisciplines'),
-                            variant: t('sports.variant'),
-                            allVariants: t('sports.allVariants'),
                             catalogUnavailable: t('sports.catalogUnavailable'),
                           }}
                         />
