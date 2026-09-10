@@ -14,6 +14,9 @@ test('5G Opportunity canary performs one write followed by detail and canonical 
 });
 
 test('5G Opportunity canary pins baselines and stops without retry or Application writes',()=>{
+  assert.match(script,/EXPECTED_RELEASE_SHA/);
+  assert.match(script,/\.sha==\$sha and \.mode=="production"/);
+  assert.match(script,/release_sha_drift/);
   assert.match(script,/8fe32e407a1038ee38753b70e5374b3a46d6ae9d5f16cd5b73c53abaca8f5ed0/);
   assert.match(script,/qualification_drift/);
   assert.match(script,/opportunity_create_contract_drift/);

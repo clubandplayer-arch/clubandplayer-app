@@ -5,6 +5,8 @@ set +o history
 umask 077
 
 PROD_BASE_URL="${PROD_BASE_URL:-https://www.clubandplayer.com}"
+EXPECTED_RELEASE_SHA="${PHASE_5G_EXPECTED_RELEASE_SHA:-cdb84458c61e72b75ee42a9327cd6510f357887e}"
+ENV_RESPONSE='/tmp/phase-5g-canary-env-current.json'
 QUALIFICATION='/tmp/phase-5g-canary-accounts-qualification.json'
 APPLICANT_BASELINE='/tmp/phase-5g-canary-applicant-applications-before.json'
 CLUB_BASELINE='/tmp/phase-5g-canary-club-received-before.json'
@@ -16,6 +18,13 @@ EXPECTED_BASELINE_SHA256='8fe32e407a1038ee38753b70e5374b3a46d6ae9d5f16cd5b73c53a
 
 stop() { printf 'PHASE_5G_CANARY_STOP %s\n' "$1" >&2; exit 1; }
 [ -n "${CLUB_CANARY_TOKEN:-}" ] || stop 'club_token_missing'
+[ -n "$EXPECTED_RELEASE_SHA" ] || stop 'expected_release_sha_missing'
+
+ENV_STATUS="$(curl -sS -o "$ENV_RESPONSE" -w '%{http_code}' "$PROD_BASE_URL/api/env")"
+[ "$ENV_STATUS" = 200 ] || stop "env_http_$ENV_STATUS"
+jq -e --arg sha "$EXPECTED_RELEASE_SHA" '.sha==$sha and .mode=="production"' "$ENV_RESPONSE" >/dev/null \
+  || stop 'release_sha_drift'
+
 for file in "$QUALIFICATION" "$APPLICANT_BASELINE" "$CLUB_BASELINE"; do
   [ -r "$file" ] || stop "evidence_missing_$(basename "$file")"
 done
