@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5H — COMPLETATA: RUNTIME PRODUCTION E SMOKE READ-ONLY PASS** |
-| Current active phase | **FASE 5I — IMPLEMENTAZIONE REPOSITORY COMPLETATA; ROLLOUT PENDENTE** |
-| Next safe action | **Review finale mirata, deploy 5I e smoke UI/API; poi sola certificazione regressiva 5J** |
+| Last completed subphase | **FASE 5I — COMPLETATA: ROLLOUT PRODUCTION, SMOKE UI/API E AUDIT MIGRATION HISTORY PASS** |
+| Current active phase | **FASE 5J — REGRESSIONE, BACKWARD COMPATIBILITY E CERTIFICAZIONE** |
+| Next safe action | **Eseguire la sola certificazione regressiva 5J; nessun nuovo deploy, apply, seed o backfill** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -696,8 +696,8 @@ Suddivisione confermata dopo l'audit:
 - 5F — profili ed esperienze — **COMPLETATA: SCHEMA, DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5G — Opportunities e Applications — **COMPLETATA: SCHEMA/RUNTIME, APPLY/DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5H — Search / Discover / WhoToFollow — **COMPLETATA: RUNTIME PRODUCTION E SMOKE READ-ONLY PASS**;
-- 5I — UI, filtri e controlled vocabulary — **IMPLEMENTAZIONE REPOSITORY COMPLETATA: FILTRI E FORM CANONICI; ROLLOUT PENDENTE**;
-- 5J — regressione, backward compatibility e certificazione — **NOT STARTED**.
+- 5I — UI, filtri e controlled vocabulary — **COMPLETATA: ROLLOUT PRODUCTION, SMOKE UI/API E AUDIT MIGRATION HISTORY PASS**;
+- 5J — regressione, backward compatibility e certificazione — **NEXT: UNICO GATE RESIDUO DELLA FASE 5**.
 
 
 ### FASE 5G — Opportunities e Applications
@@ -787,6 +787,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Smoke 5I su `0f0fffac` — STOP, DUE REGRESSIONI CORRETTE LOCALLY.** Search ignorava deliberatamente tutti i filtri in assenza di testo e l'API rifiutava `q` vuota; inoltre il filtro canonico escludeva la grande maggioranza delle righe legacy ancora prive di UUID. Search ora accetta una ricerca filter-only e combina la catena canonica con il fallback sull'etichetta legacy esatta. Profile validava i campi obbligatori dopo aver rimosso `sport` dal payload per serializzare `primarySport`, producendo il falso errore “Completa i campi obbligatori: sport”; la validazione avviene ora prima della serializzazione mutuamente esclusiva. La 5I resta aperta: promuovere questo fix e riprendere lo stesso smoke dal punto 1, poi proseguire con Experience e Opportunity.
 
 **Diagnosi divergenza Preview/Production su `f29bf886` — CACHE CLIENT RIMOSSA LOCALLY.** `/api/env` conferma la release Production `f29bf886d3b8cd228845cf238ce512e6d518480d` e `/api/sports/catalog` restituisce realmente tutte le 14 `legacySports`; il menu vuoto non deriva quindi dal database o dal catalogo Production. Il selector usava tuttavia `cache: force-cache` sul medesimo URL già servito dalle release precedenti, nelle quali `legacySports` non esisteva: una risposta client obsoleta era accettata silenziosamente come array vuoto. Il fetch UI è ora `no-store` su URL versionato, la route è force-dynamic e una risposta senza mapping produce uno stato di errore esplicito invece di un menu apparentemente vuoto. Il commit locale citato nelle conversazioni può non apparire su GitHub quando la PR viene squashata: per il prossimo promote usare lo SHA risultante dalla PR/branch GitHub che include questa correzione, quindi verificarlo tramite `/api/env`.
+
+**Chiusura 5I Production 2026-09-10 — USER-REPORTED PASS.** Sulla release `d69768bb2df05bb8fb7ead409cba83e806b4c76b`, l'operatore ha confermato lo smoke browser/UI e ha fornito l'evidenza del catalogo Production completo: 12 Sport canonici e 14 opzioni applicative legacy, incluse le catene distinte Calcio, Calcio a 8 e Futsal. Il successivo audit SQL è stato eseguito in una transazione esplicitamente read-only e ha restituito `classification=PASS`, `transactionReadOnly=on` e `writesPerformed=false`. Le migration mirate `20261206120000`, `20261207120000`, `20261208120000`, `20261209120000` e `20261210120000` risultano registrate esattamente una volta; gli elenchi di migration duplicate/mancanti, tabelle mancanti, colonne mancanti e constraint mancanti sono tutti vuoti. Non eseguire nuovamente migration, history repair, seed o smoke mutativi 5I: resta soltanto il gate regressivo 5J.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
