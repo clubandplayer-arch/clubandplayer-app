@@ -8,7 +8,11 @@ import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName'
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeAccountType } from '@/lib/i18n/controlledVocabulary';
+import {
+  localizeAccountType,
+  localizeSport,
+  type VocabularyTranslator,
+} from '@/lib/i18n/controlledVocabulary';
 
 type FollowedItem = {
   id: string;
@@ -42,7 +46,7 @@ function joinWithSeparator(parts: ReactNode[], separator: string) {
   }, []);
 }
 
-function subtitle(item: FollowedItem, viewerRole: ProfileRole): ReactNode {
+function subtitle(item: FollowedItem, viewerRole: ProfileRole, t: VocabularyTranslator): ReactNode {
   const rawCountry = (item.country ?? '').trim();
   const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
@@ -60,7 +64,7 @@ function subtitle(item: FollowedItem, viewerRole: ProfileRole): ReactNode {
     );
   }
   const location = locationParts.length ? <>{joinWithSeparator(locationParts, ', ')}</> : null;
-  const sport = item.sport || '';
+  const sport = localizeSport(item.sport, t) || '';
   if (viewerRole === 'club') {
     return location ? <>{joinWithSeparator([sport, location].filter(Boolean) as ReactNode[], ' · ')}</> : sport;
   }
@@ -194,7 +198,7 @@ export default function FollowedClubs() {
                       {localizeAccountType(item.accountType ?? 'player', t)}
                     </span>
                   </div>
-                  <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>
+                  <div className="truncate text-xs text-zinc-500">{subtitle(item, role, t)}</div>
                 </div>
               </li>
             );

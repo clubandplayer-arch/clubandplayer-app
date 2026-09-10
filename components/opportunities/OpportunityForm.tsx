@@ -4,9 +4,11 @@ import { useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { localizeAccountType, localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
+import { buildCanonicalSportRequestFields } from '@/lib/taxonomy/canonicalSportFormPayload';
 
 import type { Opportunity } from '@/types/opportunity';
-import { AGE_BRACKETS, type AgeBracket, normalizeSport, sportRequiresPlayerRole, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { AGE_BRACKETS, type AgeBracket, normalizeSport, sportRequiresPlayerRole, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import {
   OPPORTUNITY_GENDER_LABELS,
@@ -111,6 +113,12 @@ export default function OpportunityForm({
 
   // Sport/ruolo/categoria
   const [sport, setSport] = useState<string>(normalizeSport(initial?.sport) || 'Calcio');
+  const [primarySport, setPrimarySport] = useState<CanonicalSportFilterValue>({
+    sportId: initial?.primarySport?.sportId ?? initial?.sport_id ?? '',
+    disciplineId: initial?.primarySport?.disciplineId ?? initial?.sport_discipline_id ?? '',
+    variantId: initial?.primarySport?.variantId ?? initial?.sport_variant_id ?? '',
+    legacySport: normalizeSport(initial?.sport) || 'Calcio',
+  });
   const [role, setRole] = useState<string>(initial?.role ?? '');
   const [roleGroup, setRoleGroup] = useState<RoleGroup>(() => normalizeRoleGroup(initial?.role_group ?? initial?.roleGroup));
   const [category, setCategory] = useState<string>(initial?.category ?? '');
@@ -150,7 +158,6 @@ export default function OpportunityForm({
       const payload: Record<string, unknown> = {
         title: normalizedTitle,
         description: (description || '').trim() || null,
-        sport,
         role: role || null,
         role_group: role ? roleGroup : 'player',
         category: category || null,
@@ -159,6 +166,7 @@ export default function OpportunityForm({
         age_min,
         age_max,
       };
+      Object.assign(payload, buildCanonicalSportRequestFields(primarySport));
       if (geographyTouched) {
         payload.country_id = countryId;
         payload.geo_area_id = geoAreaId;
@@ -239,30 +247,28 @@ export default function OpportunityForm({
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">{t('opportunity.sportProfile')}</legend>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('opportunities.sport')}</label>
-            <select
-              className="w-full rounded-xl border px-3 py-2"
-              value={sport}
-              onChange={(e) => {
-                const nextSport = e.target.value;
-                setSport(nextSport);
-                if (roleGroup === 'player') {
-                  const nextPlayerRoles = SPORTS_ROLES[nextSport] ?? [];
-                  if (role && !nextPlayerRoles.includes(role)) setRole('');
-                }
-                const allowedCategories = CATEGORIES_BY_SPORT[nextSport] ?? [];
-                if (!allowedCategories.includes(category)) setCategory('');
-              }}
-            >
-              {SPORTS.map((s: string) => (
-                <option key={s} value={s}>
-                  {localizeSport(s, t)}
-                </option>
-              ))}
-            </select>
-          </div>
+        <CanonicalSportFilter
+          idPrefix="opportunity-form-sport"
+          value={primarySport}
+          onChange={(next) => {
+            setPrimarySport(next);
+            setSport(next.legacySport);
+            if (roleGroup === 'player') {
+              const nextPlayerRoles = SPORTS_ROLES[next.legacySport] ?? [];
+              if (role && !nextPlayerRoles.includes(role)) setRole('');
+            }
+            const allowedCategories = CATEGORIES_BY_SPORT[next.legacySport] ?? [];
+            if (!allowedCategories.includes(category)) setCategory('');
+          }}
+          sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
+          labels={{
+            sport: t('opportunities.sport'),
+            allSports: t('opportunities.selectSport'),
+            catalogUnavailable: t('sports.catalogUnavailable'),
+          }}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 
           <div>
             <label className="block text-sm font-medium mb-1">{t('opportunities.category')}</label>

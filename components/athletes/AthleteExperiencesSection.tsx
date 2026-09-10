@@ -2,6 +2,7 @@
 
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { useMemo } from 'react';
+import { localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type AthleteExperience = {
   id: string;
@@ -19,10 +20,10 @@ type Props = {
   experiences: AthleteExperience[];
 };
 
-function formatPeriod(exp: AthleteExperience) {
+function formatPeriod(exp: AthleteExperience, currentLabel: string, missingLabel: string) {
   const start = exp.start_year ?? null;
-  const end = exp.is_current ? 'oggi' : exp.end_year ?? null;
-  if (!start && !end) return 'Periodo non indicato';
+  const end = exp.is_current ? currentLabel : exp.end_year ?? null;
+  if (!start && !end) return missingLabel;
   if (start && !end) return `${start} – —`;
   if (!start && end) return `— – ${end}`;
   return `${start} – ${end}`;
@@ -56,15 +57,15 @@ export default function AthleteExperiencesSection({ experiences }: Props) {
             <li key={exp.id} className="rounded-xl border border-neutral-200 p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                  <div className="text-base font-semibold text-neutral-900">{exp.club_name || 'Club non indicato'}</div>
+                  <div className="text-base font-semibold text-neutral-900">{exp.club_name || t('common.notAvailable')}</div>
                   <div className="text-sm text-neutral-700">
-                    {[exp.role, exp.category].filter(Boolean).join(' · ') || 'Ruolo non indicato'}
+                    {[localizeSportRole(exp.role, t), localizeOpportunityCategory(exp.category, t)].filter(Boolean).join(' · ') || t('common.notAvailable')}
                   </div>
                   <div className="text-xs uppercase tracking-wide text-neutral-500">
-                    {exp.sport || 'Sport non indicato'}
+                    {localizeSport(exp.sport, t) || t('common.notAvailable')}
                   </div>
                 </div>
-                <div className="text-sm font-semibold text-neutral-800">{formatPeriod(exp)}</div>
+                <div className="text-sm font-semibold text-neutral-800">{formatPeriod(exp, t('experience.current'), t('common.notAvailable'))}</div>
               </div>
               {exp.description && exp.description.trim().length > 0 && (
                 <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">{exp.description}</p>

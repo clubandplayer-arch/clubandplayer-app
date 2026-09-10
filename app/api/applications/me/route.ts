@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
+import { projectOpportunityCanonicalContext } from '@/lib/opportunities/canonicalSportsContext.server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,14 +40,16 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const oppIds = Array.from(new Set(apps.map((a) => a.opportunity_id).filter(Boolean) as string[]));
   const { data: opps, error: oppErr } = await supabase
     .from('opportunities')
-    .select('id, title, club_id, club_name, role')
+    .select('id,title,club_id,club_name,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,gender,gender_code')
     .in('id', oppIds);
   if (oppErr) return jsonError(oppErr.message, 400);
 
   const oppMap = new Map((opps ?? []).map((o: any) => [o.id, o]));
   const enriched = apps.map((a: any) => ({
     ...a,
-    opportunity: oppMap.get(a.opportunity_id) ?? null,
+    opportunity: oppMap.has(a.opportunity_id)
+      ? { ...oppMap.get(a.opportunity_id), ...projectOpportunityCanonicalContext(oppMap.get(a.opportunity_id)) }
+      : null,
   }));
 
   return NextResponse.json({ data: enriched }, { headers: { 'Cache-Control': 'no-store' } });

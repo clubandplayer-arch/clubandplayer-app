@@ -84,6 +84,10 @@ export type Opportunity = {
 
   /** Dati sportivi */
   sport?: OpportunitySport | null;
+  sport_id?: string | null;
+  sport_discipline_id?: string | null;
+  sport_variant_id?: string | null;
+  primarySport?: { sportId: string; disciplineId: string | null; variantId: string | null } | null;
   role?: OpportunityRole | null;
   role_group?: OpportunityRoleGroup | null;
   roleGroup?: OpportunityRoleGroup;
@@ -92,6 +96,12 @@ export type Opportunity = {
   age_min?: number | null;
   age_max?: number | null;
   gender?: OpportunityGender;
+  genderCode?: 'male' | 'female' | 'mixed' | null;
+  gender_code?: 'male' | 'female' | 'mixed' | null;
+  playerPositionId?: string | null;
+  player_position_id?: string | null;
+  staffRoleId?: string | null;
+  staff_role_id?: string | null;
 
   /** Stato pubblicazione */
   status?: OpportunityStatus | null;

@@ -34,28 +34,34 @@ function resolveBearerToken(req: NextRequest): string | null {
   return trimmed ? trimmed : null;
 }
 
+/** Resolves an optional session, preferring the browser cookie and supporting API bearer tokens. */
+export async function resolveAuthContext(req: NextRequest): Promise<AuthContext | null> {
+  const cookieSupabase = await getSupabaseServerClient();
+  const byCookie = await cookieSupabase.auth.getUser();
+  const cookieUser = byCookie.data?.user ?? null;
+  if (!byCookie.error && cookieUser) return { supabase: cookieSupabase, user: cookieUser };
+
+  const bearerToken = resolveBearerToken(req);
+  if (!bearerToken) return null;
+
+  const bearerSupabase = getSupabaseServerClientWithAccessToken(bearerToken);
+  const byBearer = await bearerSupabase.auth.getUser();
+  const bearerUser = byBearer.data?.user ?? null;
+  if (byBearer.error || !bearerUser) return null;
+
+  return {
+    supabase: bearerSupabase as unknown as ServerSupabase,
+    user: bearerUser,
+  };
+}
+
 /** Restituisce { ctx } se autenticato, altrimenti { res } con 401 */
 export async function requireAuth(req: NextRequest): Promise<
   | { ctx: AuthContext }
   | { res: NextResponse<{ error: string }> }
 > {
-  const cookieSupabase = await getSupabaseServerClient();
-
-  const byCookie = await cookieSupabase.auth.getUser();
-  const cookieUser = byCookie.data?.user ?? null;
-  if (!byCookie.error && cookieUser) {
-    return { ctx: { supabase: cookieSupabase, user: cookieUser } };
-  }
-
-  const bearerToken = resolveBearerToken(req);
-  if (bearerToken) {
-    const bearerSupabase = getSupabaseServerClientWithAccessToken(bearerToken);
-    const byBearer = await bearerSupabase.auth.getUser();
-    const bearerUser = byBearer.data?.user ?? null;
-    if (!byBearer.error && bearerUser) {
-      return { ctx: { supabase: bearerSupabase as unknown as ServerSupabase, user: bearerUser } };
-    }
-  }
+  const ctx = await resolveAuthContext(req);
+  if (ctx) return { ctx };
 
   return { res: jsonError('Unauthorized', 401) };
 }

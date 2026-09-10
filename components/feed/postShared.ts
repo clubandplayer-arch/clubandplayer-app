@@ -152,7 +152,7 @@ export function normalizeEventPayload(raw: any): EventPayload | null {
   };
 }
 
-export function formatEventDate(raw: string): string {
+export function formatEventDate(raw: string, locale?: string): string {
   const value = (raw || '').trim();
   if (!value) return '';
   const hasTime = /\d{2}:\d{2}/.test(value);
@@ -160,7 +160,7 @@ export function formatEventDate(raw: string): string {
   if (Number.isNaN(date.getTime())) return value;
   const opts: Intl.DateTimeFormatOptions = { dateStyle: 'long' };
   if (hasTime) opts.timeStyle = 'short';
-  return new Intl.DateTimeFormat(undefined, opts).format(date);
+  return new Intl.DateTimeFormat(locale, opts).format(date);
 }
 
 export function domainFromUrl(url: string) {

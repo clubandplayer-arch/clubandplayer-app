@@ -10,6 +10,8 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import { resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { resolveRequestLocale } from '@/lib/i18n/server';
+import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -46,6 +48,9 @@ function locationLabel(row: InstitutionProfileRow, provinceAbbreviations: Record
 }
 
 export default async function InstitutionProfilePage({ params }: PageProps) {
+  const locale = await resolveRequestLocale();
+  const messages = await loadMessages(locale);
+  const t = (key: MessageKey) => messages[key] ?? key;
   const { id } = await params;
   const supabase = await getSupabaseServerClient();
   const { data } = await supabase
@@ -109,7 +114,7 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
         displayName={displayName}
         accountType="institution"
         avatarUrl={profile.avatar_url}
-        subtitle={profile.headline || 'Ente'}
+        subtitle={profile.headline || t('profile.institution')}
         locationContent={headerLocationContent}
         socialLinks={profile.links ?? undefined}
         showMessageButton
@@ -118,33 +123,33 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
 
       <section className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="heading-h2 text-xl">Dati ente</h2>
+          <h2 className="heading-h2 text-xl">{t('institution.details')}</h2>
           <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sede</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('institution.headquarters')}</div>
               <div className="mt-1 font-medium text-neutral-900">{sede || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Anno di fondazione</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.foundationYear')}</div>
               <div className="mt-1 font-medium text-neutral-900">{profile.club_foundation_year || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Localizzazione</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('opportunity.location')}</div>
               <div className="mt-1 font-medium text-neutral-900">{geolocation || '—'}</div>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="heading-h2 text-xl">Biografia</h2>
+          <h2 className="heading-h2 text-xl">{t('institution.biography')}</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">{aboutText}</p>
         </div>
       </section>
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="heading-h2 text-xl">Bacheca</h2>
-          <span className="text-xs font-semibold text-blue-700">Aggiornamenti dell&apos;ente</span>
+          <h2 className="heading-h2 text-xl">{t('institution.board')}</h2>
+          <span className="text-xs font-semibold text-blue-700">{t('institution.updates')}</span>
         </div>
         <PublicAuthorFeed authorId={profile.id} fallbackAuthorIds={profile.user_id ? [profile.user_id] : []} />
       </section>

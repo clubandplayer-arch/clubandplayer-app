@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "evidencePackVersion": "2026-09-07.phase-5d-e-b.figc-it.1",
+  "sourceKey": "IT:football:FIGC",
+  "country": "IT",
+  "sportCode": "football",
+  "retrievedAt": "2026-09-07",
+  "authority": {
+    "name": "Federazione Italiana Giuoco Calcio",
+    "officialUrl": "https://www.figc.it/it",
+    "status": "primary_authority_candidate_verified",
+    "httpStatus": 200,
+    "retrievalSha256": "sha256:2cba4fcc7d89ab64ba7a097062f018cd41f73e3c4fff5eb51e763650fe1f8305"
+  },
+  "competitionScopePage": {
+    "url": "https://www.figc.it/it/federazione/campionati-nazionali",
+    "title": "Campionati Nazionali | FIGC",
+    "httpStatus": 200,
+    "retrievalSha256": "sha256:7b43807e9c76d54a0f0b47f3d27d8f904645f5382e2fe77dbc7b839aaec1ad62",
+    "classification": "human_readable_scope_page_not_dataset"
+  },
+  "discoveryIndex": {
+    "url": "https://www.figc.it/sitemaps/figc/sitemap1.xml",
+    "httpStatus": 200,
+    "retrievalSha256": "sha256:05d7c75512d4022aaac66c697dbfc82a823abcc2c36ce99f60edd08cf494c7ca",
+    "classification": "website_sitemap_not_catalog_dataset"
+  },
+  "reuseTerms": {
+    "url": "https://www.figc.it/it/condizioni-di-utilizzo-del-servizio",
+    "title": "Condizioni di utilizzo del servizio | FIGC",
+    "httpStatus": 200,
+    "retrievalSha256": "sha256:80288d013a7254a9fd70af964f944a822a33f3ccb08a872e117af43434a34637",
+    "assessment": "site_terms_reserve_rights_and_do_not_grant_catalog_reuse",
+    "explicitOpenDataLicense": null,
+    "databaseReuseGrant": null
+  },
+  "dataset": {
+    "url": null,
+    "format": null,
+    "versionOrEffectiveDate": null,
+    "stableRecordIdentifier": null,
+    "coverageAndExclusions": null,
+    "updateFrequency": null
+  },
+  "readinessInput": {
+    "key": "IT:football:FIGC",
+    "status": "candidate_pending_evidence",
+    "reuseStatus": "blocked_reuse_not_granted",
+    "stableRecordIdentifiers": "not_evidenced",
+    "approvalEvidence": {
+      "primaryAuthority": "FIGC official website and Campionati Nazionali scope page",
+      "explicitReuseTermsUrl": "https://www.figc.it/it/condizioni-di-utilizzo-del-servizio",
+      "licenseIdentifier": "ALL_RIGHTS_RESERVED_SITE_TERMS",
+      "attribution": "Federazione Italiana Giuoco Calcio",
+      "retrievalChecksum": "sha256:7b43807e9c76d54a0f0b47f3d27d8f904645f5382e2fe77dbc7b839aaec1ad62"
+    }
+  },
+  "decision": {
+    "status": "BLOCKED_NOT_READY_FOR_LOCAL_MANIFEST",
+    "mayCreateOrganizationCompetitionManifest": false,
+    "mayCreateSeedOrMigration": false,
+    "requiredNextEvidence": [
+      "official machine-readable dataset or documented API",
+      "explicit permission or licence covering database/catalog reuse",
+      "stable record identifiers",
+      "dataset version or effective date",
+      "coverage and exclusions"
+    ]
+  }
+}
