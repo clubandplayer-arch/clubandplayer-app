@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 
 import SearchResultRow, { type SearchResult } from '@/components/search/SearchResultRow';
+import CanonicalSportFilter from '@/components/sports/CanonicalSportFilter';
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
-import { SPORTS, SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
+import { SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type SearchType = 'all' | 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
@@ -57,6 +58,9 @@ type SearchFilters = {
   province: string;
   city: string;
   sport: string;
+  sportId: string;
+  disciplineId: string;
+  variantId: string;
   role: string;
 };
 
@@ -66,6 +70,9 @@ const EMPTY_FILTERS: SearchFilters = {
   province: '',
   city: '',
   sport: '',
+  sportId: '',
+  disciplineId: '',
+  variantId: '',
   role: '',
 };
 
@@ -108,12 +115,15 @@ function readFilters(searchParams: URLSearchParams | ReturnType<typeof useSearch
     province: (searchParams.get('province') || '').trim(),
     city: (searchParams.get('city') || '').trim(),
     sport: normalizeSport(searchParams.get('sport')) ?? '',
+    sportId: (searchParams.get('sportId') || searchParams.get('sport_id') || '').trim(),
+    disciplineId: (searchParams.get('disciplineId') || searchParams.get('sport_discipline_id') || '').trim(),
+    variantId: (searchParams.get('variantId') || searchParams.get('sport_variant_id') || '').trim(),
     role: (searchParams.get('role') || '').trim(),
   };
 }
 
 function hasActiveFilters(filters: SearchFilters) {
-  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
+  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.sportId || filters.disciplineId || filters.variantId || filters.role);
 }
 
 export default function SearchPage() {
@@ -162,7 +172,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [queryParam, type, filters.country, filters.region, filters.province, filters.city, filters.sport, filters.role]);
+  }, [queryParam, type, filters.country, filters.region, filters.province, filters.city, filters.sport, filters.sportId, filters.disciplineId, filters.variantId, filters.role]);
 
   useEffect(() => {
     if (!isItalySelected) {
@@ -489,29 +499,41 @@ export default function SearchPage() {
             </label>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">{t('search.sport')}</span>
-              <select
-                value={filters.sport}
-                onChange={(event) => updateFilter('sport', event.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
-              >
-                <option value="">{t('search.allSports')}</option>
-                {SPORTS.map((sport) => (
-                  <option key={sport} value={sport}>
-                    {localizeSport(sport, t)}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="mt-4">
+            <CanonicalSportFilter
+              idPrefix="global-search"
+              value={{
+                sportId: filters.sportId,
+                disciplineId: filters.disciplineId,
+                variantId: filters.variantId,
+                legacySport: filters.sport,
+              }}
+              onChange={(sport) => setFilters((current) => ({
+                ...current,
+                sport: sport.legacySport,
+                sportId: sport.sportId,
+                disciplineId: sport.disciplineId,
+                variantId: sport.variantId,
+                role: sport.legacySport === current.sport ? current.role : '',
+              }))}
+              labels={{
+                sport: t('search.sport'),
+                allSports: t('search.allSports'),
+                discipline: 'Disciplina',
+                allDisciplines: 'Tutte le discipline',
+                variant: 'Variante',
+                allVariants: 'Tutte le varianti',
+              }}
+            />
+          </div>
 
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <label className="space-y-2 text-sm text-slate-700">
               <span className="font-medium">{t('search.role')}</span>
               <select
                 value={filters.role}
                 onChange={(event) => updateFilter('role', event.target.value)}
-                disabled={!filters.sport}
+                disabled={!filters.sport && !filters.sportId}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value="">{t('search.allRoles')}</option>
