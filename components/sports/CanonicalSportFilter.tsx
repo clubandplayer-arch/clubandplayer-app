@@ -17,12 +17,13 @@ type Props = {
   idPrefix: string;
   value: CanonicalSportFilterValue;
   onChange: (value: CanonicalSportFilterValue) => void;
-  labels: { sport: string; allSports: string; discipline: string; allDisciplines: string; variant: string; allVariants: string };
+  labels: { sport: string; allSports: string; discipline: string; allDisciplines: string; variant: string; allVariants: string; catalogUnavailable: string };
+  sportLabel?: (sport: Sport) => string;
 };
 
 const EMPTY_CATALOG = { sports: [] as Sport[], disciplines: [] as Discipline[], variants: [] as Variant[] };
 
-export default function CanonicalSportFilter({ idPrefix, value, onChange, labels }: Props) {
+export default function CanonicalSportFilter({ idPrefix, value, onChange, labels, sportLabel }: Props) {
   const [catalog, setCatalog] = useState(EMPTY_CATALOG);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -67,8 +68,8 @@ export default function CanonicalSportFilter({ idPrefix, value, onChange, labels
           className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100"
           disabled={loadFailed}
         >
-          <option value="">{loadFailed ? 'Catalogo non disponibile' : labels.allSports}</option>
-          {catalog.sports.map((sport) => <option key={sport.id} value={sport.id}>{sport.canonical_name}</option>)}
+          <option value="">{loadFailed ? labels.catalogUnavailable : labels.allSports}</option>
+          {catalog.sports.map((sport) => <option key={sport.id} value={sport.id}>{sportLabel?.(sport) ?? sport.canonical_name}</option>)}
         </select>
       </label>
 

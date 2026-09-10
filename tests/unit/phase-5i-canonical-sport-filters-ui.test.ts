@@ -6,6 +6,9 @@ const catalog = readFileSync('app/api/sports/catalog/route.ts', 'utf8');
 const selector = readFileSync('components/sports/CanonicalSportFilter.tsx', 'utf8');
 const search = readFileSync('app/search/page.tsx', 'utf8');
 const opportunities = readFileSync('app/(dashboard)/opportunities/OpportunitiesClient.tsx', 'utf8');
+const opportunityForm = readFileSync('components/opportunities/OpportunityForm.tsx', 'utf8');
+const profileForm = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8');
+const pastExperiences = readFileSync('lib/profiles/pastExperiences.ts', 'utf8');
 
 test('5I catalog and selector expose an active hierarchical read-only vocabulary', () => {
   for (const table of ['sports', 'sport_disciplines', 'sport_variants']) {
@@ -17,6 +20,27 @@ test('5I catalog and selector expose an active hierarchical read-only vocabulary
   assert.match(selector, /item\.discipline_id === value\.disciplineId/);
   assert.match(selector, /disciplineId: '', variantId: ''/);
   assert.match(selector, /disciplineId: event\.target\.value, variantId: ''/);
+});
+
+test('Profile, Experience, and Opportunity forms submit canonical context with legacy compatibility', () => {
+  for (const source of [opportunityForm, profileForm]) {
+    assert.match(source, /CanonicalSportFilter/);
+    assert.match(source, /primarySport/);
+    assert.match(source, /disciplineId/);
+    assert.match(source, /variantId/);
+  }
+  assert.match(profileForm, /past-experience-\$\{index\}-sport/);
+  assert.match(pastExperiences, /primarySport\?:/);
+  assert.match(pastExperiences, /sportId: input\.primarySport\.sportId/);
+});
+
+test('canonical selector labels are localized in every supported locale', () => {
+  for (const locale of ['it', 'en', 'fr', 'es']) {
+    const messages = readFileSync(`lib/i18n/messages/${locale}.ts`, 'utf8');
+    for (const key of ['sports.discipline', 'sports.allDisciplines', 'sports.variant', 'sports.allVariants', 'sports.catalogUnavailable']) {
+      assert.match(messages, new RegExp(`['"]${key.replace('.', '\\.')}['"]`));
+    }
+  }
 });
 
 test('Search and Opportunities emit canonical IDs while retaining the legacy compatibility value', () => {

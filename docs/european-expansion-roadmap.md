@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **FASE 5H — COMPLETATA: RUNTIME PRODUCTION E SMOKE READ-ONLY PASS** |
-| Current active phase | **FASE 5I — IN CORSO; 5I-A COMPLETATA REPOSITORY-ONLY** |
-| Next safe action | **Review mirata 5I-B dei form Profile/Experience/Opportunity e dei controlled vocabulary effettivamente necessari** |
+| Current active phase | **FASE 5I — IMPLEMENTAZIONE REPOSITORY COMPLETATA; ROLLOUT PENDENTE** |
+| Next safe action | **Review finale mirata, deploy 5I e smoke UI/API; poi sola certificazione regressiva 5J** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -696,7 +696,7 @@ Suddivisione confermata dopo l'audit:
 - 5F — profili ed esperienze — **COMPLETATA: SCHEMA, DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5G — Opportunities e Applications — **COMPLETATA: SCHEMA/RUNTIME, APPLY/DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5H — Search / Discover / WhoToFollow — **COMPLETATA: RUNTIME PRODUCTION E SMOKE READ-ONLY PASS**;
-- 5I — UI, filtri e controlled vocabulary — **IN CORSO: 5I-A FILTRI SEARCH/OPPORTUNITIES COMPLETATI REPOSITORY-ONLY; 5I-B NON AVVIATA**;
+- 5I — UI, filtri e controlled vocabulary — **IMPLEMENTAZIONE REPOSITORY COMPLETATA: FILTRI E FORM CANONICI; ROLLOUT PENDENTE**;
 - 5J — regressione, backward compatibility e certificazione — **NOT STARTED**.
 
 
@@ -773,6 +773,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 ### FASE 5I — UI, filtri e controlled vocabulary
 
 **5I-A — Filtri sportivi canonici Search/Opportunities completati repository-only.** Un endpoint GET pubblico espone esclusivamente Sport, Discipline e Variant attivi, ordinati e senza capacità di scrittura. Il nuovo selector gerarchico condiviso azzera in modo deterministico i figli quando cambia il padre e invia `sportId`, `disciplineId` e `variantId` ai runtime già verificati in 5H/5G; mantiene anche il code legacy `sport` per ruoli/categorie e compatibilità dei deep link. Global Search e filtri Opportunities non dipendono da organization/competition/level/age/season né riaprono 5D-E-I. Test mirati, typecheck e lint sono PASS; nessuna migration, seed, backfill, modifica RLS, deploy o query remota. La 5I-B dovrà limitarsi ai form Profile/Experience/Opportunity e inventariare prima i controlled vocabulary realmente consumati.
+
+**5I-B — Form e controlled vocabulary completati repository-only senza ulteriori micro-fasi.** Lo stesso selector canonico è collegato ai form Profile Club/Player/Staff, alle Experience e al form Opportunity. I payload includono `primarySport` con Sport/Discipline/Variant e conservano `sport` legacy per i planner dual-write già distribuiti; il sanitizer Experience non elimina più il contesto canonico. Le etichette strutturali Discipline/Variant e lo stato catalogo sono disponibili in italiano, inglese, francese e spagnolo. Position/StaffRole e gender continuano a usare i resolver e codici canonici già introdotti nelle tranche precedenti; category/level/age/season restano legacy perché i relativi cataloghi esteri non sono prerequisiti per chiudere questa tranche. Dopo test locali resta un solo rollout 5I con smoke mirato, seguito dalla certificazione regressiva 5J; nessuna migration, seed o backfill.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 

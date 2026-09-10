@@ -12,16 +12,17 @@ import {
   LocationFields,
   LocationSelection,
 } from '@/components/profiles/LocationFields';
-import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { normalizeSport, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { ProfileSkill, type ProfileVisibilityStatus } from '@/types/profile';
 import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
 import { getProfileClubNameValidationError, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '@/lib/profiles/publication';
-import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
+import { CATEGORIES_BY_SPORT, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import { localizeOpportunityCategory, localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
 import { isCanonicalProfileResidenceUiEnabled } from '@/lib/env/features';
@@ -133,6 +134,9 @@ type Profile = {
   height_cm: number | null;
   weight_kg: number | null;
   sport: string | null;
+  sport_id?: string | null;
+  sport_discipline_id?: string | null;
+  sport_variant_id?: string | null;
   role: string | null;
 
   // club (nuovi)
@@ -278,6 +282,9 @@ export default function ProfileEditForm() {
   const [heightCm, setHeightCm] = useState<number | ''>('');
   const [weightKg, setWeightKg] = useState<number | ''>('');
   const [athleteSport, setAthleteSport] = useState('Calcio');
+  const [primarySport, setPrimarySport] = useState<CanonicalSportFilterValue>({
+    sportId: '', disciplineId: '', variantId: '', legacySport: 'Calcio',
+  });
   const [athleteRole, setAthleteRole] = useState('');
   const [pastExperiences, setPastExperiences] = useState<PastExperience[]>([{ ...EMPTY_PAST_EXPERIENCE }]);
   const [pastExperienceClubOptions, setPastExperienceClubOptions] = useState<string[]>([]);
@@ -384,6 +391,9 @@ export default function ProfileEditForm() {
 
       // club
       sport: (j as any)?.sport ?? 'Calcio',
+      sport_id: (j as any)?.sport_id ?? null,
+      sport_discipline_id: (j as any)?.sport_discipline_id ?? null,
+      sport_variant_id: (j as any)?.sport_variant_id ?? null,
       club_foundation_year: (j as any)?.club_foundation_year ?? null,
       club_stadium: (j as any)?.club_stadium ?? null,
       club_stadium_address: (j as any)?.club_stadium_address ?? null,
@@ -487,6 +497,12 @@ export default function ProfileEditForm() {
     setHeightCm(p.height_cm ?? '');
     setWeightKg(p.weight_kg ?? '');
     setAthleteSport(normalizeSport(p.sport) || 'Calcio');
+    setPrimarySport({
+      sportId: p.sport_id ?? '',
+      disciplineId: p.sport_discipline_id ?? '',
+      variantId: p.sport_variant_id ?? '',
+      legacySport: normalizeSport(p.sport) || 'Calcio',
+    });
     setAthleteRole(p.role || '');
     setNotifyEmail(Boolean(p.notify_email_new_message));
 
@@ -744,6 +760,14 @@ export default function ProfileEditForm() {
           club_stadium_lng: null,
           club_motto: null,
         });
+      }
+
+      if (!isFan && primarySport.sportId) {
+        basePayload.primarySport = {
+          sportId: primarySport.sportId,
+          disciplineId: primarySport.disciplineId || null,
+          variantId: primarySport.variantId || null,
+        };
       }
 
       const missingFields = getMissingRequiredProfileFields(basePayload);
@@ -1004,23 +1028,28 @@ export default function ProfileEditForm() {
                 />
               </div>
 
+              {isClub && (
+                <CanonicalSportFilter
+                  idPrefix="club-profile-sport"
+                  value={primarySport}
+                  onChange={(next) => {
+                    setPrimarySport(next);
+                    setSport(next.legacySport);
+                  }}
+                  sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
+                  labels={{
+                    sport: t('profile.clubSport'),
+                    allSports: t('profile.select'),
+                    discipline: t('sports.discipline'),
+                    allDisciplines: t('sports.allDisciplines'),
+                    variant: t('sports.variant'),
+                    allVariants: t('sports.allVariants'),
+                    catalogUnavailable: t('sports.catalogUnavailable'),
+                  }}
+                />
+              )}
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {isClub && (
-                <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">{t('profile.clubSport')}<RequiredMark /></label>
-                  <select
-                    className="w-full min-w-0 rounded-lg border p-2"
-                    value={sport}
-                    onChange={(e) => setSport(e.target.value)}
-                  >
-                    {CLUB_SPORT_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {localizeSport(s, t)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                )}
 
                 {isClub && (
                 <div className="flex min-w-0 flex-col gap-1">
@@ -1188,21 +1217,25 @@ export default function ProfileEditForm() {
               </div>
 
               {!isFan && (
-              <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">{t('opportunities.sport')}<RequiredMark /></label>
-                  <select
-                    className="w-full min-w-0 rounded-lg border p-2"
-                    value={athleteSport}
-                    onChange={(e) => setAthleteSport(e.target.value)}
-                  >
-                    {SPORTS.map((s) => (
-                      <option key={s} value={s}>
-                        {localizeSport(s, t)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="md:col-span-2 space-y-4">
+                <CanonicalSportFilter
+                  idPrefix="person-profile-sport"
+                  value={primarySport}
+                  onChange={(next) => {
+                    setPrimarySport(next);
+                    setAthleteSport(next.legacySport);
+                  }}
+                  sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
+                  labels={{
+                    sport: t('opportunities.sport'),
+                    allSports: t('profile.select'),
+                    discipline: t('sports.discipline'),
+                    allDisciplines: t('sports.allDisciplines'),
+                    variant: t('sports.variant'),
+                    allVariants: t('sports.allVariants'),
+                    catalogUnavailable: t('sports.catalogUnavailable'),
+                  }}
+                />
 
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">{t('profile.role')}<RequiredMark /></label>
@@ -1356,20 +1389,35 @@ export default function ProfileEditForm() {
                         />
                       </div>
 
-                      <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">{t('opportunities.sport')}<RequiredMark /></label>
-                        <select
-                          className="w-full min-w-0 rounded-lg border p-2"
-                          value={experience.sport}
-                          onChange={(e) => updatePastExperience(index, { sport: e.target.value, role: isStaff ? experience.role : '' })}
-                        >
-                          <option value="">— {t('profile.select')} —</option>
-                          {CLUB_SPORT_OPTIONS.map((sportOption) => (
-                            <option key={sportOption} value={sportOption}>
-                              {localizeSport(sportOption, t)}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="md:col-span-5">
+                        <CanonicalSportFilter
+                          idPrefix={`past-experience-${index}-sport`}
+                          value={{
+                            sportId: experience.primarySport?.sportId ?? '',
+                            disciplineId: experience.primarySport?.disciplineId ?? '',
+                            variantId: experience.primarySport?.variantId ?? '',
+                            legacySport: experience.sport,
+                          }}
+                          onChange={(next) => updatePastExperience(index, {
+                            sport: next.legacySport,
+                            role: isStaff ? experience.role : '',
+                            primarySport: next.sportId ? {
+                              sportId: next.sportId,
+                              disciplineId: next.disciplineId || null,
+                              variantId: next.variantId || null,
+                            } : null,
+                          })}
+                          sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
+                          labels={{
+                            sport: t('opportunities.sport'),
+                            allSports: t('profile.select'),
+                            discipline: t('sports.discipline'),
+                            allDisciplines: t('sports.allDisciplines'),
+                            variant: t('sports.variant'),
+                            allVariants: t('sports.allVariants'),
+                            catalogUnavailable: t('sports.catalogUnavailable'),
+                          }}
+                        />
                       </div>
 
                       <div className="flex min-w-0 flex-col gap-1">

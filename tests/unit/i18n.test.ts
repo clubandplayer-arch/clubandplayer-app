@@ -253,19 +253,21 @@ test('phase 4F Spanish baseline is explicit on primary product surfaces', async 
   assert.equal(spanish['common.betaInfo'], 'Información sobre la versión beta');
 });
 
-test('sport selectors localize labels while preserving canonical and legacy option values', () => {
+test('sport selectors use canonical catalog labels while preserving localized legacy-only surfaces', () => {
   const targets = [
     '../../components/profiles/ProfileEditForm.tsx',
     '../../components/profiles/InterestsPanel.tsx',
     '../../components/opportunities/OpportunityForm.tsx',
     '../../app/(dashboard)/opportunities/OpportunitiesClient.tsx',
     '../../app/search/page.tsx',
+    '../../components/sports/CanonicalSportFilter.tsx',
   ];
   const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
-  assert.ok((source.match(/localizeSport\(/g) ?? []).length >= 6);
+  assert.ok((source.match(/CanonicalSportFilter/g) ?? []).length >= 4);
+  assert.match(source, /sport\.canonical_name/);
+  assert.match(source, /localizeSport\(/);
   assert.match(source, /value=\{s\}/);
-  assert.match(source, /value=\{sportOption\}/);
-  assert.match(source, /value=\{sport\}/);
+  assert.match(source, /legacySport/);
 });
 
 test('phase 4G language switch is serialized and rolls back failed profile persistence', () => {

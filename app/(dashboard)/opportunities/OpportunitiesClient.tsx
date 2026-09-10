@@ -13,7 +13,7 @@ import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity'
 import { AGE_BRACKETS, normalizeSport, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeOpportunityCategory, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
@@ -428,13 +428,15 @@ export default function OpportunitiesClient() {
             legacySport: selectedSport,
           }}
           onChange={handleSportChange}
+          sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
           labels={{
             sport: t('opportunities.sport'),
             allSports: t('search.allSports'),
-            discipline: 'Disciplina',
-            allDisciplines: 'Tutte le discipline',
-            variant: 'Variante',
-            allVariants: 'Tutte le varianti',
+            discipline: t('sports.discipline'),
+            allDisciplines: t('sports.allDisciplines'),
+            variant: t('sports.variant'),
+            allVariants: t('sports.allVariants'),
+            catalogUnavailable: t('sports.catalogUnavailable'),
           }}
         />
 

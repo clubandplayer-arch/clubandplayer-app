@@ -9,7 +9,7 @@ import CanonicalSportFilter from '@/components/sports/CanonicalSportFilter';
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type SearchType = 'all' | 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
@@ -516,13 +516,15 @@ export default function SearchPage() {
                 variantId: sport.variantId,
                 role: sport.legacySport === current.sport ? current.role : '',
               }))}
+              sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
               labels={{
                 sport: t('search.sport'),
                 allSports: t('search.allSports'),
-                discipline: 'Disciplina',
-                allDisciplines: 'Tutte le discipline',
-                variant: 'Variante',
-                allVariants: 'Tutte le varianti',
+                discipline: t('sports.discipline'),
+                allDisciplines: t('sports.allDisciplines'),
+                variant: t('sports.variant'),
+                allVariants: t('sports.allVariants'),
+                catalogUnavailable: t('sports.catalogUnavailable'),
               }}
             />
           </div>
