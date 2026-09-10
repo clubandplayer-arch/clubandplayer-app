@@ -1,51 +1,1339 @@
 {
-  "schemaVersion": 1,
-  "catalogVersion": "2026-09-10.phase-6c.football-level-review.1",
+  "schemaVersion": 2,
+  "catalogVersion": "2026-09-10.phase-6c.football-level-review.2",
+  "targetSeason": "2026/27",
   "sportCode": "football",
   "disciplineCode": "association_football",
+  "selectionContext": "selected_country_plus_sport_with_organizer_or_territory_when_required",
   "displayPolicy": "official_name_is_not_translated_by_ui_locale",
+  "codePolicy": "all codes are internal review codes, not federation identifiers",
   "importAuthorized": false,
   "runtimeAuthorized": false,
+  "productionAuthorized": false,
+  "historicalIdentities": [
+    {
+      "country": "FR",
+      "code": "national",
+      "officialName": "National",
+      "previousLevelRank": 3,
+      "previousEvidenceSeason": "2025/26",
+      "mappingState": "historical_identity_preserved_current_correspondence_pending",
+      "doNotReuseAsCode": "national_1"
+    },
+    {
+      "country": "FR",
+      "code": "national_2",
+      "officialName": "National 2",
+      "previousLevelRank": 4,
+      "previousEvidenceSeason": "2025/26",
+      "mappingState": "historical_identity_preserved_current_correspondence_pending",
+      "doNotReuseAsCode": "national_2_2026_27"
+    },
+    {
+      "country": "FR",
+      "code": "national_3",
+      "officialName": "National 3",
+      "previousLevelRank": 5,
+      "previousEvidenceSeason": "2025/26",
+      "mappingState": "historical_identity_preserved_current_correspondence_pending",
+      "doNotReuseAsCode": "ligue_3"
+    }
+  ],
   "entries": [
-    { "country": "IT", "code": "serie_d", "officialName": "Serie D", "scope": "national", "levelRank": 4, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "IT", "code": "eccellenza", "officialName": "Eccellenza", "scope": "regional", "levelRank": 5, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "IT", "code": "promozione", "officialName": "Promozione", "scope": "regional", "levelRank": 6, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "IT", "code": "prima_categoria", "officialName": "Prima Categoria", "scope": "territorial", "levelRank": 7, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "IT", "code": "seconda_categoria", "officialName": "Seconda Categoria", "scope": "territorial", "levelRank": 8, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "IT", "code": "terza_categoria", "officialName": "Terza Categoria", "scope": "territorial", "levelRank": 9, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-
-    { "country": "FR", "code": "national", "officialName": "National", "scope": "national", "levelRank": 3, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "FR", "code": "national_2", "officialName": "National 2", "scope": "national", "levelRank": 4, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "FR", "code": "national_3", "officialName": "National 3", "scope": "national", "levelRank": 5, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "FR", "code": "regional_1", "officialName": "Régional 1", "scope": "regional", "levelRank": 6, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "FR", "code": "regional_2", "officialName": "Régional 2", "scope": "regional", "levelRank": 7, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "FR", "code": "regional_3", "officialName": "Régional 3", "scope": "regional", "levelRank": 8, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-
-    { "country": "ES", "code": "primera_federacion", "officialName": "Primera Federación", "scope": "national", "levelRank": 3, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "ES", "code": "segunda_federacion", "officialName": "Segunda Federación", "scope": "national", "levelRank": 4, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "ES", "code": "tercera_federacion", "officialName": "Tercera Federación", "scope": "national_territorial_groups", "levelRank": 5, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "ES", "code": "regional_preferente", "officialName": "Preferente", "scope": "regional", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "ES", "code": "regional_primera", "officialName": "Primera", "scope": "regional", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "ES", "code": "regional_segunda", "officialName": "Segunda", "scope": "regional", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-
-    { "country": "CH", "code": "promotion_league", "officialName": "Promotion League", "scope": "national", "levelRank": 3, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "CH", "code": "first_liga_classic", "officialName": "1. Liga Classic", "scope": "national_groups", "levelRank": 4, "status": "needs_current_source_review", "selectorEligibleAfterReview": false },
-    { "country": "CH", "code": "second_liga_interregional", "officialName": "2. Liga interregional", "scope": "interregional", "levelRank": 5, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "CH", "code": "second_liga", "officialName": "2. Liga", "scope": "regional", "levelRank": 6, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "CH", "code": "third_liga", "officialName": "3. Liga", "scope": "regional", "levelRank": 7, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "CH", "code": "fourth_liga", "officialName": "4. Liga", "scope": "regional", "levelRank": 8, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "CH", "code": "fifth_liga", "officialName": "5. Liga", "scope": "regional", "levelRank": 9, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-
-    { "country": "SI", "code": "second_snl", "officialName": "2. slovenska nogometna liga", "scope": "national", "levelRank": 2, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "SI", "code": "third_snl", "officialName": "3. slovenska nogometna liga", "scope": "national_territorial_groups", "levelRank": 3, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "SI", "code": "regionalna_liga", "officialName": "Regionalna liga", "scope": "regional", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "SI", "code": "medobcinska_liga", "officialName": "Medobčinska liga", "scope": "territorial", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-
-    { "country": "PL", "code": "third_liga", "officialName": "III liga", "scope": "national_territorial_groups", "levelRank": 4, "status": "source_backed", "selectorEligibleAfterReview": true },
-    { "country": "PL", "code": "fourth_liga", "officialName": "IV liga", "scope": "regional", "levelRank": 5, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "PL", "code": "klasa_okregowa", "officialName": "Klasa Okręgowa", "scope": "territorial", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "PL", "code": "klasa_a", "officialName": "Klasa A", "scope": "territorial", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "PL", "code": "klasa_b", "officialName": "Klasa B", "scope": "territorial", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false },
-    { "country": "PL", "code": "klasa_c", "officialName": "Klasa C", "scope": "territorial", "levelRank": null, "status": "territorial_candidate", "selectorEligibleAfterReview": false }
+    {
+      "country": "IT",
+      "code": "serie_d",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Serie D",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "figc_lnd",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FIGC / Lega Nazionale Dilettanti"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_source_reported",
+      "sourceRefs": [
+        "IT-LND-SERIE-D-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "IT",
+      "code": "eccellenza",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Eccellenza",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "figc_lnd",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FIGC / Lega Nazionale Dilettanti"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 5,
+      "rankCondition": "organizer identity must be territorial below Serie D",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "territorial_source_partial",
+      "sourceRefs": [
+        "IT-LND-SICILIA-ECCELLENZA-2026"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "IT",
+      "code": "promozione",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Promozione",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "figc_lnd",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FIGC / Lega Nazionale Dilettanti"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 6,
+      "rankCondition": "organizer identity must be territorial below Serie D",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "baseline_preserved_current_source_pending",
+      "sourceRefs": [],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "IT",
+      "code": "prima_categoria",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Prima Categoria",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "figc_lnd",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FIGC / Lega Nazionale Dilettanti"
+      },
+      "territory": null,
+      "scope": "territorial",
+      "levelRank": 7,
+      "rankCondition": "organizer identity must be territorial below Serie D",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "baseline_preserved_current_source_pending",
+      "sourceRefs": [],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "IT",
+      "code": "seconda_categoria",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Seconda Categoria",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "figc_lnd",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FIGC / Lega Nazionale Dilettanti"
+      },
+      "territory": null,
+      "scope": "territorial",
+      "levelRank": 8,
+      "rankCondition": "organizer identity must be territorial below Serie D",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "baseline_preserved_current_source_pending",
+      "sourceRefs": [],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "IT",
+      "code": "terza_categoria",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Terza Categoria",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "figc_lnd",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FIGC / Lega Nazionale Dilettanti"
+      },
+      "territory": null,
+      "scope": "territorial",
+      "levelRank": 9,
+      "rankCondition": "organizer identity must be territorial below Serie D",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "baseline_preserved_current_source_pending",
+      "sourceRefs": [],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "FR",
+      "code": "ligue_3",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Ligue 3",
+      "commercialNames": [
+        "Ligue 3 Betclic"
+      ],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Fédération Française de Football"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 3,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_structure_reported_mapping_pending",
+      "sourceRefs": [
+        "FR-FFF-GENERAL-REGULATIONS",
+        "FR-PARIS-RESULTS-2026-09-02"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Boundary above requested National 1; relationship with historical National identity requires regulation review"
+    },
+    {
+      "country": "FR",
+      "code": "national_1",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "National 1",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Fédération Française de Football"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_structure_reported_mapping_pending",
+      "sourceRefs": [
+        "FR-FFF-REGULATIONS-2026-27",
+        "FR-FFF-GENERAL-REGULATIONS",
+        "FR-PARIS-RESULTS-2026-09-02"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "FR",
+      "code": "national_2_2026_27",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "National 2",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Fédération Française de Football"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 5,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_structure_reported_mapping_pending",
+      "sourceRefs": [
+        "FR-FFF-REGULATIONS-2026-27",
+        "FR-FFF-GENERAL-REGULATIONS"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "New internal review code avoids reusing the historical national_2 identity before temporal mapping is confirmed"
+    },
+    {
+      "country": "FR",
+      "code": "regional_1",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Régional 1",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_ligue_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF Ligue régionale required"
+      },
+      "territory": {
+        "code": "FR-IDF",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Île-de-France evidence example"
+      },
+      "scope": "regional",
+      "levelRank": 6,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "official_territorial_example_only",
+      "sourceRefs": [
+        "FR-PARIS-SENIORS-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Name/rank evidence is scoped to Paris Île-de-France; future live record must identify its Ligue"
+    },
+    {
+      "country": "FR",
+      "code": "regional_2",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Régional 2",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_ligue_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF Ligue régionale required"
+      },
+      "territory": {
+        "code": "FR-IDF",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Île-de-France evidence example"
+      },
+      "scope": "regional",
+      "levelRank": 7,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "official_territorial_example_only",
+      "sourceRefs": [
+        "FR-PARIS-SENIORS-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Name/rank evidence is scoped to Paris Île-de-France; future live record must identify its Ligue"
+    },
+    {
+      "country": "FR",
+      "code": "regional_3",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Régional 3",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_ligue_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF Ligue régionale required"
+      },
+      "territory": {
+        "code": "FR-IDF",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Île-de-France evidence example"
+      },
+      "scope": "regional",
+      "levelRank": 8,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "official_territorial_example_only",
+      "sourceRefs": [
+        "FR-PARIS-SENIORS-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Name/rank evidence is scoped to Paris Île-de-France; future live record must identify its Ligue"
+    },
+    {
+      "country": "FR",
+      "code": "departemental_1_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Départemental 1",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_district_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF District required"
+      },
+      "territory": null,
+      "scope": "departmental",
+      "levelRank": null,
+      "rankCondition": "May start after R3; absolute rank varies by District",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "FR-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only: not a universal French competition identity"
+    },
+    {
+      "country": "FR",
+      "code": "departemental_2_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Départemental 2",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_district_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF District required"
+      },
+      "territory": null,
+      "scope": "departmental",
+      "levelRank": null,
+      "rankCondition": "Normally follows Départemental 1",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "FR-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only: not a universal French competition identity"
+    },
+    {
+      "country": "FR",
+      "code": "departemental_3_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Départemental 3",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_district_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF District required"
+      },
+      "territory": null,
+      "scope": "departmental",
+      "levelRank": null,
+      "rankCondition": "Normally follows Départemental 2",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "FR-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only: not a universal French competition identity"
+    },
+    {
+      "country": "FR",
+      "code": "departemental_4_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Départemental 4",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_district_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF District required"
+      },
+      "territory": null,
+      "scope": "departmental",
+      "levelRank": null,
+      "rankCondition": "Normally follows Départemental 3",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "FR-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only: not a universal French competition identity"
+    },
+    {
+      "country": "FR",
+      "code": "departemental_5_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Départemental 5",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_district_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF District required"
+      },
+      "territory": null,
+      "scope": "departmental",
+      "levelRank": null,
+      "rankCondition": "Normally follows Départemental 4",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "FR-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only: not a universal French competition identity"
+    },
+    {
+      "country": "FR",
+      "code": "departemental_6_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Départemental 6",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_district_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF District required"
+      },
+      "territory": null,
+      "scope": "departmental",
+      "levelRank": null,
+      "rankCondition": "Normally follows Départemental 5",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "FR-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only: not a universal French competition identity"
+    },
+    {
+      "country": "FR",
+      "code": "departemental_7_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Départemental 7",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fff_district_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "FFF District required"
+      },
+      "territory": null,
+      "scope": "departmental",
+      "levelRank": null,
+      "rankCondition": "Normally follows Départemental 6",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "FR-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only: not a universal French competition identity"
+    },
+    {
+      "country": "ES",
+      "code": "primera_federacion",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Primera Federación",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "rfef",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Real Federación Española de Fútbol"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 3,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_source_reported",
+      "sourceRefs": [
+        "ES-RFEF-PRIMERA"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "ES",
+      "code": "segunda_federacion",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Segunda Federación",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "rfef",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Real Federación Española de Fútbol"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_source_reported",
+      "sourceRefs": [
+        "ES-RFEF-SEGUNDA"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "ES",
+      "code": "tercera_federacion",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Tercera Federación",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "rfef",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Real Federación Española de Fútbol"
+      },
+      "territory": null,
+      "scope": "national_territorial_groups",
+      "levelRank": 5,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_source_reported",
+      "sourceRefs": [
+        "ES-RFEF-TERCERA"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "ES",
+      "code": "lliga_elit",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Lliga Elit",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fcf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Federació Catalana de Futbol"
+      },
+      "territory": {
+        "code": "ES-CT",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Catalunya"
+      },
+      "scope": "regional",
+      "levelRank": 6,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "official_territorial_portal_reported",
+      "sourceRefs": [
+        "ES-FCF-HOME"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Territory-specific; must not be reused for another Federación Territorial"
+    },
+    {
+      "country": "ES",
+      "code": "primera_catalana",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Primera Catalana",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fcf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Federació Catalana de Futbol"
+      },
+      "territory": {
+        "code": "ES-CT",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Catalunya"
+      },
+      "scope": "regional",
+      "levelRank": 7,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "official_territorial_portal_reported",
+      "sourceRefs": [
+        "ES-FCF-HOME"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Territory-specific; must not be reused for another Federación Territorial"
+    },
+    {
+      "country": "ES",
+      "code": "segona_catalana",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Segona Catalana",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fcf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Federació Catalana de Futbol"
+      },
+      "territory": {
+        "code": "ES-CT",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Catalunya"
+      },
+      "scope": "regional",
+      "levelRank": 8,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "official_territorial_portal_reported",
+      "sourceRefs": [
+        "ES-FCF-HOME"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Territory-specific; must not be reused for another Federación Territorial"
+    },
+    {
+      "country": "ES",
+      "code": "tercera_catalana",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Tercera Catalana",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fcf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Federació Catalana de Futbol"
+      },
+      "territory": {
+        "code": "ES-CT",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Catalunya"
+      },
+      "scope": "regional",
+      "levelRank": 9,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "secondary_only_current_official_source_pending",
+      "sourceRefs": [
+        "ES-SECONDARY-CATALUNYA"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Territory-specific; must not be reused for another Federación Territorial"
+    },
+    {
+      "country": "ES",
+      "code": "quarta_catalana",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Quarta Catalana",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "fcf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Federació Catalana de Futbol"
+      },
+      "territory": {
+        "code": "ES-CT",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Catalunya"
+      },
+      "scope": "regional",
+      "levelRank": 10,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "secondary_only_current_official_source_pending",
+      "sourceRefs": [
+        "ES-SECONDARY-CATALUNYA"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Territory-specific; must not be reused for another Federación Territorial"
+    },
+    {
+      "country": "CH",
+      "code": "promotion_league",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Promotion League",
+      "commercialNames": [
+        "Hoval Promotion League"
+      ],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "sfv_asf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "SFV/ASF"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 3,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_portal_reported",
+      "sourceRefs": [
+        "CH-SFV-MATCHCENTER-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "CH",
+      "code": "first_liga",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "1. Liga",
+      "commercialNames": [],
+      "documentedAliases": [
+        "1. Liga Classic"
+      ],
+      "organizer": {
+        "code": "sfv_asf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "SFV/ASF"
+      },
+      "territory": null,
+      "scope": "national_groups",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_portal_reported",
+      "sourceRefs": [
+        "CH-SFV-MATCHCENTER-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Classic is retained only as a documented contextual alias pending identity review"
+    },
+    {
+      "country": "CH",
+      "code": "second_liga_interregional",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "2. Liga interregional",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "sfv_asf",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "SFV/ASF"
+      },
+      "territory": null,
+      "scope": "interregional",
+      "levelRank": 5,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_portal_reported",
+      "sourceRefs": [
+        "CH-SFV-MATCHCENTER-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "CH",
+      "code": "second_liga_regional_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "2. Liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "sfv_regional_association_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "SFV/ASF regional association required"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 6,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_organizer_required",
+      "sourceRefs": [
+        "CH-SFV-MATCHCENTER-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; AFV and other regional competitions require distinct organizer-scoped records"
+    },
+    {
+      "country": "CH",
+      "code": "third_liga_regional_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "3. Liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "sfv_regional_association_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "SFV/ASF regional association required"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 7,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_organizer_required",
+      "sourceRefs": [
+        "CH-SFV-MATCHCENTER-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; AFV and other regional competitions require distinct organizer-scoped records"
+    },
+    {
+      "country": "CH",
+      "code": "fourth_liga_regional_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "4. Liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "sfv_regional_association_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "SFV/ASF regional association required"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 8,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_organizer_required",
+      "sourceRefs": [
+        "CH-SFV-MATCHCENTER-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; AFV and other regional competitions require distinct organizer-scoped records"
+    },
+    {
+      "country": "CH",
+      "code": "fifth_liga_regional_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "5. Liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "sfv_regional_association_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "SFV/ASF regional association required"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 9,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_organizer_required",
+      "sourceRefs": [
+        "CH-SFV-MATCHCENTER-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; AFV and other regional competitions require distinct organizer-scoped records"
+    },
+    {
+      "country": "SI",
+      "code": "second_snl",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "2. slovenska nogometna liga",
+      "commercialNames": [],
+      "documentedAliases": [
+        "2. SNL"
+      ],
+      "organizer": {
+        "code": "nzs",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Nogometna zveza Slovenije"
+      },
+      "territory": null,
+      "scope": "national",
+      "levelRank": 2,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_source_reported",
+      "sourceRefs": [
+        "SI-NZS-HOME-2026-27",
+        "SI-NZS-LICENSING-2-3-SNL"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "SI",
+      "code": "third_snl",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "3. slovenska nogometna liga",
+      "commercialNames": [],
+      "documentedAliases": [
+        "3. SNL"
+      ],
+      "organizer": {
+        "code": "nzs",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Nogometna zveza Slovenije"
+      },
+      "territory": null,
+      "scope": "national_territorial_groups",
+      "levelRank": 3,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_source_reported",
+      "sourceRefs": [
+        "SI-NZS-HOME-2026-27",
+        "SI-NZS-LICENSING-2-3-SNL"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Vzhod and Zahod are parallel groups, not different ranks"
+    },
+    {
+      "country": "SI",
+      "code": "regionalna_ljubljanska_liga",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Regionalna Ljubljanska liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "mnz_ljubljana",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "MNZ Ljubljana"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "sourceRefs": [
+        "SI-SECONDARY-REGIONAL",
+        "SI-SECONDARY-COMPETITIONS"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+    },
+    {
+      "country": "SI",
+      "code": "gorenjska_nogometna_liga",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Gorenjska nogometna liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "mnz_gorenjska",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Territorial organizer to verify"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "sourceRefs": [
+        "SI-SECONDARY-REGIONAL",
+        "SI-SECONDARY-COMPETITIONS"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+    },
+    {
+      "country": "SI",
+      "code": "primorska_nogometna_liga",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Primorska nogometna liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "mnz_primorska",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Territorial organizer to verify"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "sourceRefs": [
+        "SI-SECONDARY-REGIONAL",
+        "SI-SECONDARY-COMPETITIONS"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+    },
+    {
+      "country": "SI",
+      "code": "pomurska_nogometna_liga",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Pomurska nogometna liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "mnz_murska_sobota",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Territorial organizer to verify"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "sourceRefs": [
+        "SI-SECONDARY-REGIONAL",
+        "SI-SECONDARY-COMPETITIONS"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+    },
+    {
+      "country": "SI",
+      "code": "superliga_mnz_ptuj",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Superliga MNZ Ptuj",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "mnz_ptuj",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "MNZ Ptuj"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "sourceRefs": [
+        "SI-SECONDARY-REGIONAL",
+        "SI-SECONDARY-COMPETITIONS"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+    },
+    {
+      "country": "SI",
+      "code": "prva_clanska_liga_mnz_maribor",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "1. članska liga MNZ Maribor",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "mnz_maribor",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "MNZ Maribor"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "sourceRefs": [
+        "SI-SECONDARY-REGIONAL",
+        "SI-SECONDARY-COMPETITIONS",
+        "SI-MNZ-MARIBOR-SOCIAL"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+    },
+    {
+      "country": "PL",
+      "code": "third_liga",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "III liga",
+      "commercialNames": [
+        "Betclic 3. Liga"
+      ],
+      "documentedAliases": [
+        "3. Liga"
+      ],
+      "organizer": {
+        "code": "pzpn",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Polski Związek Piłki Nożnej"
+      },
+      "territory": null,
+      "scope": "national_territorial_groups",
+      "levelRank": 4,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "current_official_source_reported",
+      "sourceRefs": [
+        "PL-PZPN-BETCLIC-3-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "PL",
+      "code": "fourth_liga",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "IV liga",
+      "commercialNames": [],
+      "documentedAliases": [
+        "4. Liga dolnośląska"
+      ],
+      "organizer": {
+        "code": "wzpn_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "WZPN required"
+      },
+      "territory": {
+        "code": "PL-DS",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Dolnośląskie evidence example"
+      },
+      "scope": "regional",
+      "levelRank": 5,
+      "rankCondition": null,
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "official_territorial_example_only",
+      "sourceRefs": [
+        "PL-DZPN-REGULATIONS-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Future live records must be WZPN-scoped"
+    },
+    {
+      "country": "PL",
+      "code": "fifth_liga_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "V liga",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "wzpn_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "WZPN required"
+      },
+      "territory": null,
+      "scope": "regional",
+      "levelRank": null,
+      "rankCondition": "Absolute rank 6 only in WZPN systems that provide V liga",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "PL-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "country": "PL",
+      "code": "klasa_okregowa_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Klasa Okręgowa",
+      "commercialNames": [],
+      "documentedAliases": [
+        "Liga Okręgowa"
+      ],
+      "organizer": {
+        "code": "wzpn_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "WZPN required"
+      },
+      "territory": null,
+      "scope": "territorial",
+      "levelRank": null,
+      "rankCondition": "rank 6 without V liga; rank 7 with V liga",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "PL-DZPN-REGULATIONS-2026-27",
+        "PL-SECONDARY-OKREGOWA"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; availability and rank require a specific WZPN"
+    },
+    {
+      "country": "PL",
+      "code": "klasa_a_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Klasa A",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "wzpn_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "WZPN required"
+      },
+      "territory": null,
+      "scope": "territorial",
+      "levelRank": null,
+      "rankCondition": "rank 7 without V liga; rank 8 with V liga",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "PL-DZPN-REGULATIONS-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; availability and rank require a specific WZPN"
+    },
+    {
+      "country": "PL",
+      "code": "klasa_b_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Klasa B",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "wzpn_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "WZPN required"
+      },
+      "territory": null,
+      "scope": "territorial",
+      "levelRank": null,
+      "rankCondition": "rank 8 without V liga; rank 9 with V liga",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "PL-DZPN-REGULATIONS-2026-27"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; availability and rank require a specific WZPN"
+    },
+    {
+      "country": "PL",
+      "code": "klasa_c_template",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Klasa C",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "wzpn_required",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "WZPN required"
+      },
+      "territory": null,
+      "scope": "territorial",
+      "levelRank": null,
+      "rankCondition": "rank 9 without V liga; rank 10 with V liga; only where present",
+      "targetSeason": "2026/27",
+      "recordKind": "territorial_template",
+      "evidenceState": "territorial_template_unverified",
+      "sourceRefs": [
+        "PL-SECONDARY-PYRAMID"
+      ],
+      "selectorEligibleAfterReview": false,
+      "notes": "Template only; availability and rank require a specific WZPN"
+    }
+  ],
+  "excludedFromFirstScope": [
+    "professional levels above the recorded boundary except where needed to establish absolute rank",
+    "women",
+    "youth",
+    "reserves",
+    "veterans",
+    "cups",
+    "futsal",
+    "football variants other than senior men eleven-a-side"
   ]
 }

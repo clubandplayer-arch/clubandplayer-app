@@ -1,9 +1,12 @@
 {
-  "schemaVersion": 1,
-  "evidencePackVersion": "2026-09-10.phase-6c.football-six-country.1",
-  "retrievedAt": "2026-09-10",
-  "scope": "association-football senior men's competition levels used to design selectors; no clubs, fixtures, tables or results",
-  "countries": [
+  "schemaVersion": 2,
+  "evidencePackVersion": "2026-09-10.phase-6c.football-six-country.2",
+  "priorEvidencePackVersion": "2026-09-10.phase-6c.football-six-country.1",
+  "priorRetrievedAt": "2026-09-10",
+  "targetSeason": "2026/27",
+  "scope": "association-football senior men's levels; review-only factual catalogue",
+  "provenancePolicy": "prior retrieval evidence is preserved separately from sources supplied in the 2026/27 handoff",
+  "priorRetrievals": [
     {
       "country": "IT",
       "authority": "FIGC / Lega Nazionale Dilettanti",
@@ -59,6 +62,250 @@
       "coverage": "III liga source-backed; IV liga and lower classes require WZPN-specific confirmation"
     }
   ],
+  "handoffSources": [
+    {
+      "id": "IT-LND-SERIE-D-2026-27",
+      "country": "IT",
+      "authority": "Lega Nazionale Dilettanti",
+      "url": "https://lnd.it/seried/campionato-al-via-5-settembre-programma-e-arbitri-prima-giornata/",
+      "classification": "official_page",
+      "supports": "Serie D 2026/27",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "IT-LND-SICILIA-ECCELLENZA-2026",
+      "country": "IT",
+      "authority": "LND Sicilia",
+      "url": "https://sicilia.lnd.it/archivio/news/2026/09/presentati-i-calendari-di-eccellenza-e-serie-c1-d-i-calcio-5",
+      "classification": "official_territorial_page",
+      "supports": "Eccellenza Sicilia example; not national coverage",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-FFF-REGULATIONS-2026-27",
+      "country": "FR",
+      "authority": "Fédération Française de Football",
+      "url": "https://www.fff.fr/11-les-reglements/390-les-reglements-des-competitions-nationales.html",
+      "classification": "official_index",
+      "supports": "Current competition-regulation index; not the full PDFs",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-FFF-GENERAL-REGULATIONS",
+      "country": "FR",
+      "authority": "Fédération Française de Football",
+      "url": "https://www.fff.fr/11-les-reglements/index.html",
+      "classification": "official_index",
+      "supports": "References to Ligue 3 and National 1/National 2 licensing",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-PARIS-RESULTS-2026-09-02",
+      "country": "FR",
+      "authority": "Ligue de Paris Île-de-France de Football",
+      "url": "https://paris-idf.fff.fr/simple/championnats-nationaux-les-resultats-du-week-end-2/",
+      "classification": "official_territorial_page",
+      "supports": "Distinguishes Ligue 3 and National 1",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-PARIS-SENIORS-2026-27",
+      "country": "FR",
+      "authority": "Ligue de Paris Île-de-France de Football",
+      "url": "https://paris-idf.fff.fr/wp-content/uploads/sites/19/2026/07/SENIORS-26.27.pdf",
+      "classification": "official_territorial_pdf",
+      "supports": "R1/R2/R3 evidence limited to this league",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-SECONDARY-PYRAMID",
+      "country": "FR",
+      "authority": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/French_football_league_system",
+      "classification": "secondary_orientation",
+      "supports": "District discovery only; not certification",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "ES-RFEF-PRIMERA",
+      "country": "ES",
+      "authority": "Real Federación Española de Fútbol",
+      "url": "https://rfef.es/es/competiciones/primera-federacion",
+      "classification": "official_page",
+      "supports": "Primera Federación",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "ES-RFEF-SEGUNDA",
+      "country": "ES",
+      "authority": "Real Federación Española de Fútbol",
+      "url": "https://rfef.es/es/competiciones/segunda-federacion",
+      "classification": "official_page",
+      "supports": "Segunda Federación",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "ES-RFEF-TERCERA",
+      "country": "ES",
+      "authority": "Real Federación Española de Fútbol",
+      "url": "https://rfef.es/es/competiciones/tercera-federacion",
+      "classification": "official_page",
+      "supports": "Tercera Federación",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "ES-FCF-HOME",
+      "country": "ES",
+      "authority": "Federació Catalana de Futbol",
+      "url": "https://www.fcf.cat/ca",
+      "classification": "official_territorial_portal",
+      "supports": "Direct evidence reported for Lliga Elit, Primera Catalana and Segona Catalana",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "ES-SECONDARY-CATALUNYA",
+      "country": "ES",
+      "authority": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/2025%E2%80%9326_Copa_Catalunya",
+      "classification": "secondary_orientation",
+      "supports": "Tercera/Quarta Catalana discovery only",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "CH-SFV-MATCHCENTER-2026-27",
+      "country": "CH",
+      "authority": "SFV/ASF",
+      "url": "https://matchcenter.football.ch/",
+      "classification": "official_portal",
+      "supports": "2026/27 names including Hoval Promotion League and 1. Liga",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-NZS-HOME-2026-27",
+      "country": "SI",
+      "authority": "Nogometna zveza Slovenije",
+      "url": "https://www.nzs.si/",
+      "classification": "official_portal",
+      "supports": "National competitions 2026/27",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-NZS-LICENSING-2-3-SNL",
+      "country": "SI",
+      "authority": "Nogometna zveza Slovenije",
+      "url": "https://www.nzs.si/podrocja/novinarji/novice/rezultati-licenciranja-nogometnih-klubov-2-snl-3-snl-379342",
+      "classification": "official_page",
+      "supports": "2. SNL, 3. SNL and east/west references",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-SECONDARY-REGIONAL",
+      "country": "SI",
+      "authority": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Slovenian_Regional_Leagues",
+      "classification": "secondary_orientation",
+      "supports": "Regional-name discovery only",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-SECONDARY-COMPETITIONS",
+      "country": "SI",
+      "authority": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/List_of_football_competitions_in_Slovenia",
+      "classification": "secondary_orientation",
+      "supports": "Competition discovery only",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-MNZ-MARIBOR-SOCIAL",
+      "country": "SI",
+      "authority": "MNZ Maribor",
+      "url": "https://www.facebook.com/mnzmaribor/videos/1-%C4%8Dlanska-liga-mnz-maribor-je-nazaj-in-%C5%BEe-navdu%C5%A1uje/2007418796062377/",
+      "classification": "social_candidate",
+      "supports": "Name signal only; season and context still required",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "PL-PZPN-BETCLIC-3-2026-27",
+      "country": "PL",
+      "authority": "Polski Związek Piłki Nożnej",
+      "url": "https://pzpn.pl/federacja/aktualnosci/2026-06-30/ramowy-terminarz-betclic-3-ligi-na-sezon-2026-2027",
+      "classification": "official_page",
+      "supports": "Betclic 3. Liga 2026/27",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "PL-DZPN-REGULATIONS-2026-27",
+      "country": "PL",
+      "authority": "Dolnośląski Związek Piłki Nożnej",
+      "url": "https://dzpn.pl/wp-content/uploads/2026/07/Ostateczna_Regulamin-rozgrywek-na-sezon-2026_2027_v1.3.pdf",
+      "classification": "official_territorial_pdf",
+      "supports": "§4 lists 4. Liga dolnośląska, Klasa Okręgowa, Klasa A and Klasa B",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "PL-SECONDARY-PYRAMID",
+      "country": "PL",
+      "authority": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Polish_football_league_system",
+      "classification": "secondary_orientation",
+      "supports": "Variable-rank and V liga orientation only",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "PL-SECONDARY-OKREGOWA",
+      "country": "PL",
+      "authority": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Liga_okr%C4%99gowa",
+      "classification": "secondary_orientation",
+      "supports": "District league orientation only",
+      "verificationState": "handoff_reported_not_retrieved_in_this_update",
+      "httpStatus": null,
+      "retrievalSha256": null
+    }
+  ],
   "reuseAssessment": {
     "machineReadableDataset": null,
     "explicitOpenDataLicense": null,
@@ -67,10 +314,11 @@
     "factualReviewCatalogAllowed": true
   },
   "decision": {
-    "status": "READY_FOR_HUMAN_FACTUAL_REVIEW_NOT_FOR_IMPORT",
+    "status": "CATALOG_UPDATED_HUMAN_TARGETED_CHECKS_PENDING_NOT_FOR_IMPORT",
     "mayCreateReviewCatalog": true,
     "mayCreateSeedOrMigration": false,
     "mayConnectRuntimeSelector": false,
-    "requiredNextGate": "human review of every selectable label, scope, organizer and current-season validity"
+    "mayPromoteToProduction": false,
+    "requiredNextGate": "targeted verification list in phase-6c-football-evidence-review-catalog.md"
   }
 }
