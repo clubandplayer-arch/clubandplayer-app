@@ -179,7 +179,7 @@ Non sono autorizzati automaticamente:
 | --- | --- | --- |
 | 6A | audit mirato dei consumer e matrice documentale Calcio IT/FR/ES/CH/SI/PL | **COMPLETATA** |
 | 6B | contratto e repository read-only country+sport(+organizer), bounded e fail-closed | **COMPLETATA repository-only** |
-| 6C | evidence pack e catalogo revisionabile del Calcio, una authority/country alla volta | non iniziata |
+| 6C | evidence pack e catalogo revisionabile del Calcio, una authority/country alla volta | **artefatti pronti / human review pending** |
 | 6D | piano minimo di materializzazione dei cataloghi e verifica schema/policy, senza backfill deduttivi | non iniziata |
 | 6E | endpoint read-only per i selector, payload additivo e cache/limiti | non iniziata |
 | 6F | selector Club country-aware e denominazioni native indipendenti dalla lingua UI | non iniziata |
@@ -201,3 +201,7 @@ Non sono autorizzati automaticamente:
 - adapter Supabase solo `SELECT`, nessuna route, UI, migration, seed o write.
 
 Il prossimo checkpoint è **6C**. La sua apertura non autorizza import o seed: deve prima produrre/revisionare l'evidence pack della singola authority/country scelta.
+
+### Avanzamento 6C
+
+Preparati evidence pack aggregato e catalogo review-only del Calcio per i sei country. I file distinguono dati source-backed, candidate territoriali e voci che richiedono verifica corrente; mantengono `importAuthorized=false` e `runtimeAuthorized=false`. La checklist manuale e il formato del report richiesto sono documentati in [`phase-6c-football-evidence-review-catalog.md`](phase-6c-football-evidence-review-catalog.md). **6C resta aperta fino al controllo umano; 6D non è autorizzata.**

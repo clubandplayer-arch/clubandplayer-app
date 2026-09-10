@@ -920,6 +920,8 @@ Obiettivo futuro: completare i modelli Club, Player, Staff, Fan e Institution co
 
 **6B 2026-09-10 — COMPLETATA repository-only.** Definite le sottofasi definitive 6A–6I e implementato un repository interno read-only country+sport(+organizer): validazione fail-closed di UUID/data/limite, country supported+active, sport/organization active, appartenenza organization-country, validity temporale e overflow bounded. L'output conserva `officialName` senza locale o traduzione. Test unitari mirati PASS. Nessuna route, consumer, UI, migration, seed, backfill, RLS, deploy o query remota. Il prossimo checkpoint è 6C, evidence pack di una sola authority/country; non è autorizzato implicitamente alcun import.
 
+**6C 2026-09-10 — ARTEFATTI PRONTI / HUMAN REVIEW PENDING.** Creati un evidence pack per le sei authority e un catalogo Calcio senior maschile review-only con denominazioni native, scope, rank e stato `source_backed`/candidate. HTTP e checksum sono registrati solo per retrieval 200; gli anti-bot 403 richiedono verifica browser. I file vietano esplicitamente import, seed, migration e collegamento runtime. Test di contratto PASS. Deliverable e procedura umana: [`phase-6c-football-evidence-review-catalog.md`](european-expansion/phase-6c-football-evidence-review-catalog.md). 6C resta aperta e 6D non è autorizzata finché non viene restituito il report umano country-by-country.
+
 ## FASE 7 — International Opportunities & Scouting
 
 **Stato: NOT STARTED.**

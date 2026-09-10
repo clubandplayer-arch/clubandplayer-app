@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "evidencePackVersion": "2026-09-10.phase-6c.football-six-country.1",
+  "retrievedAt": "2026-09-10",
+  "scope": "association-football senior men's competition levels used to design selectors; no clubs, fixtures, tables or results",
+  "countries": [
+    {
+      "country": "IT",
+      "authority": "FIGC / Lega Nazionale Dilettanti",
+      "sourceUrl": "https://lnd.it/comunicati/",
+      "httpStatus": 200,
+      "retrievalSha256": "sha256:196c20fd68421d4b15dbc84044212d8a80a2e3d8a5d154a49968dc86d68f8ef7",
+      "researchDocument": "docs/european-expansion/phase-5d-e-b-figc-it-evidence-pack.md",
+      "coverage": "Serie D source-backed; regional amateur labels require committee-by-committee human confirmation"
+    },
+    {
+      "country": "FR",
+      "authority": "Fédération Française de Football",
+      "sourceUrl": "https://media.fff.fr/uploads/documents/reglement-du-national-3-20252026-ok.pdf",
+      "httpStatus": 403,
+      "retrievalSha256": null,
+      "researchDocument": "docs/european-expansion/phase-5d-e-r-france-competition-selector-research.md",
+      "coverage": "National, National 2 and National 3 source-backed in prior official-source research; current automated access blocked"
+    },
+    {
+      "country": "ES",
+      "authority": "Real Federación Española de Fútbol",
+      "sourceUrl": "https://rfef.es/es/competiciones",
+      "httpStatus": 403,
+      "retrievalSha256": null,
+      "researchDocument": "docs/european-expansion/phase-5d-e-r-spain-competition-selector-research.md",
+      "coverage": "Primera, Segunda and Tercera Federación source-backed in prior official-source research; territorial names vary"
+    },
+    {
+      "country": "CH",
+      "authority": "Schweizerischer Fussballverband / Association Suisse de Football",
+      "sourceUrl": "https://matchcenter.football.ch/",
+      "httpStatus": 403,
+      "retrievalSha256": null,
+      "researchDocument": "docs/european-expansion/phase-5d-e-r-switzerland-competition-selector-research.md",
+      "coverage": "Promotion League and 2. Liga interregional source-backed; multilingual identity and regional levels require human confirmation"
+    },
+    {
+      "country": "SI",
+      "authority": "Nogometna zveza Slovenije",
+      "sourceUrl": "https://www.nzs.si/seznam-tekmovanj?id_menu=410",
+      "httpStatus": 200,
+      "retrievalSha256": "sha256:10f99189c0583f0613b80f2602d697193ab8b0a4a2d7a07dcca770872f2b4a27",
+      "researchDocument": "docs/european-expansion/phase-5d-e-r-slovenia-competition-selector-research.md",
+      "coverage": "2. SNL and 3. SNL source-backed; MNZ levels require organizer-specific confirmation"
+    },
+    {
+      "country": "PL",
+      "authority": "Polski Związek Piłki Nożnej / Łączy nas piłka",
+      "sourceUrl": "https://www.laczynaspilka.pl/rozgrywki",
+      "httpStatus": 200,
+      "retrievalSha256": "sha256:2957610ecf5b775d54fc9e3d89b0da5f08eb0df4cbdee68c981641f304b1ea8c",
+      "researchDocument": "docs/european-expansion/phase-5d-e-r-poland-competition-selector-research.md",
+      "coverage": "III liga source-backed; IV liga and lower classes require WZPN-specific confirmation"
+    }
+  ],
+  "reuseAssessment": {
+    "machineReadableDataset": null,
+    "explicitOpenDataLicense": null,
+    "stableAuthorityRecordIds": null,
+    "automaticImportAllowed": false,
+    "factualReviewCatalogAllowed": true
+  },
+  "decision": {
+    "status": "READY_FOR_HUMAN_FACTUAL_REVIEW_NOT_FOR_IMPORT",
+    "mayCreateReviewCatalog": true,
+    "mayCreateSeedOrMigration": false,
+    "mayConnectRuntimeSelector": false,
+    "requiredNextGate": "human review of every selectable label, scope, organizer and current-season validity"
+  }
+}
