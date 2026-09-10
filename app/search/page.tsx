@@ -265,14 +265,15 @@ export default function SearchPage() {
   }, [filters.province, isItalySelected, provinces]);
 
   useEffect(() => {
-    if (!queryParam) {
+    const filteredSearch = hasActiveFilters(filters);
+    if (!queryParam && !filteredSearch) {
       setResults(EMPTY_RESULTS);
       setCounts(null);
       setError(null);
       return;
     }
 
-    if (queryParam.length < 2) {
+    if (queryParam.length === 1) {
       setResults(EMPTY_RESULTS);
       setCounts(null);
       setError('Inserisci almeno 2 caratteri per avviare la ricerca.');
@@ -353,7 +354,7 @@ export default function SearchPage() {
   };
 
   const handleTabChange = (next: SearchType) => {
-    if (!queryParam) return;
+    if (!queryParam && !hasActiveFilters(filters)) return;
     applySearch(queryParam, next, filters);
   };
 
@@ -397,13 +398,11 @@ export default function SearchPage() {
   };
 
   const applyFilters = () => {
-    if (!queryParam) return;
     applySearch(queryParam, type, filters);
   };
 
   const clearFilters = () => {
     setFilters(EMPTY_FILTERS);
-    if (!queryParam) return;
     applySearch(queryParam, type, EMPTY_FILTERS);
   };
 
@@ -556,7 +555,7 @@ export default function SearchPage() {
             <button
               type="button"
               onClick={applyFilters}
-              disabled={!queryParam}
+              disabled={!queryParam && !hasActiveFilters(filters)}
               className="inline-flex items-center justify-center rounded-full border border-[var(--brand)] bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Applica filtri
@@ -604,13 +603,13 @@ export default function SearchPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      {!error && !queryParam && (
+      {!error && !queryParam && !hasActiveFilters(filters) && (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
           Inizia a digitare per cercare club, enti, player, opportunità, post ed eventi.
         </div>
       )}
 
-      {!error && queryParam && queryParam.length >= 2 && (
+      {!error && (queryParam.length >= 2 || (!queryParam && hasActiveFilters(filters))) && (
         <div className="space-y-8">
           {type === 'all' ? (
             <div className="space-y-8">

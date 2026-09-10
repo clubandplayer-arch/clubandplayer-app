@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -97,4 +98,11 @@ test('the superseded client payload shapes fail exactly as diagnosed', async () 
     planProfilePrimarySportRequest({ primarySport: expectedCanonical }, planner),
     /invalid_input/,
   );
+});
+
+test('Profile validates required legacy fields before replacing sport with canonical request fields', () => {
+  const source = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8');
+  const validation = source.indexOf('getMissingRequiredProfileFields(basePayload)');
+  const canonicalSerialization = source.indexOf('delete basePayload.sport');
+  assert.ok(validation >= 0 && canonicalSerialization > validation);
 });

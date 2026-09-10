@@ -57,7 +57,21 @@ export function parseCanonicalSportFilters(
 export function applyCanonicalSportFilters(
   query: any,
   filters: CanonicalSportFilters,
+  legacySport?: string | null,
 ) {
+  if (legacySport?.trim()) {
+    const quotedLegacySport = `"${legacySport.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    const canonicalParts = [`sport_id.eq.${filters.sportId}`];
+    if (filters.disciplineId)
+      canonicalParts.push(`sport_discipline_id.eq.${filters.disciplineId}`);
+    if (filters.variantId)
+      canonicalParts.push(`sport_variant_id.eq.${filters.variantId}`);
+    // Canonical rows use the UUID chain; pre-backfill rows remain discoverable through
+    // the exact legacy label that the single Sport selector also submits.
+    return query.or(
+      `and(${canonicalParts.join(",")}),sport.ilike.${quotedLegacySport}`,
+    );
+  }
   let next = query.eq("sport_id", filters.sportId);
   if (filters.disciplineId)
     next = next.eq("sport_discipline_id", filters.disciplineId);

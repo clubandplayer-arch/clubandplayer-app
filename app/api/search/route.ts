@@ -187,7 +187,7 @@ function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { all
   if (options?.allowRegion && filters.region) nextQuery = nextQuery.ilike('region', toIlikePattern(filters.region));
   if (options?.allowProvince && filters.province) nextQuery = nextQuery.ilike('province', toIlikePattern(filters.province));
   if (filters.city) nextQuery = nextQuery.ilike('city', toIlikePattern(filters.city));
-  if (options?.canonicalSportColumns && filters.canonicalSport) nextQuery = applyCanonicalSportFilters(nextQuery, filters.canonicalSport);
+  if (options?.canonicalSportColumns && filters.canonicalSport) nextQuery = applyCanonicalSportFilters(nextQuery, filters.canonicalSport, filters.sport);
   else if (options?.allowSport && filters.sport) nextQuery = nextQuery.ilike('sport', toIlikePattern(filters.sport));
   if (options?.allowRole && filters.role) nextQuery = nextQuery.ilike('role', toIlikePattern(filters.role));
 
@@ -441,7 +441,7 @@ async function fetchProfileResults(params: {
   if (kind === 'players' && filters.canonicalSport) {
     let idsQuery = applyPublicProfileVisibilityFilters(supabase.from('profiles').select('id'))
       .or('account_type.eq.athlete,type.eq.athlete,account_type.eq.player,type.eq.player');
-    idsQuery = applyCanonicalSportFilters(idsQuery, filters.canonicalSport);
+    idsQuery = applyCanonicalSportFilters(idsQuery, filters.canonicalSport, filters.sport);
     const { data: canonicalProfiles, error: canonicalError } = await idsQuery;
     if (canonicalError) throw new Error(canonicalError.message);
     const ids = (canonicalProfiles ?? []).map((row) => row.id).filter(Boolean);
@@ -509,7 +509,7 @@ async function fetchProfileCount(params: {
   if (kind === 'players' && filters.canonicalSport) {
     let idsQuery = applyPublicProfileVisibilityFilters(supabase.from('profiles').select('id'))
       .or('account_type.eq.athlete,type.eq.athlete,account_type.eq.player,type.eq.player');
-    idsQuery = applyCanonicalSportFilters(idsQuery, filters.canonicalSport);
+    idsQuery = applyCanonicalSportFilters(idsQuery, filters.canonicalSport, filters.sport);
     const { data: canonicalProfiles, error: canonicalError } = await idsQuery;
     if (canonicalError) throw new Error(canonicalError.message);
     const ids = (canonicalProfiles ?? []).map((row) => row.id).filter(Boolean);
@@ -875,7 +875,12 @@ export async function GET(req: NextRequest) {
     return invalidPayload('Parametri sportivi non validi.');
   }
 
-  if (query.length < 2) {
+  const hasFilters = Boolean(
+    filters.canonicalSport || filters.country || filters.region || filters.province
+      || filters.city || filters.sport || filters.role
+      || parsedGeography.mode === 'canonical_unvalidated',
+  );
+  if (query.length === 1 || (!query && !hasFilters)) {
     return invalidPayload('La query deve contenere almeno 2 caratteri.');
   }
 

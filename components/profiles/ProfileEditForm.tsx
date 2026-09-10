@@ -766,14 +766,14 @@ export default function ProfileEditForm() {
         });
       }
 
-      if (!isFan) {
-        delete basePayload.sport;
-        Object.assign(basePayload, buildCanonicalSportRequestFields(primarySport));
-      }
-
       const missingFields = getMissingRequiredProfileFields(basePayload);
       if (missingFields.length > 0) {
         throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
+      }
+
+      if (!isFan) {
+        delete basePayload.sport;
+        Object.assign(basePayload, buildCanonicalSportRequestFields(primarySport));
       }
 
       if (canonicalResidenceUiEnabled && residenceDirty && !residenceWritable && !isOrganization && !isFan) {
