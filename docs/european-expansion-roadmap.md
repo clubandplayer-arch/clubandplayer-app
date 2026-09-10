@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
-| Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Eseguire il solo report Production read-only finale; con quattro conteggi a zero la Fase 5G è chiusa** |
+| Last completed subphase | **FASE 5G — COMPLETATA: SCHEMA, RUNTIME, CANARY E TEARDOWN PRODUCTION PASS** |
+| Current active phase | **FASE 5H — SEARCH / DISCOVER / WHOTOFOLLOW** |
+| Next safe action | **Review repository-only mirata dei consumer Search/Discover/WhoToFollow e delle dipendenze canonicali effettive; nessuna operazione remota** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -694,7 +694,7 @@ Suddivisione confermata dopo l'audit:
 - 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
 - 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
 - 5F — profili ed esperienze — **COMPLETATA: SCHEMA, DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
-- 5G — Opportunities e Applications — **IN CORSO: SCHEMA/RUNTIME CANONICAL-FIRST IMPLEMENTATI LOCALMENTE; APPLY/DEPLOY REMOTI ESCLUSI**;
+- 5G — Opportunities e Applications — **COMPLETATA: SCHEMA/RUNTIME, APPLY/DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
 - 5I — UI, filtri e controlled vocabulary — **NOT STARTED**;
 - 5J — regressione, backward compatibility e certificazione — **NOT STARTED**.
@@ -702,7 +702,7 @@ Suddivisione confermata dopo l'audit:
 
 ### FASE 5G — Opportunities e Applications
 
-**Stato: IMPLEMENTAZIONE E VERIFICHE REPOSITORY COMPLETATE; NESSUN APPLY/DEPLOY REMOTO.** La migration additiva `20261210120000_opportunity_canonical_sports_context.sql` porta su `opportunities` il contesto Sport/Discipline/Variant, Position o StaffRole mutuamente esclusivi e gender canonico. POST/PATCH eseguono dual-write legacy/canonical usando planner e mapping 5D-C; GET/list/recommendations e viste Applications proiettano il contesto senza duplicarlo in `applications`, che continua a referenziare l'Opportunity. Ownership, status e RLS non cambiano; non è previsto backfill.
+**Stato: COMPLETATA — REPOSITORY, POSTGRESQL 16, SCHEMA/RUNTIME PRODUCTION, CANARY E TEARDOWN PASS.** La migration additiva `20261210120000_opportunity_canonical_sports_context.sql` porta su `opportunities` il contesto Sport/Discipline/Variant, Position o StaffRole mutuamente esclusivi e gender canonico. POST/PATCH eseguono dual-write legacy/canonical usando planner e mapping 5D-C; GET/list/recommendations e viste Applications proiettano il contesto senza duplicarlo in `applications`, che continua a referenziare l'Opportunity. Ownership, status e RLS non cambiano; non è previsto backfill.
 
 Le sole dipendenze indispensabili successive sono organization/competition/level/age/season per collegare una Opportunity a competizioni estere reali. Restano fuori da questa tranche e dal censimento 5D-E-I: i campi nullable consentono il rollout sport/role/gender indipendentemente dai cataloghi esteri. Criterio di completamento repository: migration additiva validata localmente, compatibilità payload legacy e canonicale, riferimenti role-group/applicabilità fail-closed e lettura Applications senza duplicazione. Prossimo passaggio operativo, dopo review: preflight schema read-only dell'ambiente scelto e autorizzazione separata per l'eventuale apply esclusivo; nessuna operazione remota è autorizzata qui.
 
@@ -757,6 +757,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Teardown account 5G — PRECHECK BLOCCATO DALLE SESSIONI ALTERNATE / ZERO DELETE.** Anche caricando entrambi i JWT da Production, il login sequenziale nello stesso browser sostituisce la sessione precedente: dopo il login Applicant il token Club restituisce 401. Il runner combinato si è fermato prima di qualsiasi DELETE. La procedura corretta non richiede due sessioni simultaneamente: elimina prima il Club con un token Production appena generato e un runner dedicato; solo dopo genera il token Applicant e lo elimina con un secondo runner che richiede l’evidenza `club ok=true`. Restano due gate logici: teardown account sequenziale e report DB read-only finale.
 
 **Teardown account sequenziale 5G — PASS USER-REPORTED.** Il runner Club ha restituito `club_delete=200`; successivamente il runner Applicant, vincolato all’evidenza Club, ha restituito `applicant_delete=200`. Entrambi gli account disposable sono stati rimossi. Resta un solo gate: report Production `BEGIN TRANSACTION READ ONLY` su auth users, profiles, Opportunity e Application target; la Fase 5G si chiude esclusivamente con tutti e quattro i conteggi a zero.
+
+**Chiusura Fase 5G — PASS COMPLETO.** Il report finale Production ha restituito `PASS_PHASE_5G_CANARY_FINAL_TEARDOWN`, `auth=0`, `profiles=0`, `opportunities=0`, `applications=0` e `read_only=on`. La 5G è applicata, distribuita, verificata funzionalmente e priva di residui canary; non ripetere migration, history, deploy, canary o teardown. Si può procedere alla 5H con una review repository-only dei consumer Search/Discover/WhoToFollow, riusando il contesto canonico già disponibile e mantenendo le lacune catalogo estero limitate alle dipendenze indispensabili.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
