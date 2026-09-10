@@ -172,3 +172,32 @@ Non sono autorizzati automaticamente:
 - deduzione del country da lingua, nationality, residence o interessi;
 - canonicalizzazione delle esperienze Player/Staff;
 - modifica di Opportunities, Search, ranking o Mobile.
+
+## 8. Sottofasi operative approvate
+
+| Fase | Contenuto | Stato |
+| --- | --- | --- |
+| 6A | audit mirato dei consumer e matrice documentale Calcio IT/FR/ES/CH/SI/PL | **COMPLETATA** |
+| 6B | contratto e repository read-only country+sport(+organizer), bounded e fail-closed | **COMPLETATA repository-only** |
+| 6C | evidence pack e catalogo revisionabile del Calcio, una authority/country alla volta | non iniziata |
+| 6D | piano minimo di materializzazione dei cataloghi e verifica schema/policy, senza backfill deduttivi | non iniziata |
+| 6E | endpoint read-only per i selector, payload additivo e cache/limiti | non iniziata |
+| 6F | selector Club country-aware e denominazioni native indipendenti dalla lingua UI | non iniziata |
+| 6G | selector e filtri Opportunities country-aware, preservando ownership, Applications e campi legacy | non iniziata |
+| 6H | estensione agli altri sport, una matrice country/sport approvata alla volta | non iniziata |
+| 6I | regressione IT/FR/ES/CH/SI/PL, legacy/new, lingue UI e certificazione finale | non iniziata |
+
+### Esito 6B
+
+`lib/taxonomy/countryCompetitionLevels.server.ts` implementa il primo step successivo senza route né consumer runtime:
+
+- input obbligatorio `countryId` + `sportId`, con `organizationId`, `asOf` e `limit` opzionali;
+- validazione UUID/data/limite prima di interrogare il data source;
+- country supported+active, sport active e organization active appartenente al country;
+- lettura esclusivamente di livelli active e validi alla data richiesta;
+- limite massimo 200 e query `limit + 1` per rilevare overflow senza restituire cataloghi troncati;
+- output con `officialName`, senza parametro locale e senza traduzione i18n;
+- error states stabili e fail-closed;
+- adapter Supabase solo `SELECT`, nessuna route, UI, migration, seed o write.
+
+Il prossimo checkpoint è **6C**. La sua apertura non autorizza import o seed: deve prima produrre/revisionare l'evidence pack della singola authority/country scelta.
