@@ -99,11 +99,12 @@ test('request adapter rejects mixed legacy/canonical and malformed additive inpu
   );
 });
 
-test('current web client remains compatible because it sends only the optional legacy field', () => {
+test('current web client supports mutually exclusive canonical and legacy payloads', () => {
   assert.match(form, /sport: isClub \? \(sport \|\| ''\)\.trim\(\) \|\| null : null/);
   assert.match(form, /sport: \(athleteSport \|\| ''\)\.trim\(\) \|\| null/);
+  assert.match(form, /delete basePayload\.sport;\s*Object\.assign\(basePayload, buildCanonicalSportRequestFields\(primarySport\)\)/s);
+  assert.match(form, /normalizedPastExperiences\.map\(buildExperienceFormPayload\)/);
   assert.match(form, /fetch\('\/api\/profiles\/me', \{\s*method: 'PATCH'/s);
-  assert.doesNotMatch(form, /sportId|disciplineId|variantId/);
 });
 
 test('existing Phase 1 and 5C migrations do not add canonical Profile sport columns', () => {

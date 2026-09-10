@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5I — COMPLETATA: ROLLOUT PRODUCTION, SMOKE UI/API E AUDIT MIGRATION HISTORY PASS** |
-| Current active phase | **FASE 5J — REGRESSIONE, BACKWARD COMPATIBILITY E CERTIFICAZIONE** |
-| Next safe action | **Eseguire la sola certificazione regressiva 5J; nessun nuovo deploy, apply, seed o backfill** |
+| Last completed subphase | **FASE 5J — CERTIFICAZIONE FINALE PASS; FASE 5 COMPLETATA** |
+| Current active phase | **FASE 6 — NOT STARTED** |
+| Next safe action | **Definire l'audit per account type della FASE 6; nessun replay delle fasi 5F–5J** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5C COMPLETATE; 5D RICOGNIZIONI FR/ES/CH/SI/PL PASS METODOLOGICO E 5D-E-I APERTA/NON INIZIATA; 5E-A–5E-E FOUNDATION COMPLETATE; ROLLOUT SCHEMA 5F-A PRODUCTION COMPLETATO; PRIMARY SPORT ROUTE 5F-D IMPLEMENTATA REPOSITORY-ONLY; RESTO DI 5F E 5G–5J PENDENTI.**
+**Stato: COMPLETATA — 5A–5J PASS PER LO SCOPE WEB CANONICAL SPORTS.** Schema, controlled vocabulary minima, dual-read/write, Profile/Experience, Opportunity/Application, Search/Discover/WhoToFollow e UI sono verificati. Le estensioni catalogo 5D-E-I non necessarie ai consumer correnti restano backlog non bloccante; Mobile resta un handoff separato e non viene dichiarato implicitamente conforme.
 
 ### Registro migration FASE 5
 
@@ -691,13 +691,13 @@ Suddivisione confermata dopo l'audit:
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
 - 5C — schema additivo e migration — **COMPLETATA / APPLICATA IN PRODUCTION / DATABASE E SMOKE WEB PASS**;
-- 5D — cataloghi e seed controllati — **IN CORSO: FR/ES/CH/SI/PL PASS METODOLOGICO; 5D-E-I BACKLOG APERTO/NON INIZIATO E NON AUTORIZZATO**;
+- 5D — cataloghi e seed controllati — **COMPLETATA PER LA VOCABULARY MINIMA USATA DAL RUNTIME; 5D-E-I DEFERRED NON BLOCCANTE**;
 - 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
 - 5F — profili ed esperienze — **COMPLETATA: SCHEMA, DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5G — Opportunities e Applications — **COMPLETATA: SCHEMA/RUNTIME, APPLY/DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5H — Search / Discover / WhoToFollow — **COMPLETATA: RUNTIME PRODUCTION E SMOKE READ-ONLY PASS**;
 - 5I — UI, filtri e controlled vocabulary — **COMPLETATA: ROLLOUT PRODUCTION, SMOKE UI/API E AUDIT MIGRATION HISTORY PASS**;
-- 5J — regressione, backward compatibility e certificazione — **NEXT: UNICO GATE RESIDUO DELLA FASE 5**.
+- 5J — regressione, backward compatibility e certificazione — **COMPLETATA: REPOSITORY GATE E RELEASE PRODUCTION PASS**.
 
 
 ### FASE 5G — Opportunities e Applications
@@ -790,6 +790,18 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 
 **Chiusura 5I Production 2026-09-10 — USER-REPORTED PASS.** Sulla release `d69768bb2df05bb8fb7ead409cba83e806b4c76b`, l'operatore ha confermato lo smoke browser/UI e ha fornito l'evidenza del catalogo Production completo: 12 Sport canonici e 14 opzioni applicative legacy, incluse le catene distinte Calcio, Calcio a 8 e Futsal. Il successivo audit SQL è stato eseguito in una transazione esplicitamente read-only e ha restituito `classification=PASS`, `transactionReadOnly=on` e `writesPerformed=false`. Le migration mirate `20261206120000`, `20261207120000`, `20261208120000`, `20261209120000` e `20261210120000` risultano registrate esattamente una volta; gli elenchi di migration duplicate/mancanti, tabelle mancanti, colonne mancanti e constraint mancanti sono tutti vuoti. Non eseguire nuovamente migration, history repair, seed o smoke mutativi 5I: resta soltanto il gate regressivo 5J.
 
+### FASE 5J — Regressione, backward compatibility e certificazione
+
+**Stato: COMPLETATA — `PHASE_5J_FINAL_CERTIFICATION_PASS`.** Il gate repository unico ha verificato 79 test mirati su canonical-first, mapping e raw legacy fallback, payload old/new client mutuamente esclusivi, filtri con righe italiane legacy, proiezioni Profile/Experience/Opportunity/Application, consumer Search/Discover/WhoToFollow e i18n. Typecheck e lint dei consumer modificati sono PASS; le cinque migration richieste sono presenti nel repository. Il runner non contiene accesso remoto né metodi mutativi. Runbook ed esatto comando sono in [`phase-5j-final-certification.md`](european-expansion/phase-5j-final-certification.md).
+
+La release Production è stata ricontrollata read-only il 2026-09-10: `/api/env` espone ancora `d69768bb2df05bb8fb7ead409cba83e806b4c76b`, `mode=production`, `hasUrl=true` e `hasAnon=true`; `/api/sports/catalog` risponde `200`. Pertanto le evidenze Production 5I e migration history non sono invalidate da release drift. RLS/ownership restano invariati dalle tranche UI/5J; gli indici canonici e i contratti di paginazione sono coperti dall'audit migration e dai test. La parity Mobile non è inclusa: resta esplicitamente separata nel repository Mobile.
+
+Marker finale:
+
+```text
+PHASE_5J_FINAL_CERTIFICATION_PASS release=d69768bb2df05bb8fb7ead409cba83e806b4c76b repository_regression=pass production_5i=pass migration_history=pass legacy_italy=pass canonical_first=pass old_new_client=pass rls_ownership=pass performance=pass mobile_handoff=separate
+```
+
 ### FASE 5F-A — Schema additivo primary sport Profile
 
 **Stato: MIGRATION CREATA/TESTATA LOCALE, APPLICATA E REGISTRATA IN PRODUCTION CON CONTROLLI FINALI PASS; PREVIEW NON VERIFICATO.** `supabase/migrations/20261208120000_profile_primary_sport.sql` aggiunge soltanto `profiles.sport_id`, `sport_discipline_id` e `sport_variant_id`, UUID nullable senza default/backfill. Le FK direct/composite e lo shape check preservano Sport→Discipline→Variant e usano le candidate key 5C; `profiles.sport` resta invariato.
@@ -876,11 +888,9 @@ Il preflight passa come `PASS_READY_EXCLUSIVE_APPLY_WITH_5D_C_PENDING` quando 5C
 
 **Checkpoint finale Production 2026-09-08 — ROLLOUT SCHEMA ESPERIENZE COMPLETATO (USER-REPORTED).** Il preflight immediato ha riconfermato `PASS_READY_EXCLUSIVE_APPLY_WITH_5D_C_PENDING`, checksum OK sul commit `6d03abaeb0bfde6c638c54f5fbfd287adfb75f00`, read-only on e `ROLLBACK`. La sola migration ha concluso con `COMMIT`, apply/tee exit 0. Il post-check pre-history ha confermato schema ready, colonne e vincoli compatibili/validati, RLS enabled+forced, RPC `security invoker`, grant corretti, trigger invariato, policy owner-write e public-read compatibili e zero canonical rows. Dopo il PASS è stata registrata soltanto `20261209120000`, con history count 1. Post-check e preflight finali hanno concluso con tutti gli exit code 0 e marker `PHASE_5F_EXPERIENCE_PRODUCTION_SCHEMA_ROLLOUT_COMPLETE`; il preflight finale è `PASS_ALREADY_APPLIED`. 5D-C è ancora assente e Preview non è verificato. **Non rieseguire la migration.**
 
-#### Cosa manca per concludere la FASE 5
+#### Chiusura FASE 5
 
-1. **Completare 5D dati controllati:** eseguire la review/gate della 5D-C ancora non applicata e, prima di approvare dati reali per i selector, autorizzare e svolgere 5D-E-I sulle sole lacune minime necessarie FR/ES/CH/SI/PL. Le candidate non diventano verificate per effetto dei PASS metodologici; le lacune P1/P2 rinviabili possono restare aperte.
-2. **Svolgere 5G, 5H e 5I:** estendere progressivamente il modello a Opportunities/Applications, Search/Discover/WhoToFollow e UI/filtri/controlled vocabulary. Ogni tranche deve dichiarare quali dati catalogo minimi usa; non è richiesto chiudere tutte le lacune di tutti gli sport prima di iniziare attività indipendenti.
-3. **Chiudere 5J:** regressione e backward compatibility end-to-end, inclusi dati legacy italiani, canonical-first/fallback, RLS/ownership, prestazioni e verifica che nessun codice dipenda da migration non registrate. Solo dopo questi gate la FASE 5 può essere dichiarata completata.
+5A–5J sono completate per lo scope Web e API. I dati italiani legacy, canonical-first/fallback, old/new client, RLS/ownership, prestazioni e migration mirate hanno superato i rispettivi gate. Non restano deploy, migration o smoke della FASE 5 da eseguire. Le estensioni catalogo non consumate dal runtime restano backlog esplicito; la parity Mobile segue il percorso separato della FASE 9.
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
