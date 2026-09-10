@@ -6,6 +6,7 @@ import { ACTIVE_LOCALES, resolveLocale } from '../../lib/i18n/config';
 import { loadMessages } from '../../lib/i18n/messages';
 import italianMessages from '../../lib/i18n/messages/it';
 import { interpolateMessage, translateWithFallback } from '../../lib/i18n/translate';
+import { localizeSportRole } from '../../lib/i18n/controlledVocabulary';
 import {
   buildLanguagePreferenceInsert,
   buildLanguagePreferenceUpdate,
@@ -56,6 +57,24 @@ test('all active dictionaries contain every required Italian key', async () => {
   for (const locale of ACTIVE_LOCALES) {
     const messages = await loadMessages(locale);
     assert.deepEqual(Object.keys(messages).sort(), requiredKeys, `dictionary ${locale}`);
+  }
+});
+
+test('president and vice president roles are localized in every active locale', async () => {
+  const expected = {
+    it: ['Presidente', 'Vicepresidente'],
+    en: ['President', 'Vice president'],
+    fr: ['Président', 'Vice-président'],
+    // These are the correct Spanish words and intentionally match the Italian spelling.
+    es: ['Presidente', 'Vicepresidente'],
+  } as const;
+  for (const locale of ACTIVE_LOCALES) {
+    const messages = await loadMessages(locale);
+    const t = (key: keyof typeof messages) => messages[key];
+    assert.deepEqual([
+      localizeSportRole('Presidente', t),
+      localizeSportRole('Vicepresidente', t),
+    ], expected[locale]);
   }
 });
 
