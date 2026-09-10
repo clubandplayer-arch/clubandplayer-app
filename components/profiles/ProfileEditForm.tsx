@@ -23,6 +23,10 @@ import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
+import {
+  buildCanonicalSportRequestFields,
+  buildExperienceFormPayload,
+} from '@/lib/taxonomy/canonicalSportFormPayload';
 import { localizeOpportunityCategory, localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
 import { isCanonicalProfileResidenceUiEnabled } from '@/lib/env/features';
@@ -762,12 +766,9 @@ export default function ProfileEditForm() {
         });
       }
 
-      if (!isFan && primarySport.sportId) {
-        basePayload.primarySport = {
-          sportId: primarySport.sportId,
-          disciplineId: primarySport.disciplineId || null,
-          variantId: primarySport.variantId || null,
-        };
+      if (!isFan) {
+        delete basePayload.sport;
+        Object.assign(basePayload, buildCanonicalSportRequestFields(primarySport));
       }
 
       const missingFields = getMissingRequiredProfileFields(basePayload);
@@ -811,7 +812,7 @@ export default function ProfileEditForm() {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ experiences: normalizedPastExperiences }),
+          body: JSON.stringify({ experiences: normalizedPastExperiences.map(buildExperienceFormPayload) }),
         });
         if (!experiencesRes.ok) {
           const j = await experiencesRes.json().catch(() => ({}));

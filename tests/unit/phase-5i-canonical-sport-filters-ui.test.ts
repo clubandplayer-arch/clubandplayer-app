@@ -32,6 +32,8 @@ test('Profile, Experience, and Opportunity forms submit canonical context with l
   assert.match(profileForm, /past-experience-\$\{index\}-sport/);
   assert.match(pastExperiences, /primarySport\?:/);
   assert.match(pastExperiences, /sportId: input\.primarySport\.sportId/);
+  assert.match(opportunityForm, /buildCanonicalSportRequestFields\(primarySport\)/);
+  assert.match(profileForm, /normalizedPastExperiences\.map\(buildExperienceFormPayload\)/);
 });
 
 test('canonical selector labels are localized in every supported locale', () => {

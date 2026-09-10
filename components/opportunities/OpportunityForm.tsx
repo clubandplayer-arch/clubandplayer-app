@@ -5,6 +5,7 @@ import { useI18n } from '@/components/i18n/I18nProvider';
 import { localizeAccountType, localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
+import { buildCanonicalSportRequestFields } from '@/lib/taxonomy/canonicalSportFormPayload';
 
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, normalizeSport, sportRequiresPlayerRole, SPORTS_ROLES } from '@/lib/opps/constants';
@@ -157,7 +158,6 @@ export default function OpportunityForm({
       const payload: Record<string, unknown> = {
         title: normalizedTitle,
         description: (description || '').trim() || null,
-        sport,
         role: role || null,
         role_group: role ? roleGroup : 'player',
         category: category || null,
@@ -166,13 +166,7 @@ export default function OpportunityForm({
         age_min,
         age_max,
       };
-      if (primarySport.sportId) {
-        payload.primarySport = {
-          sportId: primarySport.sportId,
-          disciplineId: primarySport.disciplineId || null,
-          variantId: primarySport.variantId || null,
-        };
-      }
+      Object.assign(payload, buildCanonicalSportRequestFields(primarySport));
       if (geographyTouched) {
         payload.country_id = countryId;
         payload.geo_area_id = geoAreaId;

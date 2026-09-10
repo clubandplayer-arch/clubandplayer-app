@@ -1,17 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { CanonicalSportFormValue } from '@/lib/taxonomy/canonicalSportFormPayload';
 
 type Sport = { id: string; code: string; canonical_name: string };
 type Discipline = { id: string; sport_id: string; code: string; canonical_name: string };
 type Variant = { id: string; discipline_id: string; code: string; canonical_name: string };
 
-export type CanonicalSportFilterValue = {
-  sportId: string;
-  disciplineId: string;
-  variantId: string;
-  legacySport: string;
-};
+export type CanonicalSportFilterValue = CanonicalSportFormValue;
 
 type Props = {
   idPrefix: string;
