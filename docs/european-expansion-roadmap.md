@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5G — COMPLETATA: SCHEMA, RUNTIME, CANARY E TEARDOWN PRODUCTION PASS** |
-| Current active phase | **FASE 5H — SEARCH / DISCOVER / WHOTOFOLLOW** |
-| Next safe action | **Review repository-only mirata dei consumer Search/Discover/WhoToFollow e delle dipendenze canonicali effettive; nessuna operazione remota** |
+| Last completed subphase | **FASE 5H — IMPLEMENTAZIONE REPOSITORY E VERIFICHE LOCALI COMPLETATE** |
+| Current active phase | **FASE 5H — ROLLOUT RUNTIME PENDENTE** |
+| Next safe action | **Review finale mirata, deploy del runtime 5H e smoke test canonical-first/legacy fallback; nessuna migration o backfill** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -695,7 +695,7 @@ Suddivisione confermata dopo l'audit:
 - 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
 - 5F — profili ed esperienze — **COMPLETATA: SCHEMA, DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5G — Opportunities e Applications — **COMPLETATA: SCHEMA/RUNTIME, APPLY/DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
-- 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
+- 5H — Search / Discover / WhoToFollow — **IMPLEMENTAZIONE REPOSITORY E VERIFICHE LOCALI COMPLETATE; ROLLOUT RUNTIME PENDENTE**;
 - 5I — UI, filtri e controlled vocabulary — **NOT STARTED**;
 - 5J — regressione, backward compatibility e certificazione — **NOT STARTED**.
 
@@ -759,6 +759,10 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Teardown account sequenziale 5G — PASS USER-REPORTED.** Il runner Club ha restituito `club_delete=200`; successivamente il runner Applicant, vincolato all’evidenza Club, ha restituito `applicant_delete=200`. Entrambi gli account disposable sono stati rimossi. Resta un solo gate: report Production `BEGIN TRANSACTION READ ONLY` su auth users, profiles, Opportunity e Application target; la Fase 5G si chiude esclusivamente con tutti e quattro i conteggi a zero.
 
 **Chiusura Fase 5G — PASS COMPLETO.** Il report finale Production ha restituito `PASS_PHASE_5G_CANARY_FINAL_TEARDOWN`, `auth=0`, `profiles=0`, `opportunities=0`, `applications=0` e `read_only=on`. La 5G è applicata, distribuita, verificata funzionalmente e priva di residui canary; non ripetere migration, history, deploy, canary o teardown. Si può procedere alla 5H con una review repository-only dei consumer Search/Discover/WhoToFollow, riusando il contesto canonico già disponibile e mantenendo le lacune catalogo estero limitate alle dipendenze indispensabili.
+
+### FASE 5H — Search / Discover / WhoToFollow
+
+**Review mirata e implementazione repository-only.** Global Search ora accetta `sportId`/`disciplineId`/`variantId` (anche snake_case), valida UUID e completezza gerarchica e applica filtri canonical-first a Opportunities e profili; il percorso Player risolve prima gli ID dalla tabella `profiles`, evitando di assumere nuove colonne nella view legacy `athletes_view`. Il filtro testuale `sport` resta fallback quando gli ID non sono presenti. Discover/follows suggestions e WhoToFollow selezionano il contesto canonico del viewer e preferiscono `sport_id` per l’affinità, mantenendo il confronto legacy soltanto per profili non ancora canonicalizzati. Nessuna migration, backfill, modifica RLS, deploy o query remota; organization/competition/level/age/season e 5D-E-I non sono necessari per questa affinità Sport e restano separati.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 

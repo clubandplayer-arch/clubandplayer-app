@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
     step = 'meProfile';
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, account_type, status, country, city, province, region, interest_country, interest_city, interest_province, interest_region, sport')
+      .select('id, account_type, status, country, city, province, region, interest_country, interest_city, interest_province, interest_region, sport, sport_id, sport_discipline_id, sport_variant_id')
       .eq('user_id', userRes.user.id)
       .maybeSingle();
 
@@ -167,6 +167,7 @@ export async function GET(req: NextRequest) {
 
     const profileId = profile.id;
     const viewerSport = profile.sport;
+    const viewerSportId = profile.sport_id;
     debugInfo.meProfileId = profileId;
 
     step = 'viewerGeography';
@@ -194,7 +195,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, interest_region_id, interest_province_id, interest_municipality_id, sport, birth_year, bio, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, interest_region_id, interest_province_id, interest_municipality_id, sport, sport_id, sport_discipline_id, sport_variant_id, birth_year, bio, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -324,7 +325,9 @@ export async function GET(req: NextRequest) {
       const filters: Array<Array<(q: any) => any>> = [];
       const sportFilter: Array<(q: any) => any> = [];
 
-      if (sportScope === 'mine' && profile.sport) {
+      if (sportScope === 'mine' && viewerSportId) {
+        sportFilter.push((q) => q.eq('sport_id', viewerSportId));
+      } else if (sportScope === 'mine' && profile.sport) {
         const value = `%${escapeLike(profile.sport.trim())}%`;
         sportFilter.push((q) => q.ilike('sport', value));
       }

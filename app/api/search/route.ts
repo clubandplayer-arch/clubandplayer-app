@@ -18,6 +18,7 @@ import {
   type ParsedSearchGeography,
 } from '@/lib/search/canonicalGeographyContract';
 import { SupabaseSearchGeographyCatalog } from '@/lib/search/canonicalGeography.server';
+import { applyCanonicalSportFilters, CanonicalSportFilterError, parseCanonicalSportFilters, type CanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
 
@@ -59,6 +60,7 @@ type SearchFilters = {
   city: string | null;
   sport: string | null;
   role: string | null;
+  canonicalSport: CanonicalSportFilters | null;
   canonical: CanonicalSearchGeographyScope | null;
 };
 
@@ -144,6 +146,7 @@ function readFilters(url: URL, parsedGeography: ParsedSearchGeography): SearchFi
     city: parsedGeography.mode === 'canonical_unvalidated' ? null : parsedGeography.legacy.city,
     sport: normalizeSport(url.searchParams.get('sport')),
     role: normalizeTextFilter(url.searchParams.get('role')),
+    canonicalSport: parseCanonicalSportFilters(url.searchParams),
     canonical: null,
   };
 }
@@ -163,7 +166,7 @@ function applyCanonicalProfileFilters(query: any, scope: CanonicalSearchGeograph
   return nextQuery;
 }
 
-function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { allowRegion?: boolean; allowProvince?: boolean; allowSport?: boolean; allowRole?: boolean; canonicalLocation?: 'profile' | 'opportunity' }) {
+function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { allowRegion?: boolean; allowProvince?: boolean; allowSport?: boolean; allowRole?: boolean; canonicalLocation?: 'profile' | 'opportunity'; canonicalSportColumns?: boolean }) {
   let nextQuery: any = query;
 
   if (filters.canonical && options?.canonicalLocation === 'opportunity') {
@@ -184,7 +187,8 @@ function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { all
   if (options?.allowRegion && filters.region) nextQuery = nextQuery.ilike('region', toIlikePattern(filters.region));
   if (options?.allowProvince && filters.province) nextQuery = nextQuery.ilike('province', toIlikePattern(filters.province));
   if (filters.city) nextQuery = nextQuery.ilike('city', toIlikePattern(filters.city));
-  if (options?.allowSport && filters.sport) nextQuery = nextQuery.ilike('sport', toIlikePattern(filters.sport));
+  if (options?.canonicalSportColumns && filters.canonicalSport) nextQuery = applyCanonicalSportFilters(nextQuery, filters.canonicalSport);
+  else if (options?.allowSport && filters.sport) nextQuery = nextQuery.ilike('sport', toIlikePattern(filters.sport));
   if (options?.allowRole && filters.role) nextQuery = nextQuery.ilike('role', toIlikePattern(filters.role));
 
   return nextQuery as T;
@@ -242,7 +246,7 @@ function buildClubQuery(
     ].join(','),
   );
 
-  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: false });
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: false, canonicalSportColumns: true });
 
   return query;
 }
@@ -316,6 +320,7 @@ function buildStaffQuery(
     allowProvince: true,
     allowSport: true,
     allowRole: true,
+    canonicalSportColumns: true,
   });
 
   return query;
@@ -427,11 +432,22 @@ async function fetchProfileResults(params: {
     return { results, count: count ?? 0 };
   }
 
-  const query = (kind === 'players'
+  let query = (kind === 'players'
     ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' }).not('role', 'ilike', 'staff')
     : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' }).ilike('role', 'staff'))
     .order('created_at', { ascending: false })
     .range(from, to);
+
+  if (kind === 'players' && filters.canonicalSport) {
+    let idsQuery = applyPublicProfileVisibilityFilters(supabase.from('profiles').select('id'))
+      .or('account_type.eq.athlete,type.eq.athlete,account_type.eq.player,type.eq.player');
+    idsQuery = applyCanonicalSportFilters(idsQuery, filters.canonicalSport);
+    const { data: canonicalProfiles, error: canonicalError } = await idsQuery;
+    if (canonicalError) throw new Error(canonicalError.message);
+    const ids = (canonicalProfiles ?? []).map((row) => row.id).filter(Boolean);
+    if (!ids.length) return { results: [], count: 0 };
+    query = query.in('id', ids);
+  }
 
   const { data, count, error } = await query;
   if (error) throw new Error(error.message);
@@ -487,9 +503,19 @@ async function fetchProfileCount(params: {
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
-  const query = kind === 'players'
+  let query = kind === 'players'
     ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true }).not('role', 'ilike', 'staff')
     : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true }).ilike('role', 'staff');
+  if (kind === 'players' && filters.canonicalSport) {
+    let idsQuery = applyPublicProfileVisibilityFilters(supabase.from('profiles').select('id'))
+      .or('account_type.eq.athlete,type.eq.athlete,account_type.eq.player,type.eq.player');
+    idsQuery = applyCanonicalSportFilters(idsQuery, filters.canonicalSport);
+    const { data: canonicalProfiles, error: canonicalError } = await idsQuery;
+    if (canonicalError) throw new Error(canonicalError.message);
+    const ids = (canonicalProfiles ?? []).map((row) => row.id).filter(Boolean);
+    if (!ids.length) return 0;
+    query = query.in('id', ids);
+  }
   const { count, error } = await query;
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -521,7 +547,7 @@ function buildOpportunityQuery(
   if (status) {
     query = query.eq('status', status);
   }
-  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true, canonicalLocation: 'opportunity' });
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true, canonicalLocation: 'opportunity', canonicalSportColumns: true });
   return query;
 }
 
@@ -626,7 +652,7 @@ async function fetchOpportunityCount(params: {
 }
 
 function hasProfileFilters(filters: SearchFilters) {
-  return Boolean(filters.canonical || filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
+  return Boolean(filters.canonical || filters.canonicalSport || filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
 }
 
 async function fetchFilteredAuthorIds(params: {
@@ -643,7 +669,7 @@ async function fetchFilteredAuthorIds(params: {
     supabase.from('profiles').select('id, user_id'),
   );
 
-  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true, canonicalSportColumns: true });
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
@@ -841,7 +867,13 @@ export async function GET(req: NextRequest) {
     if (error instanceof SearchGeographyContractError) return invalidPayload(error.message);
     return invalidPayload('Parametri geografici non validi.');
   }
-  const filters = readFilters(url, parsedGeography);
+  let filters: SearchFilters;
+  try {
+    filters = readFilters(url, parsedGeography);
+  } catch (error) {
+    if (error instanceof CanonicalSportFilterError) return invalidPayload(error.code);
+    return invalidPayload('Parametri sportivi non validi.');
+  }
 
   if (query.length < 2) {
     return invalidPayload('La query deve contenere almeno 2 caratteri.');
@@ -996,6 +1028,9 @@ export async function GET(req: NextRequest) {
         city: filters.city,
         sport: filters.sport,
         role: filters.role,
+        sportId: filters.canonicalSport?.sportId ?? null,
+        disciplineId: filters.canonicalSport?.disciplineId ?? null,
+        variantId: filters.canonicalSport?.variantId ?? null,
         countryId: filters.canonical?.countryId ?? null,
         geoAreaId: filters.canonical?.geoAreaId ?? null,
       },
