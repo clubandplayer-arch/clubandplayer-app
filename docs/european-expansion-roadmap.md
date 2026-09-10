@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5H — IMPLEMENTAZIONE REPOSITORY E VERIFICHE LOCALI COMPLETATE** |
-| Current active phase | **FASE 5H — ROLLOUT RUNTIME PENDENTE** |
-| Next safe action | **Promuovere la correzione Bearer dei consumer 5H, poi ripetere una sola volta lo stesso smoke read-only; nessuna migration o backfill** |
+| Last completed subphase | **FASE 5H — COMPLETATA: RUNTIME PRODUCTION E SMOKE READ-ONLY PASS** |
+| Current active phase | **NESSUNA — FASE 5I NON AVVIATA** |
+| Next safe action | **Avviare la review mirata del perimetro 5I UI/filtri/controlled vocabulary, senza riaprire 5H** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -695,7 +695,7 @@ Suddivisione confermata dopo l'audit:
 - 5E — dual-read / dual-write e adapter server — **FOUNDATION COMPLETATA: 5E-A–5E-E; NESSUN RUNTIME WRITE COLLEGATO**;
 - 5F — profili ed esperienze — **COMPLETATA: SCHEMA, DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
 - 5G — Opportunities e Applications — **COMPLETATA: SCHEMA/RUNTIME, APPLY/DEPLOY, CANARY E TEARDOWN PRODUCTION PASS**;
-- 5H — Search / Discover / WhoToFollow — **IMPLEMENTAZIONE REPOSITORY E VERIFICHE LOCALI COMPLETATE; ROLLOUT RUNTIME PENDENTE**;
+- 5H — Search / Discover / WhoToFollow — **COMPLETATA: RUNTIME PRODUCTION E SMOKE READ-ONLY PASS**;
 - 5I — UI, filtri e controlled vocabulary — **NOT STARTED**;
 - 5J — regressione, backward compatibility e certificazione — **NOT STARTED**.
 
@@ -767,6 +767,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Rollout runtime 5H — SHA PRODUCTION VERIFICATO / SMOKE PUBBLICO PASS / SESSIONE RICHIESTA PER IL GATE FINALE.** `/api/env` su `www.clubandplayer.com` ha restituito `sha=199ccbeac489faae4e161e300b3e92d06b48f12f`, `mode=production`, `hasUrl=true` e `hasAnon=true`. Gli smoke GET pubblici hanno confermato: filtro canonicale singolo e catena completa HTTP 200 con echo degli ID; fallback legacy HTTP 200 senza ID canonici; UUID non valido e catena incompleta HTTP 400 fail-closed; WhoToFollow anonimo HTTP 200 con array vuoto e Discover anonimo HTTP 401 fail-closed. Il solo gate residuo è lo smoke autenticato read-only di Profile, Search canonicale con un ID realmente presente, Discover e WhoToFollow, raccolto in un unico runner senza metodi mutativi.
 
 **Primo smoke autenticato 5H — STOP DIAGNOSTICATO, ZERO WRITE.** Il token Bearer è stato accettato da `/api/profiles/me`, quindi Search canonicale e fallback hanno superato i controlli prima dello stop; Discover ha restituito HTTP 401 perché i due endpoint suggerimenti leggevano esclusivamente la sessione cookie tramite `getSupabaseServerClient().auth.getUser()` e ignoravano l’header Bearer usato dal runner. Il runtime ora condivide `resolveAuthContext`: preserva la precedenza della sessione cookie, aggiunge il fallback Bearer e mantiene i contratti anonimi preesistenti (Discover 401, WhoToFollow array vuoto). Serve un nuovo deploy di questa correzione prima di ripetere una sola volta lo stesso smoke read-only; nessuna migration o backfill.
+
+**Chiusura Fase 5H — PASS COMPLETO.** La correzione Bearer è stata promossa nel runtime Production `75663bc5293de6a0dcc5002a69469d06c9153514`. Il runner GET-only ha restituito `PHASE_5H_PRODUCTION_READ_ONLY_SMOKE_PASS` con Profile 200, Search canonicale 200, fallback legacy 200, input canonico invalido 400, Discover 200 e WhoToFollow 200 usando lo Sport reale `aa40987d-85fa-413a-900b-d68ed1a10148`; l’hash aggregato delle risposte è `687d4228624fbadf1a20975fb648563ba2d111818db68b250fbb1c382b807ae7`. La 5H è chiusa: non ripetere deploy o smoke e non sono richiesti migration, backfill o teardown. La 5I resta non avviata fino alla sua review mirata.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 
