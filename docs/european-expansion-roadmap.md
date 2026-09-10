@@ -15,7 +15,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile through FASE 4 | **USER-REPORTED REPLICATED — non verificato in questa repository** |
-| Mobile FASE 5 parity | **NOT STARTED / NON MODIFICATO — deferred to Mobile repository** |
+| Mobile FASE 5 parity | **HANDOFF READY — implementazione e certificazione Android/iOS NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
 | FASE 3C-D | **COMPLETATA — D1–D7 PASS** |
@@ -796,6 +796,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 
 La release Production è stata ricontrollata read-only il 2026-09-10: `/api/env` espone ancora `d69768bb2df05bb8fb7ead409cba83e806b4c76b`, `mode=production`, `hasUrl=true` e `hasAnon=true`; `/api/sports/catalog` risponde `200`. Pertanto le evidenze Production 5I e migration history non sono invalidate da release drift. RLS/ownership restano invariati dalle tranche UI/5J; gli indici canonici e i contratti di paginazione sono coperti dall'audit migration e dai test. La parity Mobile non è inclusa: resta esplicitamente separata nel repository Mobile.
 
+**Handoff Mobile FASE 5 — READY, NON IMPLEMENTATO.** L'audit trasferibile è in [`phase-5-mobile-parity-handoff.md`](mobile-parity/phase-5-mobile-parity-handoff.md): fissa la release Web, le fonti autorevoli, catalogo e selector unico, payload canonical/legacy mutuamente esclusivi, matrici Profile/Experience/Opportunity/Application/Search/Discover/WhoToFollow, i18n, sicurezza, performance e 14 scenari funzionali distinti per Android/iOS. La governance permanente per produrre lo stesso handoff dopo ogni futura fase Web è in [`mobile-parity-roadmap.md`](mobile-parity-roadmap.md). La documentazione non modifica il client Mobile e non costituisce `PARITY PASS`.
+
 Marker finale:
 
 ```text
@@ -1058,7 +1060,7 @@ Obiettivo generale: rendere Search, Discover, WhoToFollow, feed e sistemi di rac
 
 ### 9H — Sports / competitions parity
 
-**Stato: NOT STARTED.** Portare il modello sportivo europeo soltanto dopo la validazione web.
+**Stato: HANDOFF READY / IMPLEMENTAZIONE NOT STARTED.** La baseline Web è validata e il contratto operativo è in [`phase-5-mobile-parity-handoff.md`](mobile-parity/phase-5-mobile-parity-handoff.md). Implementazione e certificazione M5-01…M5-14 devono avvenire nel repository Mobile, separatamente per Android e iOS; il solo handoff non equivale a parity.
 
 ### 9I — Android regression
 
