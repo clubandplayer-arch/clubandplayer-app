@@ -1,8 +1,8 @@
 // app/api/follows/suggestions/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { resolveAuthContext } from '@/lib/api/auth';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
@@ -21,6 +21,7 @@ import {
   applySuggestionGeographyFilter,
   loadViewerSuggestionGeography,
 } from '@/lib/search/suggestionGeography.server';
+import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-09-01-d4';
@@ -110,33 +111,22 @@ export async function GET(req: NextRequest) {
 
   try {
     step = 'auth';
-    const supabase = await getSupabaseServerClient();
     let explicitGeography: CanonicalSearchGeographyScope | null = null;
-    const { data: userRes, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('[follows/suggestions] auth error', authError);
-      return errorResponse({
-        code: 'AUTH_REQUIRED',
-        message: 'Devi accedere per vedere i suggerimenti.',
-        status: 401,
-        error: authError,
-      });
-    }
-
-    if (!userRes?.user) {
+    const auth = await resolveAuthContext(req);
+    if (!auth) {
       return errorResponse({
         code: 'AUTH_REQUIRED',
         message: 'Devi accedere per vedere i suggerimenti.',
         status: 401,
       });
     }
+    const { supabase, user } = auth;
 
     step = 'meProfile';
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, account_type, status, country, city, province, region, interest_country, interest_city, interest_province, interest_region, sport')
-      .eq('user_id', userRes.user.id)
+      .select('id, account_type, status, country, city, province, region, interest_country, interest_city, interest_province, interest_region, sport, sport_id, sport_discipline_id, sport_variant_id')
+      .eq('user_id', user.id)
       .maybeSingle();
 
     const role =
@@ -167,6 +157,7 @@ export async function GET(req: NextRequest) {
 
     const profileId = profile.id;
     const viewerSport = profile.sport;
+    const viewerSportId = profile.sport_id;
     debugInfo.meProfileId = profileId;
 
     step = 'viewerGeography';
@@ -194,7 +185,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, interest_region_id, interest_province_id, interest_municipality_id, sport, birth_year, bio, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, interest_region_id, interest_province_id, interest_municipality_id, sport, sport_id, sport_discipline_id, sport_variant_id, birth_year, bio, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -324,7 +315,15 @@ export async function GET(req: NextRequest) {
       const filters: Array<Array<(q: any) => any>> = [];
       const sportFilter: Array<(q: any) => any> = [];
 
-      if (sportScope === 'mine' && profile.sport) {
+      if (sportScope === 'mine' && viewerSportId) {
+        sportFilter.push((q) =>
+          applyCanonicalSportFilters(
+            q,
+            { sportId: viewerSportId, disciplineId: null, variantId: null },
+            profile.sport,
+          ),
+        );
+      } else if (sportScope === 'mine' && profile.sport) {
         const value = `%${escapeLike(profile.sport.trim())}%`;
         sportFilter.push((q) => q.ilike('sport', value));
       }

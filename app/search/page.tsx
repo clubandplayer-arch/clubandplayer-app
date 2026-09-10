@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 
 import SearchResultRow, { type SearchResult } from '@/components/search/SearchResultRow';
+import CanonicalSportFilter from '@/components/sports/CanonicalSportFilter';
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
-import { SPORTS, SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
+import { SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
@@ -57,6 +58,9 @@ type SearchFilters = {
   province: string;
   city: string;
   sport: string;
+  sportId: string;
+  disciplineId: string;
+  variantId: string;
   role: string;
 };
 
@@ -66,6 +70,9 @@ const EMPTY_FILTERS: SearchFilters = {
   province: '',
   city: '',
   sport: '',
+  sportId: '',
+  disciplineId: '',
+  variantId: '',
   role: '',
 };
 
@@ -108,12 +115,15 @@ function readFilters(searchParams: URLSearchParams | ReturnType<typeof useSearch
     province: (searchParams.get('province') || '').trim(),
     city: (searchParams.get('city') || '').trim(),
     sport: normalizeSport(searchParams.get('sport')) ?? '',
+    sportId: (searchParams.get('sportId') || searchParams.get('sport_id') || '').trim(),
+    disciplineId: (searchParams.get('disciplineId') || searchParams.get('sport_discipline_id') || '').trim(),
+    variantId: (searchParams.get('variantId') || searchParams.get('sport_variant_id') || '').trim(),
     role: (searchParams.get('role') || '').trim(),
   };
 }
 
 function hasActiveFilters(filters: SearchFilters) {
-  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
+  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.sportId || filters.disciplineId || filters.variantId || filters.role);
 }
 
 export default function SearchPage() {
@@ -162,7 +172,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [queryParam, type, filters.country, filters.region, filters.province, filters.city, filters.sport, filters.role]);
+  }, [queryParam, type, filters.country, filters.region, filters.province, filters.city, filters.sport, filters.sportId, filters.disciplineId, filters.variantId, filters.role]);
 
   useEffect(() => {
     if (!isItalySelected) {
@@ -255,14 +265,15 @@ export default function SearchPage() {
   }, [filters.province, isItalySelected, provinces]);
 
   useEffect(() => {
-    if (!queryParam) {
+    const filteredSearch = hasActiveFilters(filters);
+    if (!queryParam && !filteredSearch) {
       setResults(EMPTY_RESULTS);
       setCounts(null);
       setError(null);
       return;
     }
 
-    if (queryParam.length < 2) {
+    if (queryParam.length === 1) {
       setResults(EMPTY_RESULTS);
       setCounts(null);
       setError('Inserisci almeno 2 caratteri per avviare la ricerca.');
@@ -343,7 +354,7 @@ export default function SearchPage() {
   };
 
   const handleTabChange = (next: SearchType) => {
-    if (!queryParam) return;
+    if (!queryParam && !hasActiveFilters(filters)) return;
     applySearch(queryParam, next, filters);
   };
 
@@ -387,13 +398,11 @@ export default function SearchPage() {
   };
 
   const applyFilters = () => {
-    if (!queryParam) return;
     applySearch(queryParam, type, filters);
   };
 
   const clearFilters = () => {
     setFilters(EMPTY_FILTERS);
-    if (!queryParam) return;
     applySearch(queryParam, type, EMPTY_FILTERS);
   };
 
@@ -489,29 +498,39 @@ export default function SearchPage() {
             </label>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">{t('search.sport')}</span>
-              <select
-                value={filters.sport}
-                onChange={(event) => updateFilter('sport', event.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
-              >
-                <option value="">{t('search.allSports')}</option>
-                {SPORTS.map((sport) => (
-                  <option key={sport} value={sport}>
-                    {localizeSport(sport, t)}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="mt-4">
+            <CanonicalSportFilter
+              idPrefix="global-search"
+              value={{
+                sportId: filters.sportId,
+                disciplineId: filters.disciplineId,
+                variantId: filters.variantId,
+                legacySport: filters.sport,
+              }}
+              onChange={(sport) => setFilters((current) => ({
+                ...current,
+                sport: sport.legacySport,
+                sportId: sport.sportId,
+                disciplineId: sport.disciplineId,
+                variantId: sport.variantId,
+                role: sport.legacySport === current.sport ? current.role : '',
+              }))}
+              sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
+              labels={{
+                sport: t('search.sport'),
+                allSports: t('search.allSports'),
+                catalogUnavailable: t('sports.catalogUnavailable'),
+              }}
+            />
+          </div>
 
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <label className="space-y-2 text-sm text-slate-700">
               <span className="font-medium">{t('search.role')}</span>
               <select
                 value={filters.role}
                 onChange={(event) => updateFilter('role', event.target.value)}
-                disabled={!filters.sport}
+                disabled={!filters.sport && !filters.sportId}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value="">{t('search.allRoles')}</option>
@@ -536,7 +555,7 @@ export default function SearchPage() {
             <button
               type="button"
               onClick={applyFilters}
-              disabled={!queryParam}
+              disabled={!queryParam && !hasActiveFilters(filters)}
               className="inline-flex items-center justify-center rounded-full border border-[var(--brand)] bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Applica filtri
@@ -584,13 +603,13 @@ export default function SearchPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      {!error && !queryParam && (
+      {!error && !queryParam && !hasActiveFilters(filters) && (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
           Inizia a digitare per cercare club, enti, player, opportunità, post ed eventi.
         </div>
       )}
 
-      {!error && queryParam && queryParam.length >= 2 && (
+      {!error && (queryParam.length >= 2 || (!queryParam && hasActiveFilters(filters))) && (
         <div className="space-y-8">
           {type === 'all' ? (
             <div className="space-y-8">

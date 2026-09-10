@@ -5,6 +5,7 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import { attachOpportunityGeography } from '@/lib/opportunities/geography';
+import { projectOpportunityCanonicalContext } from '@/lib/opportunities/canonicalSportsContext.server';
 
 export const runtime = 'nodejs';
 
@@ -47,7 +48,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const { data: oppsRawInitial, error: oppErr } = await runWithFallback((client) =>
     client
       .from('opportunities')
-      .select('id, title, role, city, province, region, country, country_id, geo_area_id, owner_id, created_by')
+      .select('id,title,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,gender,gender_code,city,province,region,country,country_id,geo_area_id,owner_id,created_by')
       .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`)
   );
   if (oppErr) return jsonError(oppErr.message, 400);
@@ -57,14 +58,14 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if ((!oppsRaw.length) && admin) {
     const res = await admin
       .from('opportunities')
-      .select('id, title, role, city, province, region, country, country_id, geo_area_id, owner_id, created_by')
+      .select('id,title,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,gender,gender_code,city,province,region,country,country_id,geo_area_id,owner_id,created_by')
       .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`);
     if (!res.error) oppsRaw = res.data;
   }
 
   const normalizedOpps = (oppsRaw ?? []).map((row: any) => {
     const ownerId = row.owner_id ?? row.created_by ?? null;
-    return { ...row, owner_id: ownerId, created_by: ownerId };
+    return { ...row, ...projectOpportunityCanonicalContext(row), owner_id: ownerId, created_by: ownerId };
   });
   const opps = await attachOpportunityGeography(supabase, normalizedOpps);
 

@@ -194,3 +194,41 @@ test('5D-C seed migration is additive, fail-closed and does not touch runtime or
   assert.match(sql, /on conflict[\s\S]*do nothing/);
   assert.match(sql, /raise exception '5d-c player legacy mapping payload mismatch'/);
 });
+
+test('5D-C Production preflight checks the complete manifest without writes', () => {
+  const sql = readFileSync(
+    'scripts/sports/reports/phase-5d-c-production-preflight-read-only.sql',
+    'utf8',
+  ).toLowerCase();
+  assert.match(sql, /begin transaction read only;/);
+  assert.match(sql, /rollback;/);
+  assert.match(sql, /:'manifest_json'::jsonb/);
+  assert.match(sql, /manifest_records <> 356/);
+  assert.match(sql, /required_tables_present <> 8 or required_keys_present <> 8/);
+  assert.match(sql, /collisions <> 0/);
+  assert.match(sql, /missing_foundation_refs <> 0/);
+  assert.match(sql, /pass_ready_for_exclusive_apply/);
+  assert.equal((sql.match(/left join public\.player_positions/g) ?? []).length >= 2, true);
+  assert.match(sql, /left join public\.staff_roles sr/);
+  assert.doesNotMatch(sql, /\b(?:insert|update|delete|alter|create|drop|truncate)\b/);
+
+  const runner = readFileSync('scripts/run-phase-5d-c-production-preflight.sh', 'utf8');
+  assert.match(runner, /set -eo pipefail/);
+  assert.match(runner, /set \+u/);
+  assert.match(runner, /read -rsp/);
+  assert.match(runner, /psql "\$PRODUCTION_DATABASE_URL" -W/);
+  assert.match(runner, /case "\$CLASSIFICATION" in/);
+  assert.match(runner, /\*\) exit 1/);
+  assert.doesNotMatch(runner, /set -u|set -x|echo "\$PRODUCTION_DATABASE_URL"/);
+});
+
+test('5D-C exclusive apply runner gates history on the 356-record post-check', () => {
+  const runner = readFileSync('scripts/run-phase-5d-c-production-exclusive-apply.sh', 'utf8');
+  assert.match(runner, /EXPECTED_SHA256='85367f245d3f216b8678a7701be3bbc413067d0b007dac79cb1f199d854fbfa6'/);
+  assert.match(runner, /lock_timeout=5s -c statement_timeout=120s/);
+  assert.match(runner, /grep -qx 'COMMIT'/);
+  assert.match(runner, /history\.phase5dC == 0[\s\S]*evaluated: 356, exact: 356, missing: 0/);
+  assert.match(runner, /insert into supabase_migrations\.schema_migrations\(version\) values \('20261207120000'\)/);
+  assert.match(runner, /history\.phase5dC == 1/);
+  assert.doesNotMatch(runner, /set -u|supabase db push|20261208120000|20261209120000/);
+});

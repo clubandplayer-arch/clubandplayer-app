@@ -9,6 +9,11 @@ export type PastExperienceInput = {
   sport?: string | null;
   category?: string | null;
   role?: string | null;
+  primarySport?: {
+    sportId?: string | null;
+    disciplineId?: string | null;
+    variantId?: string | null;
+  } | null;
 };
 
 export type PastExperience = {
@@ -17,6 +22,11 @@ export type PastExperience = {
   sport: string;
   category: string;
   role: string;
+  primarySport?: {
+    sportId: string | null;
+    disciplineId: string | null;
+    variantId: string | null;
+  } | null;
 };
 
 export function getLatestAvailableSeasonStartYear(now: Date = new Date()): number {
@@ -58,6 +68,13 @@ export function sanitizePastExperience(input: PastExperienceInput): PastExperien
     sport,
     category: (input.category || '').trim(),
     role: (input.role || '').trim(),
+    primarySport: input.primarySport?.sportId
+      ? {
+          sportId: input.primarySport.sportId,
+          disciplineId: input.primarySport.disciplineId || null,
+          variantId: input.primarySport.variantId || null,
+        }
+      : null,
   };
 }
 

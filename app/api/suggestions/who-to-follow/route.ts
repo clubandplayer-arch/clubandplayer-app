@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
+import { resolveAuthContext } from '@/lib/api/auth';
 import {
   applySuggestionGeographyFilter,
   loadViewerSuggestionGeography,
@@ -63,19 +63,17 @@ export async function GET(req: NextRequest) {
   const debugMode = url.searchParams.get('debug') === '1';
 
   try {
-    const supabase = await getSupabaseServerClient();
-    const profilesClient = supabase;
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user;
-
-    if (!user) {
+    const auth = await resolveAuthContext(req);
+    if (!auth) {
       return successResponse({ suggestions: [] as Suggestion[] });
     }
+    const { supabase, user } = auth;
+    const profilesClient = supabase;
 
     const { data: profile } = await supabase
       .from('profiles')
       .select(
-        'id, status, account_type, sport, country, region, province, city, interest_country, interest_region, interest_province, interest_city',
+        'id, status, account_type, sport, sport_id, sport_discipline_id, sport_variant_id, country, region, province, city, interest_country, interest_region, interest_province, interest_city',
       )
       .eq('user_id', user.id)
       .maybeSingle();
@@ -106,7 +104,7 @@ export async function GET(req: NextRequest) {
     const excludedIdsCount = alreadyFollowing.size;
 
     const baseSelect =
-      'id, full_name, display_name, avatar_url, sport, role, city, country, region, province, account_type, type, status, birth_year, interest_region_id, interest_province_id, interest_municipality_id, updated_at';
+      'id, full_name, display_name, avatar_url, sport, sport_id, sport_discipline_id, sport_variant_id, role, city, country, region, province, account_type, type, status, birth_year, interest_region_id, interest_province_id, interest_municipality_id, updated_at';
 
     const buildBaseQuery = () => {
       let query = applyPublicProfileVisibilityFilters(
@@ -214,9 +212,12 @@ export async function GET(req: NextRequest) {
       )));
     }
 
-    if (results.length < limit && profile.sport) {
-      const { data: rows, error } = await buildBaseQuery()
-        .eq('sport', profile.sport)
+    if (results.length < limit && (profile.sport_id || profile.sport)) {
+      let sportQuery = buildBaseQuery();
+      sportQuery = profile.sport_id
+        ? sportQuery.eq('sport_id', profile.sport_id)
+        : sportQuery.eq('sport', profile.sport);
+      const { data: rows, error } = await sportQuery
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
       if (error) throw error;

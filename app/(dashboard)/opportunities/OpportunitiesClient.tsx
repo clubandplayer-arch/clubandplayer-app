@@ -7,9 +7,10 @@ import OpportunitiesTable from '@/components/opportunities/OpportunitiesTable';
 import Modal from '@/components/ui/Modal';
 import OpportunityForm from '@/components/opportunities/OpportunityForm';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity';
 
-import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { AGE_BRACKETS, normalizeSport, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
@@ -40,6 +41,9 @@ export default function OpportunitiesClient() {
   const countryChangeResetsArea = useRef(false);
   const selectedCategory = sp.get('category') ?? sp.get('required_category') ?? '';
   const selectedSport = sp.get('sport') ?? '';
+  const selectedSportId = sp.get('sportId') ?? sp.get('sport_id') ?? '';
+  const selectedDisciplineId = sp.get('disciplineId') ?? sp.get('sport_discipline_id') ?? '';
+  const selectedVariantId = sp.get('variantId') ?? sp.get('sport_variant_id') ?? '';
   const normalizedSelectedSport = normalizeSport(selectedSport) ?? selectedSport;
   const selectedRole = sp.get('role') ?? '';
   const selectedRoleGroup = sp.get('role_group') ?? sp.get('roleGroup') ?? '';
@@ -92,17 +96,20 @@ export default function OpportunitiesClient() {
     }
   }, [selectedSport, selectedCategory, categoryOptions, setParam]);
 
-  function handleSportChange(value: string) {
+  function handleSportChange(value: CanonicalSportFilterValue) {
     updateParams((p) => {
-      if (value) p.set('sport', value);
-      else p.delete('sport');
+      for (const key of ['sport', 'sportId', 'sport_id', 'disciplineId', 'sport_discipline_id', 'variantId', 'sport_variant_id']) p.delete(key);
+      if (value.legacySport) p.set('sport', value.legacySport);
+      if (value.sportId) p.set('sportId', value.sportId);
+      if (value.disciplineId) p.set('disciplineId', value.disciplineId);
+      if (value.variantId) p.set('variantId', value.variantId);
 
-      const normalizedValue = normalizeSport(value) ?? value;
-      const roleIsValid = value && selectedRole && (SPORTS_ROLES[normalizedValue] ?? []).includes(selectedRole);
-      const categoryIsValid = value && selectedCategory && (CATEGORIES_BY_SPORT[normalizedValue] ?? []).includes(selectedCategory);
+      const normalizedValue = normalizeSport(value.legacySport) ?? value.legacySport;
+      const roleIsValid = value.sportId && selectedRole && (SPORTS_ROLES[normalizedValue] ?? []).includes(selectedRole);
+      const categoryIsValid = value.sportId && selectedCategory && (CATEGORIES_BY_SPORT[normalizedValue] ?? []).includes(selectedCategory);
 
-      if (!value || !roleIsValid) p.delete('role');
-      if (!value || !categoryIsValid) {
+      if (!value.sportId || !roleIsValid) p.delete('role');
+      if (!value.sportId || !categoryIsValid) {
         p.delete('category');
         p.delete('required_category');
       }
@@ -117,7 +124,8 @@ export default function OpportunitiesClient() {
       'country', 'region', 'province', 'city', 'club',
       'countryId', 'country_id', 'geoAreaId', 'geo_area_id',
       'clubId', 'club_id',
-      'sport', 'role', 'age',
+      'sport', 'sportId', 'sport_id', 'disciplineId', 'sport_discipline_id',
+      'variantId', 'sport_variant_id', 'role', 'age',
       'role_group',
       'category', 'required_category',
       'owner', 'owner_id', 'created_by',
@@ -411,27 +419,31 @@ export default function OpportunitiesClient() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <select
-            value={selectedSport}
-            onChange={(e) => handleSportChange(e.target.value)}
-            className="w-full rounded-xl border px-3 py-2"
-          >
-            <option value="">{t('opportunities.sport')}</option>
-            {SPORTS.map((s: string) => (
-              <option key={s} value={s}>
-                {localizeSport(s, t)}
-              </option>
-            ))}
-          </select>
+        <CanonicalSportFilter
+          idPrefix="opportunity-filter"
+          value={{
+            sportId: selectedSportId,
+            disciplineId: selectedDisciplineId,
+            variantId: selectedVariantId,
+            legacySport: selectedSport,
+          }}
+          onChange={handleSportChange}
+          sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
+          labels={{
+            sport: t('opportunities.sport'),
+            allSports: t('search.allSports'),
+            catalogUnavailable: t('sports.catalogUnavailable'),
+          }}
+        />
 
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <select
             value={selectedRole}
             onChange={(e) => setParam('role', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
-            disabled={!selectedSport}
+            disabled={!selectedSportId && !selectedSport}
           >
-            <option value="">{selectedSport ? t('opportunities.role') : t('opportunities.selectSport')}</option>
+            <option value="">{selectedSportId || selectedSport ? t('opportunities.role') : t('opportunities.selectSport')}</option>
             {roleOptions.map((r) => (
               <option key={r} value={r}>
                 {localizeSportRole(r, t)}
