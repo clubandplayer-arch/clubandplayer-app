@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5G — SCHEMA E RUNTIME DEPLOY PRODUCTION COMPLETATI; CANARY FUNZIONALE PENDING** |
 | Current active phase | **FASE 5G — CANARY FUNZIONALE OPPORTUNITIES/APPLICATIONS** |
-| Next safe action | **Ricaricare in una shell Codespace i due token canary e rieseguire una sola volta il canary Opportunity, ora vincolato allo SHA Production `cdb84458c61e72b75ee42a9327cd6510f357887e`** |
+| Next safe action | **Rigenerare le evidenze `/tmp` perse con il riavvio Codespace: prima qualification Production read-only, poi baseline HTTP; soltanto dopo rieseguire una volta il canary Opportunity** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -737,6 +737,8 @@ Le sole dipendenze indispensabili successive sono organization/competition/level
 **Gate release correzione gender 5G — PASS USER-REPORTED.** Dopo l’aggiornamento fast-forward del branch condiviso, `scripts/verify-phase-5g-runtime-release.sh cdb84458c61e72b75ee42a9327cd6510f357887e` ha verificato ancestry e contenuto del candidato remoto, inclusa la separazione tra gender legacy e `gender_code` canonico, e ha confermato il checksum migration invariato `bf6eb4a7f8bc202c78ab3759c3b1b5ea80610db276672dd6d3719792b4ab7c9f`. Il prossimo singolo gate è distribuire esattamente questo candidato e accettare il deploy soltanto se `/api/env` restituisce lo stesso SHA in modalità Production; migration, history e canary write non devono essere ripetuti in questo passaggio.
 
 **Post-deploy correzione gender 5G — PASS USER-REPORTED.** Il dominio canonico `/api/env` restituisce `sha=cdb84458c61e72b75ee42a9327cd6510f357887e` e `mode=production`. Migration e history restano quelle già verificate e non vanno ripetute. Il runner Opportunity ora ricontrolla lo stesso SHA immediatamente prima della POST e si arresta senza write in caso di drift. Poiché la shell/token del giorno precedente non devono essere presunti validi, il prossimo singolo step è ricaricare i due token con `source scripts/prepare-phase-5g-canary-secrets.sh`; nessuna richiesta HTTP o write avviene durante il caricamento.
+
+**Ripresa canary 5G — STOP SICURO / EVIDENZE TEMPORANEE ASSENTI.** I token nuovi sono stati validati per entrambi gli account e per la release corretta, ma il runner si è arrestato prima di ogni richiesta mutativa con `evidence_missing_phase-5g-canary-accounts-qualification.json`: il riavvio del Codespace ha eliminato le evidenze in `/tmp`. Non è stata creata alcuna Opportunity. Devono essere rigenerate soltanto la qualification DB read-only e la baseline HTTP vuota; il runner baseline è ora vincolato anch’esso alla release corretta. Il prossimo singolo step è `bash scripts/run-phase-5g-canary-qualification.sh`; non ripetere migration, history, deploy o test già superati.
 
 ### FASE 5F-A — Schema additivo primary sport Profile
 

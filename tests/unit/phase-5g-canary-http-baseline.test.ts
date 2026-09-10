@@ -12,7 +12,8 @@ test('5G baseline performs only the three bounded GET requests without retries',
 });
 
 test('5G baseline pins release, empty baselines and does not print tokens',()=>{
-  assert.match(script,/5f99179c8a8e759e69bda15cdee12995811bbbd6/);
+  assert.match(script,/PHASE_5G_EXPECTED_RELEASE_SHA/);
+  assert.match(script,/cdb84458c61e72b75ee42a9327cd6510f357887e/);
   assert.match(script,/type=="array" and length==0/g);
   assert.match(script,/PHASE_5G_CANARY_HTTP_BASELINE_PASS/);
   assert.doesNotMatch(script,/printf[^\n]*(CLUB_CANARY_TOKEN|APPLICANT_CANARY_TOKEN)/);

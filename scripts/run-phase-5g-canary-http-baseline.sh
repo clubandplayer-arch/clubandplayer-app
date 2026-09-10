@@ -4,7 +4,7 @@ set +u
 set +o history
 umask 077
 
-EXPECTED_RELEASE='5f99179c8a8e759e69bda15cdee12995811bbbd6'
+EXPECTED_RELEASE="${PHASE_5G_EXPECTED_RELEASE_SHA:-cdb84458c61e72b75ee42a9327cd6510f357887e}"
 PROD_BASE_URL="${PROD_BASE_URL:-https://www.clubandplayer.com}"
 ENV_FILE='/tmp/phase-5g-canary-env-before.json'
 APPLICANT_FILE='/tmp/phase-5g-canary-applicant-applications-before.json'
@@ -35,4 +35,3 @@ printf 'PHASE_5G_CANARY_HTTP_BASELINE_PASS env=%s applicant_me=%s club_received=
   "$ENV_STATUS" "$APPLICANT_STATUS" "$CLUB_STATUS" \
   "$(sha256sum "$APPLICANT_FILE" | cut -d' ' -f1)" \
   "$(sha256sum "$CLUB_FILE" | cut -d' ' -f1)"
-
