@@ -36,6 +36,7 @@ test('full replay is local, fail-fast, exhaustive and self-cleaning', () => {
   assert.match(replay, /trap cleanup EXIT/);
   assert.doesNotMatch(replay, /supabase db push|--linked|Production/i);
   assert.match(platform, /Never apply this file to a Supabase project/);
+  assert.doesNotMatch(platform, /auth\.set_config/);
 });
 
 for (const filename of [

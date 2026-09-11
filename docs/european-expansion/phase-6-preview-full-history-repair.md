@@ -54,3 +54,19 @@ Risultato: `FULL_MIGRATION_REPLAY_PASS`. Il test iniziale, prima del repair, rip
 5. Solo dopo stato Healthy, configurare Vercel Preview con URL e chiavi del nuovo branch e rigenerare il deployment Preview.
 
 Se Supabase continua a iniziare da `20250221090000`, fermarsi: il repository/working directory/branch non è collegato e nessuna migration C7 deve essere applicata manualmente.
+
+## Follow-up reale Auth — 2026-09-11
+
+Il primo replay GitHub-driven ha confermato baseline e ordine, poi ha trovato un falso positivo del test locale: `20250923_supabase_security.sql` chiamava la funzione inesistente e non supportata `auth.set_config`. Il fixture locale l'aveva inventata, facendo passare impropriamente il replay.
+
+La funzione fittizia è stata rimossa dal fixture e la migration conserva soltanto il proprio lavoro database/RLS. L'intento Auth è trasferito al meccanismo supportato `supabase/config.toml`: `auth.minimum_password_length = 12`, `auth.password_requirements = "lower_upper_letters_digits_symbols"` e `auth.email.otp_expiry = 900`.
+
+Lo stesso log mostrava Apple abilitato sul branch base ma il `client_id` locale vuoto. Il file ora dichiara esplicitamente Apple abilitato con il client ID non segreto già presente nel log (`com.clubandplayer.app.service`), evitando che il sync Preview lo svuoti. Nessun secret Apple è stato aggiunto al repository. Al prossimo deploy il diff Auth non deve più mostrare `client_id = ""`; se lo mostra, fermare il branch.
+
+### Handoff dopo la correzione Auth
+
+Il branch reale è ora correttamente GitHub-driven: il log prova clone del ref, applicazione della baseline e superamento del vecchio blocker. Poiché `20250923` è fallita e non può essere registrata come applicata, il push di questo commit sullo stesso branch deve generare automaticamente un nuovo deploy che riparte dalla migration pendente; non serve cancellare/reset il database e non serve SQL Editor.
+
+Controllo Preview indispensabile: nel nuovo log verificare (a) assenza di `auth.set_config`, (b) applicazione delle migration dopo `20250923`, (c) nessun diff Apple che imposti `client_id = ""`, e (d) stato finale Healthy. Se il deploy automatico non parte, usare esclusivamente **Redeploy/Retry** sul branch Preview. Non eseguire `db push`, history repair o interventi su Production.
+
+Il test con CLI Supabase ha validato il parsing di `config.toml` prima di arrestarsi perché questo container non consente l'avvio del daemon Docker. La certificazione rappresentativa dei servizi Auth/database è quindi il nuovo deploy automatico sul Preview Branch reale, non il fixture PostgreSQL. Il replay PostgreSQL resta valido per dipendenze e ordinamento SQL, ora senza alcuna funzione Auth inventata.

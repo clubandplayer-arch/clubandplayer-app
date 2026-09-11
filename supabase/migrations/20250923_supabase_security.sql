@@ -1,13 +1,10 @@
 -- Supabase security hardening: password/OTP policy + profiles/clubs RLS alignment
 begin;
 
--- Password policy: length >=12, enforce numbers and symbols
-select auth.set_config('password_min_length', '12', true);
-select auth.set_config('password_require_numbers', 'true', true);
-select auth.set_config('password_require_symbols', 'true', true);
-
--- OTP expiry bounded within 900-1800 seconds (use 900s to stay within the requested window)
-select auth.set_config('otp_expiry', '900', true);
+-- Auth service policy is not database state and cannot be configured through
+-- functions in the private auth schema. Password strength and email OTP expiry
+-- are declared in supabase/config.toml, which GitHub Integration applies to the
+-- Preview Auth service before this database migration runs.
 
 -- Profiles RLS: public read, self-service writes guarded by WITH CHECK
 alter table if exists public.profiles enable row level security;
