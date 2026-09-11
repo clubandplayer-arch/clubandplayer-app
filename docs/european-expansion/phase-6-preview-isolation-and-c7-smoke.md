@@ -64,3 +64,33 @@ Il 2026-09-11 il bypass è risultato disponibile nell'ambiente senza esporne il 
 - lettura registry deliberatamente senza corrispondenze riuscita tramite il client service-role.
 
 Sono state eseguite esclusivamente richieste GET. Il bypass e la relativa Environment variable possono essere revocati/rimossi adesso; per i successivi smoke browser con salvataggio servirà un nuovo accesso temporaneo esplicitamente autorizzato.
+
+## Smoke browser con account dedicato — procedura autorizzata
+
+Stato al 2026-09-11: **PENDING USER-OPERATED BROWSER**. Il bypass è stato revocato e non è più presente nell'ambiente agente; il branch URL risponde nuovamente `302` a un client non autenticato. Non è quindi possibile riconfermare dall'automazione il deployment corrente né creare l'account. Un operatore che appartiene al team Vercel può invece eseguire lo smoke direttamente dal browser dopo il login Vercel: non serve ricreare il bypass.
+
+### 1. Riconferma isolamento prima della prima write
+
+1. Nella dashboard Vercel aprire il deployment **Ready** più recente del branch `codex/implementare-categorie-sportive-per-paesi` e annotarne soltanto lo SHA.
+2. Nello stesso browser autenticato Vercel aprire l'URL del branch seguito da `/api/env`.
+3. Non procedere se il JSON non mostra contemporaneamente: `mode: "preview"`, `sha` uguale al deployment Ready, `publicProjectRef` e `serverProjectRef` uguali a `jbovlevodfouwuvtdlja`, `serverUrlSource: "SUPABASE_URL"`, `projectRefsMatch: true`, `anonKeysMatch: true` e `serviceRoleConfigured: true`.
+4. Non copiare cookie, header, chiavi o token nel report. Sono sufficienti SHA, project ref e PASS/FAIL dei booleani.
+
+### 2. Account test esclusivamente Preview
+
+Riutilizzare un account Player dedicato già presente in Preview oppure, nella dashboard del progetto Supabase **`fase6-github` (`jbovlevodfouwuvtdlja`)**, aprire **Authentication → Users → Add user → Create new user**, usare un indirizzo test controllato, una password conforme alla policy e marcare l'email come confermata. Questa creazione manuale evita che un link email utilizzi accidentalmente una redirect URL non verificata. Non creare l'utente nel progetto Production. Accedere quindi all'app Preview da `/login`; se richiesto, scegliere **Player** in `/onboarding/choose-role`.
+
+### 3. Ordine, ruoli, save e reload
+
+1. Aprire `/player/profile`, DevTools → **Network**, attivare **Preserve log** e filtrare `profiles/me`; non esportare HAR perché contiene cookie/header di sessione.
+2. Nel menu Sport verificare la sequenza contigua **Calcio a 8 → Calcio a 7 → Futsal**.
+3. Selezionare **Calcio a 7** e verificare che il menu Ruolo mostri: `Portiere`, `Difensore Centrale`, `Esterno Basso`, `Regista`, `Esterno Alto`, `Punta Centrale`.
+4. Selezionare un ruolo e compilare soltanto gli altri campi obbligatori indicati dal form. Lasciare vuota l'esperienza passata iniziale; non creare dati aggiuntivi non necessari.
+5. Premere **Salva profilo** una sola volta e verificare risposta `2xx` della `PATCH /api/profiles/me` e messaggio di salvataggio riuscito.
+6. Nel Request Payload della PATCH verificare `primarySport.legacySport: "Calcio a 7"` e identificativi `sportId`, `disciplineId`, `variantId` tutti non vuoti. Non riportare i cookie o gli header Authorization.
+7. Ricaricare completamente la pagina. Verificare che Sport sia ancora **Calcio a 7** e il ruolo sia invariato; nella nuova `GET /api/profiles/me` verificare `sport: "Calcio a 7"` e gli stessi `sport_id`, `sport_discipline_id`, `sport_variant_id` restituiti dalla PATCH.
+8. Controllo regressivo non mutativo: riaprire il menu Sport e verificare che gli sport esistenti siano ancora presenti e che selezionando temporaneamente Calcio a 8 o Futsal i rispettivi ruoli non siano vuoti; tornare a Calcio a 7 senza salvare nuovamente.
+
+### 4. Report minimo e teardown
+
+Riportare: SHA Preview; PASS/FAIL isolamento; PASS/FAIL ordine; lista ruoli osservata; status HTTP PATCH; PASS/FAIL persistenza dopo reload; PASS/FAIL uguaglianza legacy/canonical IDs; eventuale messaggio d'errore testuale. Al termine fare logout. L'account test può restare identificato come test nella sola Preview per regressioni successive oppure essere eliminato da Authentication → Users soltanto dopo aver annotato l'esito; non eseguire alcun teardown su Production.
