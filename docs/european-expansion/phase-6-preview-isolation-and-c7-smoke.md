@@ -104,3 +104,23 @@ Per sbloccare **subito il solo smoke C7**, non modificare il client Google condi
 La registrazione email dall'app è stata corretta affinché `emailRedirectTo` usi sempre `window.location.origin`; una variabile `NEXT_PUBLIC_BASE_URL` condivisa non può più rimandare un'iscrizione Preview a Production. Questo fix richiede il deployment Preview del nuovo commit prima di usare `/signup`; la creazione diretta dalla dashboard Supabase Preview non dipende dal redeploy.
 
 La sistemazione di Google OAuth è separata e manuale: creare preferibilmente un OAuth 2.0 Client dedicato alla Preview oppure, se la governance consente un client condiviso, aggiungere fra gli **Authorized redirect URIs** del client Google esattamente il `redirect_uri` mostrato nei dettagli dell'errore. Per questo branch deve normalmente essere `https://jbovlevodfouwuvtdlja.supabase.co/auth/v1/callback`. Configurare poi client ID e secret esclusivamente in **Supabase Preview → Authentication → Providers → Google** e aggiungere l'URL Vercel Preview `/auth/callback` in **Supabase Preview → Authentication → URL Configuration → Redirect URLs**. Non mettere il Google client secret nel repository o in chat e non cambiare la configurazione Auth Production. Lo smoke C7 non deve attendere questa integrazione social.
+
+## Primo smoke mutativo — BLOCKED
+
+Riscontri reali comunicati dall'operatore il 2026-09-11:
+
+- login email/password: PASS;
+- ordine `Calcio a 8 → Calcio a 7 → Futsal`: PASS;
+- sei ruoli C7: PASS;
+- salvataggio profilo: FAIL con `profile_primary_sport_write_failed`;
+- Regione/Provincia/Città: liste vuote;
+- club predefiniti nelle esperienze: assenti;
+- esperienza C8: il campo Categoria espone ancora `CSEN`.
+
+Il codice `profile_primary_sport_write_failed` viene prodotto durante la fase di risoluzione/validazione canonica, prima della mutation `profiles`; nasconde intenzionalmente l'errore database inatteso. Il route ora associa un `traceId` alla risposta e registra lato server soltanto trace, codice database e messaggio limitato con email/UUID redatti. Dopo il deploy, una singola riproduzione minima C7/Portiere consentirà di correlare la risposta ai Function Logs senza esporre payload o dati personali. Il profilo applicativo va verificato nello stesso momento: `GET /api/profiles/me` deve restituire una riga con `user_id` dell'utente Auth e `account_type=athlete`; non basta la sola presenza in Authentication.
+
+Le liste geografiche e dei club sono vuote perché il replay Preview ricostruisce lo **schema**, ma non importa dataset Production: la baseline crea `regions`, `provinces`, `municipalities` e `registry_clubs_master`, mentre l'import Campania viene saltato se manca lo staging. Non è corretto copiare il dataset Production. È stato preparato [`supabase/preview-fixtures/phase-6-minimal-profile-smoke.sql`](../../supabase/preview-fixtures/phase-6-minimal-profile-smoke.sql), fixture manuale e idempotente esterna alla migration history, con una gerarchia geografica sintetica e due club fittizi distinti C7/C8; non crea utenti o profili.
+
+`CSEN` nel campo Categoria dell'esperienza C8 è una limitazione legacy attesa: l'attuale `CATEGORIES_BY_SPORT` mescola ancora organizzatore e categoria. La separazione `Sport → Ente → competizione/categoria` è definita dagli artefatti 6C-bis ma non è ancora integrata nella UI/runtime; non va considerata corretta semanticamente né usata come prova del nuovo catalogo.
+
+Ordine della prossima verifica: (1) deploy del trace sicuro; (2) riconferma isolamento; (3) `GET /api/profiles/me` e correlazione del profilo; (4) PATCH minima con soli C7/Portiere; (5) reload; (6) solo dopo PASS, PATCH separata delle esperienze; (7) applicazione facoltativa della fixture Preview per verificare geografia e club. Non rieseguire migration.
