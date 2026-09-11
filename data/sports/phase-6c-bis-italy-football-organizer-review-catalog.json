@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "catalogVersion": "2026-09-11.phase-6c-bis.italy-football-organizers.1",
+  "schemaVersion": 2,
+  "catalogVersion": "2026-09-11.phase-6c-bis.italy-football-organizers.2",
   "country": "IT",
   "sportCode": "football",
   "disciplineCode": "association_football",
@@ -55,6 +55,7 @@
     ],
     "organizationMenuOrder": [
       "lnd",
+      "lega_calcio_a_8",
       "eifa",
       "csi",
       "uisp",
@@ -64,15 +65,14 @@
       "asc",
       "endas",
       "pgs",
-      "us_acli",
-      "fip_unresolved"
+      "us_acli"
     ],
     "neverCreateStandaloneOrganization": [
       "ELITE"
     ],
-    "notApplicableToFootballUntilResolved": [
-      "FIP"
-    ]
+    "movedToOtherSportCatalog": {
+      "FIP": "basketball"
+    }
   },
   "organizations": [
     {
@@ -87,6 +87,15 @@
       "evidenceState": "product_owner_confirmed"
     },
     {
+      "code": "lega_calcio_a_8",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Lega Calcio a 8",
+      "documentedAliases": [],
+      "displayOrder": 2,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
       "code": "eifa",
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "E.I.F.A.",
@@ -94,7 +103,7 @@
         "EIFA",
         "CalcioElite"
       ],
-      "displayOrder": 2,
+      "displayOrder": 3,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -103,7 +112,7 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "CSI",
       "documentedAliases": [],
-      "displayOrder": 3,
+      "displayOrder": 4,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -112,7 +121,7 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "UISP",
       "documentedAliases": [],
-      "displayOrder": 4,
+      "displayOrder": 5,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -121,7 +130,7 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "CSEN",
       "documentedAliases": [],
-      "displayOrder": 5,
+      "displayOrder": 6,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -132,7 +141,7 @@
       "documentedAliases": [
         "AICS"
       ],
-      "displayOrder": 6,
+      "displayOrder": 7,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -141,7 +150,7 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "OPES",
       "documentedAliases": [],
-      "displayOrder": 7,
+      "displayOrder": 8,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -150,7 +159,7 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "ASC",
       "documentedAliases": [],
-      "displayOrder": 8,
+      "displayOrder": 9,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -159,7 +168,7 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "ENDAS",
       "documentedAliases": [],
-      "displayOrder": 9,
+      "displayOrder": 10,
       "selectorEligibleAfterReview": true,
       "evidenceState": "historical_source_only"
     },
@@ -168,7 +177,7 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "PGS",
       "documentedAliases": [],
-      "displayOrder": 10,
+      "displayOrder": 11,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
     },
@@ -177,18 +186,9 @@
       "codeAuthority": "clubandplayer_internal_review",
       "officialName": "US ACLI",
       "documentedAliases": [],
-      "displayOrder": 11,
+      "displayOrder": 12,
       "selectorEligibleAfterReview": true,
       "evidenceState": "user_supplied_source"
-    },
-    {
-      "code": "fip_unresolved",
-      "codeAuthority": "clubandplayer_internal_review",
-      "officialName": "FIP",
-      "documentedAliases": [],
-      "displayOrder": 12,
-      "selectorEligibleAfterReview": false,
-      "evidenceState": "unresolved_acronym_not_football_federation"
     }
   ],
   "options": [
@@ -206,7 +206,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "lnd",
@@ -222,7 +224,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "lnd",
@@ -238,7 +242,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "lnd",
@@ -254,7 +260,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "lnd",
@@ -270,7 +278,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "lnd",
@@ -286,7 +296,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "lnd",
@@ -302,7 +314,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": "LND youth-only label; never a standalone organization and never copied to other organizers by default"
+      "notes": "LND youth-only label; never a standalone organization and never copied to other organizers by default",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "lnd",
@@ -318,7 +332,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "product_owner_confirmed",
       "selectorEligibleAfterReview": true,
-      "notes": "UX umbrella, not a senior competition level"
+      "notes": "UX umbrella, not a senior competition level",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "eifa",
@@ -334,7 +350,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "eifa",
@@ -352,7 +370,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "eifa",
@@ -368,7 +388,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "csi",
@@ -384,7 +406,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "csi",
@@ -403,7 +427,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "Valid only for CSI Milano"
+      "notes": "Valid only for CSI Milano",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "csi",
@@ -422,7 +448,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "Valid only for CSI Milano"
+      "notes": "Valid only for CSI Milano",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "csi",
@@ -441,7 +469,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "Valid only for CSI Milano"
+      "notes": "Valid only for CSI Milano",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "uisp",
@@ -457,7 +487,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "uisp",
@@ -473,7 +505,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "uisp",
@@ -489,7 +523,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "csen",
@@ -505,7 +541,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "No national Serie A/B/C hierarchy evidenced"
+      "notes": "No national Serie A/B/C hierarchy evidenced",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "aics",
@@ -521,7 +559,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "Over 40 at seven-a-side is excluded"
+      "notes": "Over 40 at seven-a-side is excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "opes",
@@ -537,7 +577,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "asc",
@@ -556,7 +598,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "asc",
@@ -575,7 +619,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "endas",
@@ -591,7 +637,9 @@
       "targetSeason": null,
       "evidenceState": "historical_2017_current_activation_pending",
       "selectorEligibleAfterReview": false,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -607,7 +655,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -623,7 +673,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -639,7 +691,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -655,7 +709,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -671,7 +727,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -687,7 +745,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -703,7 +763,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "pgs",
@@ -719,7 +781,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+      "notes": "11-a-side; all Under 13 categories intentionally excluded",
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "us_acli",
@@ -738,7 +802,9 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
     },
     {
       "organizationCode": "us_acli",
@@ -757,7 +823,176 @@
       "targetSeason": "2026/27",
       "evidenceState": "user_supplied_source",
       "selectorEligibleAfterReview": true,
-      "notes": null
+      "notes": null,
+      "legacySport": "Calcio",
+      "variantCode": "eleven_a_side"
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c8_serie_a",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Serie A",
+      "documentedAliases": [],
+      "commercialNames": [
+        {
+          "name": "Serie A Renovalo",
+          "season": "2026/27"
+        }
+      ],
+      "optionKind": "competition_level",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "legacySport": "Calcio a 8",
+      "variantCode": "eight_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c8_serie_a2",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Serie A2",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 2,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "legacySport": "Calcio a 8",
+      "variantCode": "eight_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c8_serie_b",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Serie B",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 3,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "legacySport": "Calcio a 8",
+      "variantCode": "eight_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c7_international_league_m",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "International League C7 Maschile",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 10,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2025/26",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": false,
+      "legacySport": "Calcio a 7",
+      "variantCode": "seven_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c7_international_league_f",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "International League C7 Femminile",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 11,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2025/26",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": false,
+      "legacySport": "Calcio a 7",
+      "variantCode": "seven_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c7_f7_euro_clubs",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "F7 Euro Clubs",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 12,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2025/26",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": false,
+      "legacySport": "Calcio a 7",
+      "variantCode": "seven_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c7_intercontinental_cup",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "F7 Intercontinental Cup",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 13,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2025/26",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": false,
+      "legacySport": "Calcio a 7",
+      "variantCode": "seven_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c7_intercontinental_clubs",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "F7 Intercontinental Clubs",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 14,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2025/26",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": false,
+      "legacySport": "Calcio a 7",
+      "variantCode": "seven_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "code": "c7_intercontinental_nations",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Intercontinental Cup Nations",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 15,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2025/26",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": false,
+      "legacySport": "Calcio a 7",
+      "variantCode": "seven_a_side",
+      "notes": "Rank intentionally null; portal listing does not establish equivalence with FIGC/LND levels."
     }
   ],
   "evidenceSources": [
@@ -860,8 +1095,64 @@
       "retrievalSha256": null
     },
     {
-      "organizationCode": "fip_unresolved",
-      "url": "https://fip.it/",
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/122/serie-a-renovalo-2627/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/123/serie-a2-2627/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/124/serie-b-2627/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/115/international-league-c7-maschile/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/116/international-league-c7-femminile/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/117/f7-euro-clubs/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/118/f7-intercontinental-cup/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/119/f7-intercontinental-clubs/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "lega_calcio_a_8",
+      "url": "https://www.legacalcioa8.it/it/tournament/120/intercontinental-cup-nations/stream/",
       "verificationState": "user_supplied_not_agent_retrieved",
       "httpStatus": null,
       "retrievalSha256": null
@@ -879,9 +1170,9 @@
       ]
     },
     {
-      "reason": "unresolved_organizer",
+      "reason": "wrong_sport",
       "values": [
-        "FIP football competitions"
+        "FIP (Federazione Italiana Pallacanestro): move to basketball organizer catalog"
       ]
     }
   ]

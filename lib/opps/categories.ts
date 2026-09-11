@@ -31,7 +31,6 @@ export const CATEGORIES_BY_SPORT: Record<string, string[]> = {
     'Terza Categoria',
     'E.I.F.A.',
     ...FEDERATION_CATEGORIES,
-    'FIP',
     'ELITE',
     'Giovanili',
   ],
@@ -44,6 +43,7 @@ export const CATEGORIES_BY_SPORT: Record<string, string[]> = {
     'Giovanili',
     'Altro',
   ],
+  'Calcio a 7': ['Altro'],
   Futsal: [
     'Serie A',
     'A2',

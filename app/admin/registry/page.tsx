@@ -26,6 +26,7 @@ const SPORTS = [
   "",
   "Calcio",
   "Calcio a 8",
+  "Calcio a 7",
   "Futsal",
   "Volley",
   "Basket",

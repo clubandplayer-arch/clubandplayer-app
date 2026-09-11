@@ -26,7 +26,7 @@ const catalog = JSON.parse(readFileSync(resolve(
     keepAsLndLevels: string[];
     organizationMenuOrder: string[];
     neverCreateStandaloneOrganization: string[];
-    notApplicableToFootballUntilResolved: string[];
+    movedToOtherSportCatalog: Record<string, string>;
   };
   organizations: Array<{
     code: string;
@@ -42,6 +42,8 @@ const catalog = JSON.parse(readFileSync(resolve(
     displayOrder: number;
     levelRank: number | null;
     targetSeason: string | null;
+    legacySport: string;
+    variantCode: string;
     selectorEligibleAfterReview: boolean;
   }>;
 };
@@ -128,12 +130,25 @@ test('territorial and historical evidence does not become a national current opt
   assert.equal(catalog.options.some((option) => option.officialName.includes('Over 40')), false);
 });
 
-test('FIP stays unresolved and cannot expose football options', () => {
-  const fip = catalog.organizations.find((organization) => organization.code === 'fip_unresolved');
-  assert.ok(fip);
-  assert.equal(fip.selectorEligibleAfterReview, false);
-  assert.deepEqual(optionsFor('fip_unresolved'), []);
-  assert.deepEqual(catalog.legacyMovePlan.notApplicableToFootballUntilResolved, ['FIP']);
+test('football entities have the approved order and move FIP to basketball', () => {
+  assert.deepEqual(catalog.organizations.map((organization) => organization.code), [
+    'lnd', 'lega_calcio_a_8', 'eifa', 'csi', 'uisp', 'csen',
+    'aics', 'opes', 'asc', 'endas', 'pgs', 'us_acli',
+  ]);
+  assert.equal(catalog.organizations.some((organization) => organization.officialName === 'FIP'), false);
+  assert.deepEqual(catalog.legacyMovePlan.movedToOtherSportCatalog, { FIP: 'basketball' });
+});
+
+test('Lega Calcio a 8 keeps C8 levels and C7 competitions separated', () => {
+  const options = optionsFor('lega_calcio_a_8');
+  const c8 = options.filter((option) => option.variantCode === 'eight_a_side');
+  const c7 = options.filter((option) => option.variantCode === 'seven_a_side');
+  assert.deepEqual(c8.map((option) => option.officialName), ['Serie A', 'Serie A2', 'Serie B']);
+  assert.deepEqual(c8.map((option) => option.targetSeason), ['2026/27', '2026/27', '2026/27']);
+  assert.equal(c7.length, 6);
+  assert.ok(c7.every((option) => option.targetSeason === '2025/26'));
+  assert.ok(c7.every((option) => option.selectorEligibleAfterReview === false));
+  assert.ok(options.every((option) => option.levelRank === null));
 });
 
 test('6C bis remains review-only and cannot activate runtime or Production', () => {

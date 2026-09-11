@@ -84,3 +84,9 @@ Resta un solo chiarimento necessario prima di rendere FIP selezionabile: indicar
 ENDAS resta non selezionabile per il 2026/27 finché non viene fornita una fonte corrente. Questo non blocca gli altri Enti.
 
 6C bis è chiusa per audit, compatibilità e review catalog. Non avvia 6D, non modifica `lib/opps/categories.ts`, form o API e non autorizza migration, seed, backfill, RLS, Mobile, merge su main, deploy o Production.
+
+## Aggiornamento C7 e Lega Calcio a 8 — 2026-09-11
+
+FIP è confermata come Federazione Italiana Pallacanestro: viene rimossa dal catalogo ENTI calcistico e rinviata al catalogo Basket. Lega Calcio a 8 entra subito dopo LND. Le opzioni centrali C8 `Serie A`, `Serie A2`, `Serie B` sono scoped a `eight_a_side` e al 2026/27; le competizioni C7 consegnate sono scoped a `seven_a_side` e conservano la stagione 2025/26, senza diventare livelli o righe 2026/27. ELITE non è un organizzatore.
+
+L'inventario territoriale della Lega e la ricognizione degli altri sport restano parziali, come dettagliato nel [checkpoint dei 15 sport](phase-6c-bis-fifteen-sport-coverage.md). Il catalogo rimane review-only; l'aggiunta applicativa di C7 è destinata esclusivamente a Preview fino a decisione esplicita.

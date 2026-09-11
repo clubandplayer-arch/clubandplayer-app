@@ -13,6 +13,7 @@ const accountKeys: Record<string, VocabularyMessageKey> = {
 const sportKeys: Record<string, VocabularyMessageKey> = {
   calcio: 'vocabulary.sport.football', football: 'vocabulary.sport.football', soccer: 'vocabulary.sport.football', futbol: 'vocabulary.sport.football',
   'calcio a 8': 'vocabulary.sport.eightAsideFootball', 'eight aside football': 'vocabulary.sport.eightAsideFootball',
+  'calcio a 7': 'vocabulary.sport.sevenAsideFootball', 'seven aside football': 'vocabulary.sport.sevenAsideFootball',
   futsal: 'vocabulary.sport.futsal', volley: 'vocabulary.sport.volleyball', volleyball: 'vocabulary.sport.volleyball', pallavolo: 'vocabulary.sport.volleyball',
   basket: 'vocabulary.sport.basketball', basketball: 'vocabulary.sport.basketball', pallacanestro: 'vocabulary.sport.basketball',
   pallanuoto: 'vocabulary.sport.waterPolo', 'water polo': 'vocabulary.sport.waterPolo', pallamano: 'vocabulary.sport.handball', handball: 'vocabulary.sport.handball',

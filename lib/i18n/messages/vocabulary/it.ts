@@ -6,6 +6,7 @@ const vocabulary = {
   'vocabulary.account.institution': 'Ente / Federazione',
   'vocabulary.sport.football': 'Calcio',
   'vocabulary.sport.eightAsideFootball': 'Calcio a 8',
+  'vocabulary.sport.sevenAsideFootball': 'Calcio a 7',
   'vocabulary.sport.futsal': 'Futsal',
   'vocabulary.sport.volleyball': 'Pallavolo',
   'vocabulary.sport.basketball': 'Pallacanestro',

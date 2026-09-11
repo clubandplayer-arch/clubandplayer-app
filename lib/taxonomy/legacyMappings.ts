@@ -109,6 +109,12 @@ addSportMapping(['Calcio a 8', 'calcio_a_8'], {
   variantCode: 'eight_a_side',
   legacyLabel: 'Calcio a 8',
 });
+addSportMapping(['Calcio a 7', 'calcio_a_7'], {
+  sportCode: 'football',
+  disciplineCode: 'association_football',
+  variantCode: 'seven_a_side',
+  legacyLabel: 'Calcio a 7',
+});
 addSportMapping(['Futsal'], {
   sportCode: 'football',
   disciplineCode: 'futsal',
