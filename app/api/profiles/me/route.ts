@@ -218,12 +218,18 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       const mapped = mapProfilePrimarySportContractError(error);
       const traceId = crypto.randomUUID();
       const dbError = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+      const diagnosticCode = typeof dbError.code === 'string' ? dbError.code : null;
+      const diagnosticMessage = safeDatabaseMessage(error);
       console.error('[profiles/me] primary sport planning failed', {
         traceId,
-        code: typeof dbError.code === 'string' ? dbError.code : null,
-        message: safeDatabaseMessage(error),
+        code: diagnosticCode,
+        message: diagnosticMessage,
       });
-      return jsonError(mapped.code, mapped.status, { code: mapped.code, traceId });
+      return jsonError(mapped.code, mapped.status, {
+        code: mapped.code,
+        traceId,
+        ...(process.env.VERCEL_ENV === 'preview' ? { diagnosticCode, diagnosticMessage } : {}),
+      });
     }
   }
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();

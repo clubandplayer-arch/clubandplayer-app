@@ -23,6 +23,13 @@ test('Profile write diagnostics correlate failures without returning database de
   const route = readFileSync('app/api/profiles/me/route.ts', 'utf8')
   assert.match(route, /const traceId = crypto\.randomUUID\(\)/)
   assert.match(route, /safeDatabaseMessage\(error\)/)
-  assert.match(route, /\{ code: mapped\.code, traceId \}/)
+  assert.match(route, /process\.env\.VERCEL_ENV === 'preview'/)
+  assert.match(route, /diagnosticCode, diagnosticMessage/)
   assert.doesNotMatch(route, /console\.error\([^)]*user\.id/s)
+})
+
+test('Profile form displays the safe Preview diagnostic and correlation reference', () => {
+  const form = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8')
+  assert.match(form, /j\?\.diagnosticCode, j\?\.diagnosticMessage/)
+  assert.match(form, /j\?\.traceId \? `rif\. \$\{j\.traceId\}`/)
 })
