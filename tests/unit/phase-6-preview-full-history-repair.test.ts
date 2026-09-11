@@ -7,6 +7,10 @@ const files = readdirSync(migrationDir).filter((name) => name.endsWith('.sql')).
 const baseline = readFileSync(`${migrationDir}/20250220000000_initial_public_schema_baseline.sql`, 'utf8');
 const replay = readFileSync('scripts/test-full-migration-replay.sh', 'utf8');
 const platform = readFileSync('tests/integration/sql/empty-supabase-platform-fixture.sql', 'utf8');
+const profileEditRepair = readFileSync(
+  `${migrationDir}/20261211130000_complete_profile_edit_schema.sql`,
+  'utf8',
+);
 
 const migrationVersion = (name: string) => name.match(/^(\d+)_/)?.[1] ?? null;
 
@@ -55,4 +59,15 @@ test('optional Campania import does not make schema replay depend on unversioned
   const sql = readFileSync(`${migrationDir}/20261015100000_load_campania_into_canonical_geo_tables.sql`, 'utf8');
   assert.match(sql, /Skipping optional Campania data import/);
   assert.match(sql, /return;/);
+});
+
+test('empty branch replay restores every unversioned Profile Edit column', () => {
+  for (const column of [
+    'birth_place', 'birth_country', 'birth_region_id', 'birth_province_id', 'birth_municipality_id',
+    'residence_region_id', 'residence_province_id', 'residence_municipality_id', 'foot', 'visibility',
+    'notify_email_new_message', 'club_foundation_year', 'club_stadium', 'club_stadium_address',
+    'club_stadium_lat', 'club_stadium_lng', 'club_league_category', 'club_motto',
+  ]) assert.match(profileEditRepair, new RegExp(`add column if not exists ${column}\\b`));
+  assert.match(profileEditRepair, /notify pgrst, 'reload schema'/);
+  assert.doesNotMatch(profileEditRepair, /drop\s+(?:table|column)|delete\s+from|truncate/i);
 });

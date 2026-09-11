@@ -124,3 +124,11 @@ Le liste geografiche e dei club sono vuote perché il replay Preview ricostruisc
 `CSEN` nel campo Categoria dell'esperienza C8 è una limitazione legacy attesa: l'attuale `CATEGORIES_BY_SPORT` mescola ancora organizzatore e categoria. La separazione `Sport → Ente → competizione/categoria` è definita dagli artefatti 6C-bis ma non è ancora integrata nella UI/runtime; non va considerata corretta semanticamente né usata come prova del nuovo catalogo.
 
 Ordine della prossima verifica: (1) deploy del trace sicuro; (2) riconferma isolamento; (3) `GET /api/profiles/me` e correlazione del profilo; (4) PATCH minima con soli C7/Portiere; (5) reload; (6) solo dopo PASS, PATCH separata delle esperienze; (7) applicazione facoltativa della fixture Preview per verificare geografia e club. Non rieseguire migration.
+
+## Root cause confermata e repair
+
+Sul deployment `7cad19aa66f8a45920f766b84ac8b06289bbdec9` la diagnostica completa ha restituito `update — PGRST204 — Could not find the 'birth_country' column of 'profiles' in the schema cache`. C7 e il planner non sono la causa: il form invia il contratto completo Profile Edit e la tabella `profiles` ricostruita dalla baseline vuota non conteneva `birth_country`. Questa e altre colonne Profile Edit esistevano prima dell'inizio dello storico versionato originale e non erano state incluse nella baseline di repair.
+
+La correzione è la migration additiva [`20261211130000_complete_profile_edit_schema.sql`](../../supabase/migrations/20261211130000_complete_profile_edit_schema.sql): aggiunge con `if not exists` l'intero gruppo di campi Profile Edit pre-history ancora mancanti e richiede il reload dello schema PostgREST. Non modifica righe, non effettua backfill, non copia dati Production e non riesegue la migration C7. Sul branch GitHub-linked viene applicata una volta dopo `add_seven_a_side_football_variant`; `Deploy to production` deve rimanere disabilitato.
+
+Il prossimo smoke resta sequenziale: attendere Preview Healthy con ultima migration `complete_profile_edit_schema`, riconfermare `/api/env`, salvare C7/Portiere senza esperienze, ricaricare e confrontare legacy/ID; soltanto dopo testare una singola esperienza. La fixture geografica/club rimane separata da questo schema repair.
