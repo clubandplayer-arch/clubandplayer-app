@@ -9,6 +9,7 @@ test('Phase 6 fixture is Preview-only, synthetic and outside migration history',
   assert.match(fixture, /jbovlevodfouwuvtdlja/)
   assert.match(fixture, /Preview Test Region/)
   assert.match(fixture, /Preview C7 Test Club/)
+  assert.match(fixture, /version = '20261211140000' and name = 'restore_public_read_contracts'/)
   assert.doesNotMatch(fixture, /auth\.users|@|codice_fiscale\s*[,)]/i)
 })
 
@@ -20,6 +21,8 @@ test('Phase 6 fixture is idempotent and keeps C7/C8 identities separate', () => 
   assert.match(fixture, /null, 'athlete'/)
   assert.match(fixture, /'Calcio a 7'/)
   assert.match(fixture, /'Calcio a 8'/)
+  assert.match(fixture, /fixture_applied_and_verified/)
+  assert.match(fixture, /and user_id is null/)
 })
 
 test('Profile write diagnostics correlate failures without returning database details', () => {

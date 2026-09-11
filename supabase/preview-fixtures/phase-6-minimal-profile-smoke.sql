@@ -3,6 +3,17 @@
 -- Contains no users, credentials, real clubs, tax identifiers, or Production data.
 begin;
 
+do $preview_guard$
+begin
+  if not exists (
+    select 1 from supabase_migrations.schema_migrations
+    where version = '20261211140000' and name = 'restore_public_read_contracts'
+  ) then
+    raise exception 'PREVIEW GUARD: expected read-contract migration 20261211140000 is absent';
+  end if;
+end
+$preview_guard$;
+
 do $$
 declare
   preview_region_id bigint;
@@ -87,3 +98,20 @@ on conflict (master_id) do update set
   updated_at = now();
 
 commit;
+
+select json_build_object(
+  'projectRefExpected', 'jbovlevodfouwuvtdlja',
+  'status', 'fixture_applied_and_verified',
+  'regions', (select count(*) from public.regions where name = 'Preview Test Region'),
+  'provinces', (select count(*) from public.provinces where name = 'Preview Test Province'),
+  'municipalities', (select count(*) from public.municipalities where name = 'Preview Test City'),
+  'profiles', (
+    select count(*) from public.profiles
+    where id in ('60000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000002')
+      and user_id is null
+  ),
+  'registryClubs', (
+    select count(*) from public.registry_clubs_master
+    where master_id in ('preview-phase6-c7-club-001', 'preview-phase6-c8-club-001')
+  )
+) as phase_6_preview_fixture_result;
