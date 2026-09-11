@@ -2,7 +2,7 @@
 
 Data: 2026-09-11  
 Target dichiarato: Supabase `fase6-github` (`jbovlevodfouwuvtdlja`) e Vercel Preview del branch `codex/implementare-categorie-sportive-per-paesi`.  
-Stato: **ISOLAMENTO RUNTIME BLOCCATO DA VERCEL SSO; SMOKE MUTATIVI NON ESEGUITI**.
+Stato: **DEPLOYMENT CANDIDATO IDENTIFICATO; ISOLAMENTO RUNTIME BLOCCATO DA VERCEL SSO; SMOKE MUTATIVI NON ESEGUITI**.
 
 ## Evidenze ricevute
 
@@ -28,9 +28,23 @@ L'audit repository non trova URL Supabase hardcoded nei client interessati: brow
 | smoke C7 read/save/reload | NOT EXECUTED — isolamento non certificato |
 | regressione selector esistenti | test repository PASS; browser Preview non eseguito |
 
+## Deployment candidato e corrispondenza commit
+
+Vercel mostra come Ready il deployment Preview `e5f8a4a`, con titolo `chore: gate Phase 6 smoke on Preview isolation`. Il checkout di verifica contiene lo stesso titolo ma ha SHA completo `bfc8864434fd63af1d7c2929ae75c5107e679ebe`. Titolo e contenuto atteso sono compatibili, ma due SHA differenti non costituiscono una corrispondenza Git dimostrata; inoltre questo checkout non ha un remote Git configurato con cui risolvere `e5f8a4a`. Non è richiesto un redeploy soltanto per questa differenza: il gate deve usare lo SHA effettivamente mostrato da Vercel (`e5f8a4a`) e verificare che quel deployment esponga la nuova forma sicura di `/api/env`. Se il campo `sha` non inizia con `e5f8a4a`, selezionare il deployment Ready corretto oppure fare Redeploy dell'ultimo commit del branch dopo le variabili.
+
 ## Solo intervento manuale indispensabile
 
-Generare dalla dashboard Vercel un **Protection Bypass for Automation** limitato a questo deployment/Preview e fornirlo all'ambiente di verifica tramite canale secret come `VERCEL_AUTOMATION_BYPASS_SECRET`, oppure disabilitare temporaneamente la Deployment Protection esclusivamente per questo Preview. Non incollare il valore in chat.
+Nel progetto Vercel aprire **Settings → Deployment Protection → Protection Bypass for Automation**, scegliere **Add Secret** (nome suggerito: `phase-6-preview-verification`) e copiare il valore una sola volta. Il bypass è di progetto e quindi può aprire tutti i deployment protetti del progetto: non è tecnicamente limitabile al solo deployment; va revocato subito dopo gli smoke. Non disabilitare la protezione e non usare il secret come query string.
+
+Per un task **Codex Cloud**, aprire [Codex settings → Environments](https://chatgpt.com/codex/settings/environments), selezionare l'ambiente associato a questo repository e aggiungere `VERCEL_AUTOMATION_BYPASS_SECRET` fra le **Environment variables**, non fra i Secrets: la documentazione Codex specifica che i Secrets sono rimossi prima della fase agente, mentre le Environment variables restano disponibili durante il chat. Salvare, avviare un nuovo task/follow-up nello stesso ambiente (o resettarne la cache se richiesto) e rimuovere la variabile appena terminata la verifica. Non inserirla nelle Environment Variables del progetto Vercel applicativo, in `.env*`, nel repository, nei comandi, nei log o in chat: è una credenziale temporanea del **client di verifica**, non dell'applicazione. Questa sessione già avviata non dispone di un canale che consenta all'utente di iniettare retroattivamente il valore nel processo.
+
+Vercel raccomanda l'header `x-vercel-protection-bypass`; lo script repository-only [`scripts/verify-phase-6-preview-isolation.sh`](../../scripts/verify-phase-6-preview-isolation.sh) lo usa senza stampare il valore. Esecuzione dopo l'iniezione:
+
+```bash
+PHASE6_EXPECTED_DEPLOYMENT_SHA=e5f8a4a scripts/verify-phase-6-preview-isolation.sh
+```
+
+Lo script esegue esclusivamente tre GET: diagnostica ambiente, catalogo sportivo e una ricerca registry deliberatamente senza corrispondenze. Verifica Preview/ref/SHA/coerenza delle credenziali, presenza remota di `seven_a_side` e del mapping `Calcio a 7`, e validità read-only della service-role; non stampa payload, URL Supabase o credenziali. Non segue redirect: un bypass errato fallisce senza inoltrare l'header al login SSO.
 
 Dopo lo sblocco, ripetere prima i GET. Gli smoke con salvataggio possono iniziare soltanto se `/api/env` mostra `mode=preview`, lo SHA atteso, entrambi i project ref uguali a `jbovlevodfouwuvtdlja`, `serverUrlSource=SUPABASE_URL`, `projectRefsMatch=true`, `anonKeysMatch=true` e `serviceRoleConfigured=true`. Servirà poi un account di test Player/Club disponibile sulla sola Preview; non crearne uno Production.
 
