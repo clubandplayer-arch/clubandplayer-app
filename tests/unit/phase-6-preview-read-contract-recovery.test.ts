@@ -43,7 +43,7 @@ test('diagnostic is read-only and distinguishes every endpoint dependency', () =
 })
 
 test('Preview fixture contains only synthetic geography, registry clubs, and profiles', () => {
-  assert.match(fixture, /Preview C7 Test Player/)
+  assert.match(fixture, /Preview Test Player/)
   assert.match(fixture, /ASD Preview C7 Test Club/)
   assert.match(fixture, /user_id, account_type/)
   assert.match(fixture, /'60000000-0000-4000-8000-000000000001'/)

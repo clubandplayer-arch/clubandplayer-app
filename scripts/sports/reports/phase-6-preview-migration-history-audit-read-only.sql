@@ -135,7 +135,9 @@ with local_history(version, name) as (
     ('20261209120000', 'athlete_experience_sport_context'),
     ('20261210120000', 'opportunity_canonical_sports_context'),
     ('20261211120000', 'add_seven_a_side_football_variant'),
-    ('20261211130000', 'complete_profile_edit_schema')
+    ('20261211130000', 'complete_profile_edit_schema'),
+    ('20261211140000', 'restore_public_read_contracts'),
+    ('20261211150000', 'restore_profile_geo_area_interest_read')
 ), remote_history as (
   select version::text as version, coalesce(to_jsonb(sm)->>'name', '') as name
   from supabase_migrations.schema_migrations sm
@@ -162,6 +164,19 @@ select jsonb_build_object(
     from local_history l join remote_history r using (version)
     where r.name <> '' and r.name <> l.name
   ), '[]'::jsonb),
+  -- Supabase CLI reconciles the two version sequences in version order.  These
+  -- fields make an ordering problem visible instead of proving only set equality.
+  'localVersionOrder', (
+    select jsonb_agg(version order by version collate "C") from local_history
+  ),
+  'remoteVersionOrder', (
+    select jsonb_agg(version order by version collate "C") from remote_history
+  ),
+  'orderedVersionsMatch', (
+    (select array_agg(version order by version collate "C") from local_history)
+      is not distinct from
+    (select array_agg(version order by version collate "C") from remote_history)
+  ),
   'remoteTail', coalesce((
     select jsonb_agg(x order by x.version) from (
       select version, name from remote_history order by version desc limit 20
