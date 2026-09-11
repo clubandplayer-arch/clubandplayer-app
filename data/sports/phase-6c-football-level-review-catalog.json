@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "catalogVersion": "2026-09-10.phase-6c.football-level-review.2",
+  "catalogVersion": "2026-09-11.phase-6c.football-level-review.3",
   "targetSeason": "2026/27",
   "sportCode": "football",
   "disciplineCode": "association_football",
@@ -17,8 +17,10 @@
       "officialName": "National",
       "previousLevelRank": 3,
       "previousEvidenceSeason": "2025/26",
-      "mappingState": "historical_identity_preserved_current_correspondence_pending",
-      "doNotReuseAsCode": "national_1"
+      "mappingState": "explicit_ex_national_in_2026_27_ligue_3_regulation",
+      "doNotReuseAsCode": "national_1",
+      "mappedToReviewCode": "ligue_3",
+      "mappingProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "FR",
@@ -26,8 +28,10 @@
       "officialName": "National 2",
       "previousLevelRank": 4,
       "previousEvidenceSeason": "2025/26",
-      "mappingState": "historical_identity_preserved_current_correspondence_pending",
-      "doNotReuseAsCode": "national_2_2026_27"
+      "mappingState": "inferred_from_seasonal_structure_not_explicit_rename",
+      "doNotReuseAsCode": "national_2_2026_27",
+      "mappedToReviewCode": "national_1",
+      "mappingProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "FR",
@@ -35,8 +39,10 @@
       "officialName": "National 3",
       "previousLevelRank": 5,
       "previousEvidenceSeason": "2025/26",
-      "mappingState": "historical_identity_preserved_current_correspondence_pending",
-      "doNotReuseAsCode": "ligue_3"
+      "mappingState": "inferred_from_seasonal_structure_not_explicit_rename",
+      "doNotReuseAsCode": "ligue_3",
+      "mappedToReviewCode": "national_2_2026_27",
+      "mappingProvenance": "user_human_review_2026-09-11"
     }
   ],
   "entries": [
@@ -58,12 +64,13 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "current_official_source_reported",
+      "evidenceState": "human_confirmed_product_baseline",
       "sourceRefs": [
         "IT-LND-SERIE-D-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": null
+      "selectorEligibleAfterReview": true,
+      "notes": null,
+      "reviewProvenance": "user_confirmation_2026-09-11"
     },
     {
       "country": "IT",
@@ -83,12 +90,13 @@
       "rankCondition": "organizer identity must be territorial below Serie D",
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "territorial_source_partial",
+      "evidenceState": "human_confirmed_product_baseline",
       "sourceRefs": [
         "IT-LND-SICILIA-ECCELLENZA-2026"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": null
+      "selectorEligibleAfterReview": true,
+      "notes": null,
+      "reviewProvenance": "user_confirmation_2026-09-11"
     },
     {
       "country": "IT",
@@ -108,10 +116,11 @@
       "rankCondition": "organizer identity must be territorial below Serie D",
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "baseline_preserved_current_source_pending",
+      "evidenceState": "human_confirmed_product_baseline",
       "sourceRefs": [],
-      "selectorEligibleAfterReview": false,
-      "notes": null
+      "selectorEligibleAfterReview": true,
+      "notes": null,
+      "reviewProvenance": "user_confirmation_2026-09-11"
     },
     {
       "country": "IT",
@@ -131,10 +140,11 @@
       "rankCondition": "organizer identity must be territorial below Serie D",
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "baseline_preserved_current_source_pending",
+      "evidenceState": "human_confirmed_product_baseline",
       "sourceRefs": [],
-      "selectorEligibleAfterReview": false,
-      "notes": null
+      "selectorEligibleAfterReview": true,
+      "notes": null,
+      "reviewProvenance": "user_confirmation_2026-09-11"
     },
     {
       "country": "IT",
@@ -154,10 +164,11 @@
       "rankCondition": "organizer identity must be territorial below Serie D",
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "baseline_preserved_current_source_pending",
+      "evidenceState": "human_confirmed_product_baseline",
       "sourceRefs": [],
-      "selectorEligibleAfterReview": false,
-      "notes": null
+      "selectorEligibleAfterReview": true,
+      "notes": null,
+      "reviewProvenance": "user_confirmation_2026-09-11"
     },
     {
       "country": "IT",
@@ -177,10 +188,11 @@
       "rankCondition": "organizer identity must be territorial below Serie D",
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "baseline_preserved_current_source_pending",
+      "evidenceState": "human_confirmed_product_baseline",
       "sourceRefs": [],
-      "selectorEligibleAfterReview": false,
-      "notes": null
+      "selectorEligibleAfterReview": true,
+      "notes": null,
+      "reviewProvenance": "user_confirmation_2026-09-11"
     },
     {
       "country": "FR",
@@ -202,13 +214,14 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "current_structure_reported_mapping_pending",
+      "evidenceState": "human_verified_2026_27_regulations",
       "sourceRefs": [
-        "FR-FFF-GENERAL-REGULATIONS",
-        "FR-PARIS-RESULTS-2026-09-02"
+        "FR-FFF-LIGUE-3-REGULATION-2026-27",
+        "FR-FFF-NATIONAL-REGULATION-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Boundary above requested National 1; relationship with historical National identity requires regulation review"
+      "selectorEligibleAfterReview": true,
+      "notes": "Boundary above requested National 1; relationship with historical National identity requires regulation review",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "FR",
@@ -228,14 +241,13 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "current_structure_reported_mapping_pending",
+      "evidenceState": "human_verified_2026_27_regulations",
       "sourceRefs": [
-        "FR-FFF-REGULATIONS-2026-27",
-        "FR-FFF-GENERAL-REGULATIONS",
-        "FR-PARIS-RESULTS-2026-09-02"
+        "FR-FFF-NATIONAL-REGULATION-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": null
+      "selectorEligibleAfterReview": true,
+      "notes": null,
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "FR",
@@ -255,13 +267,13 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "current_structure_reported_mapping_pending",
+      "evidenceState": "human_verified_2026_27_regulations",
       "sourceRefs": [
-        "FR-FFF-REGULATIONS-2026-27",
-        "FR-FFF-GENERAL-REGULATIONS"
+        "FR-FFF-NATIONAL-REGULATION-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "New internal review code avoids reusing the historical national_2 identity before temporal mapping is confirmed"
+      "selectorEligibleAfterReview": true,
+      "notes": "New internal review code avoids reusing the historical national_2 identity before temporal mapping is confirmed",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "FR",
@@ -709,12 +721,14 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "secondary_only_current_official_source_pending",
+      "evidenceState": "human_verified_2026_27_hierarchy_derived_rank",
       "sourceRefs": [
-        "ES-SECONDARY-CATALUNYA"
+        "ES-FCF-COMPETITION-PLAN-2026-27",
+        "ES-FCF-HOME"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Territory-specific; must not be reused for another Federación Territorial"
+      "selectorEligibleAfterReview": true,
+      "notes": "Name/season verified in the FCF Futbol 11 selector; absolute rank is derived from the official FCF hierarchy, not printed by the selector.",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "ES",
@@ -738,12 +752,14 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "secondary_only_current_official_source_pending",
+      "evidenceState": "human_verified_2026_27_hierarchy_derived_rank",
       "sourceRefs": [
-        "ES-SECONDARY-CATALUNYA"
+        "ES-FCF-COMPETITION-PLAN-2026-27",
+        "ES-FCF-HOME"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Territory-specific; must not be reused for another Federación Territorial"
+      "selectorEligibleAfterReview": true,
+      "notes": "Name/season verified in the FCF Futbol 11 selector; absolute rank is derived from the official FCF hierarchy, not printed by the selector.",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "CH",
@@ -792,12 +808,13 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "current_official_portal_reported",
+      "evidenceState": "human_verified_2026_27_same_competition_alias",
       "sourceRefs": [
-        "CH-SFV-MATCHCENTER-2026-27"
+        "CH-EL-PL-FIRST-LIGA-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Classic is retained only as a documented contextual alias pending identity review"
+      "selectorEligibleAfterReview": true,
+      "notes": "1. Liga is the base name. 1. Liga - Classic - Gruppe … identifies groups of this same championship; Cup-Qualifikation 1. Liga Classic is a separate competition.",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "CH",
@@ -998,21 +1015,24 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "evidenceState": "human_review_not_confirmed_no_negative_inference",
       "sourceRefs": [
         "SI-SECONDARY-REGIONAL",
         "SI-SECONDARY-COMPETITIONS"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+      "notes": "The requested 2026/27 official evidence was not obtained; this does not assert that the competition does not exist.",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "SI",
       "code": "gorenjska_nogometna_liga",
       "codeAuthority": "clubandplayer_internal_review",
-      "officialName": "Gorenjska nogometna liga",
+      "officialName": "GNL - člani",
       "commercialNames": [],
-      "documentedAliases": [],
+      "documentedAliases": [
+        "Gorenjska nogometna liga"
+      ],
       "organizer": {
         "code": "mnz_gorenjska",
         "codeAuthority": "clubandplayer_internal_review",
@@ -1024,13 +1044,13 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "evidenceState": "human_verified_2026_27_official_page",
       "sourceRefs": [
-        "SI-SECONDARY-REGIONAL",
-        "SI-SECONDARY-COMPETITIONS"
+        "SI-MNZ-GORENJSKA-GNL-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+      "selectorEligibleAfterReview": true,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "SI",
@@ -1050,13 +1070,14 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "evidenceState": "human_review_not_confirmed_no_negative_inference",
       "sourceRefs": [
         "SI-SECONDARY-REGIONAL",
         "SI-SECONDARY-COMPETITIONS"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+      "notes": "The requested 2026/27 official evidence was not obtained; this does not assert that the competition does not exist.",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "SI",
@@ -1076,13 +1097,13 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "evidenceState": "human_verified_2026_27_official_page",
       "sourceRefs": [
-        "SI-SECONDARY-REGIONAL",
-        "SI-SECONDARY-COMPETITIONS"
+        "SI-MNZ-LENDAVA-POMURSKA-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+      "selectorEligibleAfterReview": true,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "SI",
@@ -1102,21 +1123,26 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "evidenceState": "human_review_not_confirmed_no_negative_inference",
       "sourceRefs": [
         "SI-SECONDARY-REGIONAL",
         "SI-SECONDARY-COMPETITIONS"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+      "notes": "The requested 2026/27 official evidence was not obtained; this does not assert that the competition does not exist.",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "SI",
       "code": "prva_clanska_liga_mnz_maribor",
       "codeAuthority": "clubandplayer_internal_review",
-      "officialName": "1. članska liga MNZ Maribor",
-      "commercialNames": [],
-      "documentedAliases": [],
+      "officialName": "1. Članska Liga",
+      "commercialNames": [
+        "Golgeter Premium liga"
+      ],
+      "documentedAliases": [
+        "1. članska liga MNZ Maribor"
+      ],
       "organizer": {
         "code": "mnz_maribor",
         "codeAuthority": "clubandplayer_internal_review",
@@ -1128,14 +1154,13 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "territorial_name_candidate_current_season_pending",
+      "evidenceState": "human_verified_2026_27_official_page",
       "sourceRefs": [
-        "SI-SECONDARY-REGIONAL",
-        "SI-SECONDARY-COMPETITIONS",
-        "SI-MNZ-MARIBOR-SOCIAL"
+        "SI-MNZ-MARIBOR-FIRST-SENIOR-2026-27"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries"
+      "selectorEligibleAfterReview": true,
+      "notes": "Parallel fourth-level candidate; not consecutive with the other Slovenian regional entries",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "PL",
@@ -1168,17 +1193,17 @@
     },
     {
       "country": "PL",
-      "code": "fourth_liga",
+      "code": "fourth_liga_dzpn",
       "codeAuthority": "clubandplayer_internal_review",
-      "officialName": "IV liga",
+      "officialName": "4. Liga dolnośląska",
       "commercialNames": [],
       "documentedAliases": [
-        "4. Liga dolnośląska"
+        "IV liga"
       ],
       "organizer": {
-        "code": "wzpn_required",
+        "code": "dzpn",
         "codeAuthority": "clubandplayer_internal_review",
-        "name": "WZPN required"
+        "name": "Dolnośląski Związek Piłki Nożnej"
       },
       "territory": {
         "code": "PL-DS",
@@ -1190,12 +1215,103 @@
       "rankCondition": null,
       "targetSeason": "2026/27",
       "recordKind": "level_candidate",
-      "evidenceState": "official_territorial_example_only",
+      "evidenceState": "human_verified_2026_27_official_regulation",
       "sourceRefs": [
-        "PL-DZPN-REGULATIONS-2026-27"
+        "PL-DZPN-REGULATIONS-2026-27-HUMAN-REVIEW"
       ],
-      "selectorEligibleAfterReview": false,
-      "notes": "Future live records must be WZPN-scoped"
+      "selectorEligibleAfterReview": true,
+      "notes": "Verified only for DZPN/Lower Silesia; not a nationwide WZPN identity.",
+      "reviewProvenance": "user_human_review_2026-09-11"
+    },
+    {
+      "country": "PL",
+      "code": "klasa_okregowa_dzpn",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Klasa Okręgowa",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "dzpn",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Dolnośląski Związek Piłki Nożnej"
+      },
+      "territory": {
+        "code": "PL-DS",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Dolnośląskie"
+      },
+      "scope": "territorial",
+      "levelRank": 6,
+      "rankCondition": "DZPN 2026/27 sequence without V liga",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "human_verified_2026_27_official_regulation",
+      "sourceRefs": [
+        "PL-DZPN-REGULATIONS-2026-27-HUMAN-REVIEW"
+      ],
+      "selectorEligibleAfterReview": true,
+      "notes": "Verified only for DZPN/Lower Silesia.",
+      "reviewProvenance": "user_human_review_2026-09-11"
+    },
+    {
+      "country": "PL",
+      "code": "klasa_a_dzpn",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Klasa A",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "dzpn",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Dolnośląski Związek Piłki Nożnej"
+      },
+      "territory": {
+        "code": "PL-DS",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Dolnośląskie"
+      },
+      "scope": "territorial",
+      "levelRank": 7,
+      "rankCondition": "DZPN 2026/27 sequence without V liga",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "human_verified_2026_27_official_regulation",
+      "sourceRefs": [
+        "PL-DZPN-REGULATIONS-2026-27-HUMAN-REVIEW"
+      ],
+      "selectorEligibleAfterReview": true,
+      "notes": "Verified only for DZPN/Lower Silesia.",
+      "reviewProvenance": "user_human_review_2026-09-11"
+    },
+    {
+      "country": "PL",
+      "code": "klasa_b_dzpn",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Klasa B",
+      "commercialNames": [],
+      "documentedAliases": [],
+      "organizer": {
+        "code": "dzpn",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Dolnośląski Związek Piłki Nożnej"
+      },
+      "territory": {
+        "code": "PL-DS",
+        "codeAuthority": "clubandplayer_internal_review",
+        "name": "Dolnośląskie"
+      },
+      "scope": "territorial",
+      "levelRank": 8,
+      "rankCondition": "DZPN 2026/27 sequence without V liga",
+      "targetSeason": "2026/27",
+      "recordKind": "level_candidate",
+      "evidenceState": "human_verified_2026_27_official_regulation",
+      "sourceRefs": [
+        "PL-DZPN-REGULATIONS-2026-27-HUMAN-REVIEW"
+      ],
+      "selectorEligibleAfterReview": true,
+      "notes": "Verified only for DZPN/Lower Silesia.",
+      "reviewProvenance": "user_human_review_2026-09-11"
     },
     {
       "country": "PL",
@@ -1220,7 +1336,7 @@
         "PL-SECONDARY-PYRAMID"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": null
+      "notes": "Generic WZPN review template only; the verified DZPN records are separate. Availability and rank require a specific organizer."
     },
     {
       "country": "PL",
@@ -1248,7 +1364,7 @@
         "PL-SECONDARY-OKREGOWA"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": "Template only; availability and rank require a specific WZPN"
+      "notes": "Generic WZPN review template only; the verified DZPN records are separate. Availability and rank require a specific organizer."
     },
     {
       "country": "PL",
@@ -1273,7 +1389,7 @@
         "PL-DZPN-REGULATIONS-2026-27"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": "Template only; availability and rank require a specific WZPN"
+      "notes": "Generic WZPN review template only; the verified DZPN records are separate. Availability and rank require a specific organizer."
     },
     {
       "country": "PL",
@@ -1298,7 +1414,7 @@
         "PL-DZPN-REGULATIONS-2026-27"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": "Template only; availability and rank require a specific WZPN"
+      "notes": "Generic WZPN review template only; the verified DZPN records are separate. Availability and rank require a specific organizer."
     },
     {
       "country": "PL",
@@ -1323,7 +1439,7 @@
         "PL-SECONDARY-PYRAMID"
       ],
       "selectorEligibleAfterReview": false,
-      "notes": "Template only; availability and rank require a specific WZPN"
+      "notes": "Generic WZPN review template only; the verified DZPN records are separate. Availability and rank require a specific organizer."
     }
   ],
   "excludedFromFirstScope": [
@@ -1335,5 +1451,14 @@
     "cups",
     "futsal",
     "football variants other than senior men eleven-a-side"
+  ],
+  "humanReviewRecordedAt": "2026-09-11",
+  "reviewCodeChanges": [
+    {
+      "country": "PL",
+      "previousCode": "fourth_liga",
+      "currentCode": "fourth_liga_dzpn",
+      "reason": "The verified identity is DZPN/Lower Silesia-specific, not a single nationwide IV liga record."
+    }
   ]
 }

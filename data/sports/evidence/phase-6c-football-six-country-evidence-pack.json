@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "evidencePackVersion": "2026-09-10.phase-6c.football-six-country.2",
+  "evidencePackVersion": "2026-09-11.phase-6c.football-six-country.3",
   "priorEvidencePackVersion": "2026-09-10.phase-6c.football-six-country.1",
   "priorRetrievedAt": "2026-09-10",
   "targetSeason": "2026/27",
@@ -314,11 +314,135 @@
     "factualReviewCatalogAllowed": true
   },
   "decision": {
-    "status": "CATALOG_UPDATED_HUMAN_TARGETED_CHECKS_PENDING_NOT_FOR_IMPORT",
+    "status": "HUMAN_REVIEW_RECORDED_TARGETED_GAPS_REMAIN_NOT_FOR_IMPORT",
     "mayCreateReviewCatalog": true,
     "mayCreateSeedOrMigration": false,
     "mayConnectRuntimeSelector": false,
     "mayPromoteToProduction": false,
-    "requiredNextGate": "targeted verification list in phase-6c-football-evidence-review-catalog.md"
+    "requiredNextGate": "only unresolved items listed in phase-6c-football-evidence-review-catalog.md; 6D remains unauthorized"
+  },
+  "priorHandoffVersion": "2026-09-10.phase-6c.football-six-country.2",
+  "humanReviewRecordedAt": "2026-09-11",
+  "humanReviewSources": [
+    {
+      "id": "FR-FFF-LIGUE-3-REGULATION-2026-27",
+      "country": "FR",
+      "authority": "Fédération Française de Football",
+      "url": "https://media.fff.fr/uploads/documents/reglement-ligue-3-betclic-2026-2027.pdf",
+      "classification": "official_regulation_pdf",
+      "reviewResult": "Ligue 3 rank 3 and explicit ex National confirmed",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-FFF-NATIONAL-REGULATION-2026-27",
+      "country": "FR",
+      "authority": "Fédération Française de Football",
+      "url": "https://media.fff.fr/uploads/documents/reglement-general-championnats-nationaux-2026-2027.pdf",
+      "classification": "official_regulation_pdf",
+      "reviewResult": "National 1 rank 4 and National 2 rank 5 confirmed; renames from 2025/26 inferred, not explicit",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-FFF-N1-N2-REGULATION-2025-26",
+      "country": "FR",
+      "authority": "Fédération Française de Football",
+      "url": "https://media.fff.fr/uploads/documents/reglements-des-championnats-n1-et-n2-20252026-ok.pdf",
+      "classification": "official_historical_regulation_pdf",
+      "reviewResult": "Historical seasonal comparison",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "FR-FFF-N3-REGULATION-2025-26",
+      "country": "FR",
+      "authority": "Fédération Française de Football",
+      "url": "https://media.fff.fr/uploads/documents/reglement-du-national-3-20252026-ok.pdf",
+      "classification": "official_historical_regulation_pdf",
+      "reviewResult": "Historical seasonal comparison",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "ES-FCF-COMPETITION-PLAN-2026-27",
+      "country": "ES",
+      "authority": "Federació Catalana de Futbol",
+      "url": "https://www.fcf.cat/docs/pla_competicio/pla_competicions_territorial_futbol_amateur.pdf",
+      "classification": "official_territorial_plan_pdf",
+      "reviewResult": "Tercera and Quarta Catalana names confirmed; ranks 9/10 derived from documented hierarchy",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "CH-EL-PL-FIRST-LIGA-2026-27",
+      "country": "CH",
+      "authority": "Erste Liga / Première Ligue",
+      "url": "https://matchcenter.el-pl.ch/default.aspx?ln=12010&lng=1&oid=3&s=2027",
+      "classification": "official_competition_portal",
+      "reviewResult": "1. Liga rank 4 confirmed; Classic is same-championship group wording; cup qualification remains separate",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-MNZ-GORENJSKA-GNL-2026-27",
+      "country": "SI",
+      "authority": "MNZ Gorenjska Kranj",
+      "url": "https://mnzgkranj.si/index.cfm?akc=tekmovanja&liga=1601",
+      "classification": "official_territorial_page",
+      "reviewResult": "Competition confirmed with displayed name GNL - člani",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-MNZ-LENDAVA-POMURSKA-2026-27",
+      "country": "SI",
+      "authority": "MNZ Lendava",
+      "url": "https://www.mnzlendava.si/sezona-2026-27/pomurska-nogometna-liga-26-27/lestvica-in-rezultati",
+      "classification": "official_territorial_page",
+      "reviewResult": "Pomurska nogometna liga confirmed",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "SI-MNZ-MARIBOR-FIRST-SENIOR-2026-27",
+      "country": "SI",
+      "authority": "MNZ Maribor",
+      "url": "https://mnzmaribor.si/tekmovanje/1-clanska-liga-26-27/",
+      "classification": "official_territorial_page",
+      "reviewResult": "1. Članska Liga confirmed; Golgeter Premium liga recorded as commercial title",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "id": "PL-DZPN-REGULATIONS-2026-27-HUMAN-REVIEW",
+      "country": "PL",
+      "authority": "Dolnośląski Związek Piłki Nożnej",
+      "url": "https://dzpn.pl/wp-content/uploads/2026/07/Ostateczna_Regulamin-rozgrywek-na-sezon-2026_2027_v1.3.pdf",
+      "classification": "official_territorial_regulation_pdf",
+      "reviewResult": "§4 confirms 4. Liga dolnośląska, Klasa Okręgowa, Klasa A and Klasa B for DZPN",
+      "verificationState": "user_reported_human_review",
+      "httpStatus": null,
+      "retrievalSha256": null
+    }
+  ],
+  "humanReviewReport": {
+    "provenance": "user_supplied_2026-09-11",
+    "notEquivalentToAgentRetrieval": true,
+    "italyBaselineCertainty": "confirmed_by_product_owner",
+    "france": "PASS_current_ranks_PARTIAL_temporal_mapping_two_inferred",
+    "catalonia": "PASS_names_and_hierarchy_derived_ranks",
+    "switzerland": "PASS_first_liga_identity_and_alias_context",
+    "slovenia": "PARTIAL_three_confirmed_three_not_confirmed",
+    "polandDzpn": "PASS_four_names_territory_scoped"
   }
 }

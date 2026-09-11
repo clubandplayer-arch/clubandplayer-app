@@ -179,7 +179,7 @@ Non sono autorizzati automaticamente:
 | --- | --- | --- |
 | 6A | audit mirato dei consumer e matrice documentale Calcio IT/FR/ES/CH/SI/PL | **COMPLETATA** |
 | 6B | contratto e repository read-only country+sport(+organizer), bounded e fail-closed | **COMPLETATA repository-only** |
-| 6C | evidence pack e catalogo revisionabile del Calcio, una authority/country alla volta | **catalogo v2 aggiornato / verifiche mirate pending** |
+| 6C | evidence pack e catalogo revisionabile del Calcio, una authority/country alla volta | **COMPLETATA review-only / candidate non confermate esplicite** |
 | 6D | piano minimo di materializzazione dei cataloghi e verifica schema/policy, senza backfill deduttivi | non iniziata |
 | 6E | endpoint read-only per i selector, payload additivo e cache/limiti | non iniziata |
 | 6F | selector Club country-aware e denominazioni native indipendenti dalla lingua UI | non iniziata |
@@ -204,4 +204,4 @@ Il prossimo checkpoint è **6C**. La sua apertura non autorizza import o seed: d
 
 ### Avanzamento 6C
 
-Aggiornati evidence pack v2 e catalogo review-only target 2026/27 per i sei country. I retrieval storici restano separati dalle fonti del nuovo handoff; identità nazionali, esempi territoriali, template e mapping temporali pendenti sono distinti. I file mantengono `importAuthorized=false`, `runtimeAuthorized=false` e `productionAuthorized=false`. I soli controlli manuali residui, ciascuno con link e voce precisa, sono documentati in [`phase-6c-football-evidence-review-catalog.md`](phase-6c-football-evidence-review-catalog.md). **6C è implementata documentalmente ma non chiusa fattualmente; 6D non è iniziata né autorizzata.**
+Aggiornati evidence pack v3 e catalogo review-only target 2026/27 per i sei country con il report umano del 2026-09-11. Retrieval storici, fonti handoff e conferme dell’utente restano separati; identità nazionali, esempi territoriali, template e mapping dedotti sono distinti. I file mantengono `importAuthorized=false`, `runtimeAuthorized=false` e `productionAuthorized=false`. Le sole tre candidate slovene non confermate e le istruzioni puntuali per un’eventuale promozione futura sono documentate in [`phase-6c-football-evidence-review-catalog.md`](phase-6c-football-evidence-review-catalog.md). **6C è completata review-only; 6D non è iniziata né autorizzata.**

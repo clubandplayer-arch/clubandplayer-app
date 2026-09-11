@@ -1,77 +1,92 @@
 # FASE 6C — Evidence pack e review catalog Calcio IT/FR/ES/CH/SI/PL
 
-Data: **2026-09-10**
-Versione artefatti: **v2 — target season 2026/27**
-Stato: **CATALOGO AGGIORNATO / VERIFICHE MIRATE PENDENTI / IMPORT, RUNTIME E PRODUCTION NON AUTORIZZATI**
+Data: **2026-09-11**
+Versione artefatti: **v3 — target season 2026/27**
+Stato: **REPORT UMANO REGISTRATO / REVIEW CATALOG COMPLETATO CON CANDIDATE ESPLICITE / IMPORT, RUNTIME E PRODUCTION NON AUTORIZZATI**
 
 ## Deliverable
 
 - evidence pack: `data/sports/evidence/phase-6c-football-six-country-evidence-pack.json`;
 - catalogo revisionabile: `data/sports/phase-6c-football-level-review-catalog.json`;
-- test di contratto: `tests/unit/phase-6c-football-evidence-catalog.test.ts`.
+- test di rischio: `tests/unit/phase-6c-football-evidence-catalog.test.ts`.
 
-Il catalogo copre il calcio a 11 maschile senior, inclusi i livelli semiprofessionistici necessari a stabilire il rango assoluto, per IT, FR, ES, CH, SI e PL. Registra esclusivamente nomi fattuali necessari alla review del selector: non contiene club, classifiche, calendari, risultati o copie di database federali.
+Il perimetro è calcio a 11 maschile senior, inclusi i livelli semiprofessionistici necessari a stabilire il rango assoluto. La chiave prodotto resta `country selezionato + sport`, con organizer/territorio obbligatorio quando la categoria non è un'identità nazionale uniforme. Lingua UI, residence e vecchie esperienze non scelgono il catalogo. I nomi nativi non vengono tradotti.
 
-La chiave prodotto rimane `country selezionato + sport`, con organizer/territorio obbligatorio quando una categoria non è un'identità nazionale uniforme. Lingua UI, residence e vecchie esperienze non scelgono il catalogo. `levelRank` è il rango assoluto nella piramide del Paese; una riga territoriale parallela non incrementa il rango di un'altra.
+## Provenienza e stati
 
-## Classificazioni
+L'evidence pack v3 mantiene tre piani distinti:
 
-- `current_official_source_reported` / `current_official_portal_reported`: il handoff indica una fonte ufficiale 2026/27 pertinente, non una nuova certificazione personale dell'utente;
-- `current_structure_reported_mapping_pending`: struttura corrente riscontrata, ma corrispondenza con l'identità storica ancora da determinare;
-- `official_territorial_example_only`: evidenza valida soltanto per l'organizer/territorio indicato;
-- `territorial_template_unverified`: struttura revisionabile, mai identità nazionale o valore selezionabile;
-- `baseline_preserved_current_source_pending`: baseline italiana conservata senza attribuire un nuovo PASS fattuale;
-- `selectorEligibleAfterReview=true`: la voce può essere proposta per approvazione, non è già approvata;
-- `importAuthorized=false`, `runtimeAuthorized=false` e `productionAuthorized=false`: nessun consumer può usare questi file come catalogo live.
+1. `priorRetrievals`: HTTP status e checksum acquisiti prima di questo aggiornamento, conservati senza riscrittura;
+2. `handoffSources`: fonti del primo handoff 2026/27, con HTTP/checksum null;
+3. `humanReviewReport` e `humanReviewSources`: esito comunicato dall'utente il 2026-09-11, distinto da un retrieval dell'agente e privo di checksum inventati.
 
-L'evidence pack v2 conserva integralmente i sei retrieval precedenti sotto `priorRetrievals`. Le nuove fonti consegnate per il 2026/27 sono separate sotto `handoffSources`, tutte con HTTP/checksum null e stato `handoff_reported_not_retrieved_in_this_update`: non viene retrodatata alcuna verifica e non viene generato alcun checksum senza acquisizione.
+Gli stati principali del catalogo distinguono conferma umana, mapping stagionale dedotto, esempio territoriale, template e candidata non confermata. `selectorEligibleAfterReview=true` documenta il superamento della review fattuale della voce, ma non attiva il selector. `importAuthorized=false`, `runtimeAuthorized=false` e `productionAuthorized=false` restano vincolanti.
 
-## Aggiornamenti concreti per Paese
+Tutti i `code` e i code organizer/territorio sono `clubandplayer_internal_review`: non sono UUID o identificatori attribuiti alle federazioni.
+
+## Aggiornamenti registrati per Paese
 
 ### Italia
 
-Preservate `Serie D`, `Eccellenza`, `Promozione`, `Prima Categoria`, `Seconda Categoria` e `Terza Categoria` con ranghi di lavoro 4–9. `Serie D` registra il riferimento LND 2026/27; Eccellenza conserva l'esempio territoriale Sicilia. Le altre voci mantengono esplicitamente la baseline senza un nuovo PASS corrente.
+Il product owner conferma senza riserva `Serie D`, `Eccellenza`, `Promozione`, `Prima Categoria`, `Seconda Categoria` e `Terza Categoria`. Sono preservate con ranghi assoluti 4–9 e marcate con provenance `user_confirmation_2026-09-11`. La conferma del product owner resta distinta dalle fonti documentali LND e non viene presentata come retrieval federale dell'agente.
 
 ### Francia
 
-La sequenza corrente revisionabile è ora `Ligue 3` (rango 3, titolo commerciale separato `Ligue 3 Betclic`), `National 1` (4), `National 2` (5), `Régional 1` (6), `Régional 2` (7), `Régional 3` (8). Le precedenti identità `national`, `national_2` e `national_3` sono conservate in `historicalIdentities` come evidenza 2025/26: nessun code corrente le riusa prima di avere determinato la corrispondenza temporale. `Départemental 1`–`7` sono template con rango null e organizer District obbligatorio, non sette competizioni francesi universali.
+Confermata per il 2026/27 la sequenza `Ligue 3` (3), `National 1` (4), `National 2` (5), `Régional 1` (6), `Régional 2` (7), `Régional 3` (8). `Ligue 3 Betclic` è titolo commerciale separato.
 
-### Spagna
+Il mapping `National` 2025/26 → `Ligue 3` è esplicito (`ex National`). `National 2` → `National 1` e `National 3` → `National 2` sono registrati come deduzioni dal confronto stagionale, non come rinomine dichiarate. Le tre identità storiche rimangono in `historicalIdentities`; il code corrente `national_2_2026_27` evita il riuso prematuro di `national_2`. `Départemental 1`–`7` restano template con rango null e District obbligatorio.
 
-Confermata come struttura di lavoro la sequenza nazionale `Primera Federación` (3), `Segunda Federación` (4), `Tercera Federación` (5). Rimosse le false identità nazionali generiche `Preferente`, `Primera` e `Segunda`. Aggiunte separatamente per `ES-CT` e organizer FCF: `Lliga Elit` (6), `Primera Catalana` (7), `Segona Catalana` (8), `Tercera Catalana` (9), `Quarta Catalana` (10); le ultime due restano secondary-only finché manca la fonte FCF corrente pertinente.
+### Spagna / Catalogna
+
+Confermata la sequenza nazionale `Primera Federación` (3), `Segunda Federación` (4), `Tercera Federación` (5). Non esistono nel catalogo identity nazionali generiche `Preferente`, `Primera` o `Segunda`.
+
+Per `ES-CT` e organizer FCF sono registrate `Lliga Elit` (6), `Primera Catalana` (7), `Segona Catalana` (8), `Tercera Catalana` (9), `Quarta Catalana` (10). Tercera e Quarta sono confermate nel portale 2026/27; i ranghi 9/10 sono classificati come derivati dalla gerarchia del piano FCF, non come numeri stampati dal selector.
 
 ### Svizzera
 
-Registrate `Promotion League` (3), con `Hoval Promotion League` come titolo commerciale separato; `1. Liga` (4), con `1. Liga Classic` solo come alias documentato da ricontrollare; `2. Liga interregional` (5). `2. Liga`–`5. Liga` sono template regionali con organizer SFV/ASF regionale obbligatorio, non identità condivise fra AFV e le altre associazioni.
+Sono registrate `Promotion League` (3), con `Hoval Promotion League` come titolo commerciale, `1. Liga` (4) e `2. Liga interregional` (5). `1. Liga Classic` è alias documentato dei gironi della stessa 1. Liga. `Cup-Qualifikation 1. Liga Classic` è invece una competizione separata e non è un alias del campionato. `2. Liga`–`5. Liga` restano template con organizer regionale obbligatorio.
 
 ### Slovenia
 
-Conservate `2. slovenska nogometna liga`/`2. SNL` (2) e `3. slovenska nogometna liga`/`3. SNL` (3). Eliminati i generici `Regionalna liga` e `Medobčinska liga`. Aggiunti come sei candidati paralleli di rango 4, non consecutivi: `Regionalna Ljubljanska liga`, `Gorenjska nogometna liga`, `Primorska nogometna liga`, `Pomurska nogometna liga`, `Superliga MNZ Ptuj`, `1. članska liga MNZ Maribor`.
+Sono preservate `2. slovenska nogometna liga`/`2. SNL` (2) e `3. slovenska nogometna liga`/`3. SNL` (3).
 
-### Polonia
+Fra i sei candidati paralleli del rango 4 risultano confermati:
 
-Conservate `III liga` (4), con `Betclic 3. Liga` come titolo commerciale, e `IV liga` (5), con l'esempio DZPN separato. Aggiunta `V liga` come template opzionale. `Klasa Okręgowa`, `Klasa A`, `Klasa B` e `Klasa C` hanno rango null con due condizioni esplicite: senza V liga occupano rispettivamente 6–9; con V liga 7–10. Nessuna di queste diventa obbligatoria in tutti i WZPN.
+- `GNL - člani`, con `Gorenjska nogometna liga` come alias di lavoro;
+- `Pomurska nogometna liga`;
+- `1. Članska Liga`, con `Golgeter Premium liga` come titolo commerciale.
 
-## Verifiche umane residue, esclusivamente mirate
+Restano `NON CONFERMATA`: `Regionalna Ljubljanska liga`, `Primorska nogometna liga`, `Superliga MNZ Ptuj`. Lo stato segnala che la prova richiesta non è stata ottenuta, non che la competizione non esista. I generici `Regionalna liga` e `Medobčinska liga` restano esclusi.
 
-Non è richiesto ricercare di nuovo tutti i campionati. Restano soltanto questi controlli, da eseguire in browser normale senza Supabase, credenziali, cookie condivisi, bypass o scraping:
+### Polonia / DZPN
 
-1. **Francia — mapping temporale.** Aprire l'[indice FFF 2026/27](https://www.fff.fr/11-les-reglements/390-les-reglements-des-competitions-nationales.html) e i PDF collegati relativi a Ligue 3, National 1 e National 2. Confermare i tre nomi base, i ranghi 3/4/5 e indicare esplicitamente quale relazione, se presente, abbiano con le identità 2025/26 `National`, `National 2`, `National 3`. Non controllare D1–D7 finché non viene scelto un District concreto.
-2. **Spagna — sole due righe catalane.** Dal portale [FCF](https://www.fcf.cat/ca), aprire la competizione 2026/27 di `Tercera Catalana` e `Quarta Catalana`; restituire i due URL diretti e confermare ranghi 9/10. Le tre righe catalane superiori sono già registrate come riscontro del handoff e non richiedono una ricerca nazionale.
-3. **Svizzera — identità del quarto livello.** Nel [Match Center SFV/ASF 2026/27](https://matchcenter.football.ch/) aprire la competizione senior uomini del rango 4. Confermare che il nome base sia `1. Liga`, trascrivere l'eventuale titolo commerciale e dire se `1. Liga Classic` è alias della stessa identity o soltanto una dicitura usata in altro contesto.
-4. **Slovenia — soli sei candidati di rango 4.** Dal portale [NZS](https://www.nzs.si/) o dalla pagina ufficiale dell'MNZ pertinente, restituire l'URL 2026/27 soltanto per le voci fra le sei elencate che risultano correnti; per le altre scrivere `NON CONFERMATA`. Non cercare generiche “divisioni inferiori MNZ”.
-5. **Polonia — variabilità sotto IV liga.** Aprire il [regolamento DZPN 2026/27, §4](https://dzpn.pl/wp-content/uploads/2026/07/Ostateczna_Regulamin-rozgrywek-na-sezon-2026_2027_v1.3.pdf) e confermare soltanto `4. Liga dolnośląska`, `Klasa Okręgowa`, `Klasa A`, `Klasa B`. `V liga` e `Klasa C` rimangono template non selezionabili finché non viene scelto uno specifico WZPN che le preveda.
+È preservata `III liga` (4), con `Betclic 3. Liga` come titolo commerciale. Per DZPN/Bassa Slesia sono ora registrate come identity territoriali distinte e confermate:
 
-Formato minimo della risposta:
+- `4. Liga dolnośląska` (5);
+- `Klasa Okręgowa` (6);
+- `Klasa A` (7);
+- `Klasa B` (8).
 
-```text
-FR | Ligue 3/National 1/National 2 + mapping storico | PASS/PARTIAL/FAIL | correzioni | URL
-ES-CT | Tercera/Quarta Catalana | PASS/PARTIAL/FAIL | correzioni | URL
-CH | 1. Liga / 1. Liga Classic | PASS/PARTIAL/FAIL | correzioni | URL
-SI | sei candidate regionali | elenco CONFIRMATA/NON CONFERMATA | URL ufficiali disponibili
-PL-DZPN | quattro denominazioni §4 | PASS/PARTIAL/FAIL | correzioni | URL
-```
+Il precedente code review generico `fourth_liga` è sostituito da `fourth_liga_dzpn` e tracciato in `reviewCodeChanges`. `V liga`, le classi generiche degli altri WZPN e `Klasa C` rimangono template con rango nullo e condizione esplicita.
 
-## Gate successivo
+## Differenze motivate rispetto all'elenco di lavoro
 
-6C è **implementata documentalmente ma non chiusa fattualmente**: gli aggiornamenti certi e i candidati sono registrati senza bloccare gli altri Paesi. Soltanto dopo i controlli mirati si aggiorneranno gli stati interessati. 6D resta non iniziata e non autorizzata. Anche un PASS fattuale non concede automaticamente diritti di importazione e non autorizza migration, seed, API, UI, merge su main, deploy o Promote to Production.
+- Le corrispondenze francesi 2025/26 → 2026/27 non condividono automaticamente lo stesso code: solo `National` → `Ligue 3` è una rinomina esplicita; le altre due restano mapping dedotti.
+- I ranghi catalani 9/10 sono confermati come derivazione dalla sequenza ufficiale, non come attributi dichiarati dal selector.
+- `Classic` resta alias della 1. Liga svizzera, ma la qualificazione di Coppa omonima resta separata.
+- Il nome mostrato ufficialmente per la candidata Gorenjska è `GNL - člani`; la denominazione proposta è conservata come alias.
+- Le quattro voci polacche confermate diventano record DZPN e non prove valide per ogni WZPN.
+
+## Verifiche residue davvero necessarie
+
+**Nessuna per chiudere la 6C review-only.** Il report umano richiesto è stato ricevuto; non occorre ricontrollare Italia, Francia, Catalogna, Svizzera o DZPN e non viene richiesto alcuno smoke UI/Supabase.
+
+`Regionalna Ljubljanska liga`, `Primorska nogometna liga` e `Superliga MNZ Ptuj` restano candidate slovene non selezionabili perché prive della prova 2026/27 richiesta. Un controllo ulteriore diventerà necessario soltanto se una futura tranche chiederà esplicitamente di promuovere una di queste tre voci; in quel caso il gate richiederà la pagina diretta della competizione sul sito ufficiale dell'organizer competente, nome esatto, stagione e rango. Non è un'attività richiesta ora.
+
+Anche Départemental francesi, associazioni regionali svizzere, `V liga`, altri WZPN e `Klasa C` sono template per tranche territoriali future e non fanno parte di un nuovo incarico implicito.
+
+## Gate finale 6C
+
+6C è **completata per il review catalog e chiusa con candidate non selezionabili esplicite**. Le tre candidate slovene non confermate costituiscono backlog puntuale, non verifiche residue della 6C né un blocco dell'intero catalogo.
+
+6D non è iniziata né autorizzata. La chiusura 6C non concede diritti di importazione e non autorizza migration, seed, API, UI, Mobile, merge su main, deploy o Promote to Production. Tutta la FASE 6 rimane sviluppo/Preview fino a decisione esplicita dell'utente.
