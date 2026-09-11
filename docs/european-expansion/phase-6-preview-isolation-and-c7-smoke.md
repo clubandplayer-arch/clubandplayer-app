@@ -2,7 +2,7 @@
 
 Data: 2026-09-11  
 Target dichiarato: Supabase `fase6-github` (`jbovlevodfouwuvtdlja`) e Vercel Preview del branch `codex/implementare-categorie-sportive-per-paesi`.  
-Stato: **DEPLOYMENT CANDIDATO IDENTIFICATO; ISOLAMENTO RUNTIME BLOCCATO DA VERCEL SSO; SMOKE MUTATIVI NON ESEGUITI**.
+Stato: **ISOLAMENTO RUNTIME GET-ONLY PASS; SMOKE MUTATIVI NON ESEGUITI**.
 
 ## Evidenze ricevute
 
@@ -14,21 +14,21 @@ Richieste HTTP senza credenziali a `/`, `/api/env`, `/api/sports/catalog` e `/ap
 
 L'audit repository non trova URL Supabase hardcoded nei client interessati: browser usa `NEXT_PUBLIC_SUPABASE_URL`; server preferisce `SUPABASE_URL` e può ripiegare sulla variabile pubblica. È stato reso più sicuro `/api/env`: ora restituisce soltanto project ref pubblico/server, origine dell'URL server, uguaglianza delle anon key, presenza booleana della service-role, SHA e modalità. Non restituisce URL completi, chiavi o token.
 
-## Gate non superati
+## Gate prima del bypass (stato storico)
 
 | Gate | Esito |
 |---|---|
-| deployment effettivo e SHA | BLOCKED — Vercel SSO |
-| build successiva alle cinque variabili | BLOCKED — Vercel SSO/dashboard non disponibile |
-| browser ref = server ref = `jbovlevodfouwuvtdlja` | BLOCKED — `/api/env` protetto |
-| credenziali anon coerenti | BLOCKED — `/api/env` protetto |
-| service-role valida per il project Preview | BLOCKED — nessun probe autenticato e nessun secret locale |
-| `seven_a_side` e mapping remoto | USER-REPORTED migration presente; runtime non verificato |
+| deployment effettivo e SHA | RISOLTO DAL GATE — `036f13d3d39c40efbc2910937e20533efd7d7fe1` |
+| build successiva alle cinque variabili | PASS — nuovo deployment successivo a `e5f8a4a` |
+| browser ref = server ref = `jbovlevodfouwuvtdlja` | PASS — `/api/env` autenticato |
+| credenziali anon coerenti | PASS — diagnostica e catalogo GET |
+| service-role valida per il project Preview | PASS — registry GET senza corrispondenze |
+| `seven_a_side` e mapping remoto | PASS — catalogo GET |
 | Apple Auth Preview | config repository corretta; runtime non verificato |
-| smoke C7 read/save/reload | NOT EXECUTED — isolamento non certificato |
+| smoke C7 read/save/reload | NOT EXECUTED — fuori dal perimetro GET-only autorizzato |
 | regressione selector esistenti | test repository PASS; browser Preview non eseguito |
 
-## Deployment candidato e corrispondenza commit
+## Deployment candidato iniziale e corrispondenza commit (stato storico)
 
 Vercel mostra come Ready il deployment Preview `e5f8a4a`, con titolo `chore: gate Phase 6 smoke on Preview isolation`. Il checkout di verifica contiene lo stesso titolo ma ha SHA completo `bfc8864434fd63af1d7c2929ae75c5107e679ebe`. Titolo e contenuto atteso sono compatibili, ma due SHA differenti non costituiscono una corrispondenza Git dimostrata; inoltre questo checkout non ha un remote Git configurato con cui risolvere `e5f8a4a`. Non è richiesto un redeploy soltanto per questa differenza: il gate deve usare lo SHA effettivamente mostrato da Vercel (`e5f8a4a`) e verificare che quel deployment esponga la nuova forma sicura di `/api/env`. Se il campo `sha` non inizia con `e5f8a4a`, selezionare il deployment Ready corretto oppure fare Redeploy dell'ultimo commit del branch dopo le variabili.
 
@@ -51,3 +51,16 @@ Dopo lo sblocco, ripetere prima i GET. Gli smoke con salvataggio possono iniziar
 ## Confini
 
 Nessun salvataggio, account, migration, query mutativa, reset o teardown remoto è stato eseguito. Nessun accesso a Production. L'intera FASE 6 non è conclusa.
+
+## Esito runtime dopo bypass
+
+Il 2026-09-11 il bypass è risultato disponibile nell'ambiente senza esporne il valore. L'URL stabile del branch ha risolto il deployment Preview con SHA `036f13d3d39c40efbc2910937e20533efd7d7fe1`, successivo al candidato `e5f8a4a`. Il gate [`scripts/verify-phase-6-preview-isolation.sh`](../../scripts/verify-phase-6-preview-isolation.sh) ha restituito `PHASE6_PREVIEW_READ_ONLY_GATE_PASS`:
+
+- `mode=preview`;
+- project ref browser e server entrambi `jbovlevodfouwuvtdlja`;
+- sorgente server `SUPABASE_URL`, senza fallback;
+- anon key pubblica/server coerenti e service-role configurata;
+- lettura server anon del catalogo riuscita con variante `seven_a_side` e mapping `Calcio a 7`;
+- lettura registry deliberatamente senza corrispondenze riuscita tramite il client service-role.
+
+Sono state eseguite esclusivamente richieste GET. Il bypass e la relativa Environment variable possono essere revocati/rimossi adesso; per i successivi smoke browser con salvataggio servirà un nuovo accesso temporaneo esplicitamente autorizzato.
