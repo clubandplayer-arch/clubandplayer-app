@@ -58,7 +58,10 @@ test('PATCH /api/profiles/me integrates the planner and keeps one atomic row mut
   assert.match(route, /planProfilePrimarySportRequest/);
   assert.match(route, /CanonicalSportWritePlanService/);
   assert.match(route, /SportsTaxonomyRepository/);
-  assert.match(route, /jsonError\(mapped\.code, mapped\.status, \{ code: mapped\.code \}\)/);
+  assert.match(route, /function primarySportFailure/);
+  assert.match(route, /primarySportFailure\(error, 'plan'\)/);
+  assert.match(route, /primarySportFailure\(error, 'update'\)/);
+  assert.match(route, /primarySportFailure\(up\.error, 'upsert'\)/);
   assert.match(route, /\.from\('profiles'\)\s*\.update\(\{ \.\.\.updates, updated_at:/s);
   assert.match(route, /\.from\('profiles'\)\s*\.upsert\(/s);
   assert.doesNotMatch(route, /\.from\('profiles'\)[\s\S]*\.update\([^)]*sport_id[\s\S]*\.from\('profiles'\)[\s\S]*\.update\(/s);

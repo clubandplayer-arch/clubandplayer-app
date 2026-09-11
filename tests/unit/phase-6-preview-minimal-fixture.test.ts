@@ -21,15 +21,19 @@ test('Phase 6 fixture is idempotent and keeps C7/C8 identities separate', () => 
 
 test('Profile write diagnostics correlate failures without returning database details', () => {
   const route = readFileSync('app/api/profiles/me/route.ts', 'utf8')
+  assert.match(route, /function primarySportFailure/)
   assert.match(route, /const traceId = crypto\.randomUUID\(\)/)
   assert.match(route, /safeDatabaseMessage\(error\)/)
   assert.match(route, /process\.env\.VERCEL_ENV === 'preview'/)
-  assert.match(route, /diagnosticCode, diagnosticMessage/)
+  assert.match(route, /stage, diagnosticCode, diagnosticMessage/)
+  assert.match(route, /primarySportFailure\(error, 'plan'\)/)
+  assert.match(route, /primarySportFailure\(error, 'update'\)/)
+  assert.match(route, /primarySportFailure\(up\.error, 'upsert'\)/)
   assert.doesNotMatch(route, /console\.error\([^)]*user\.id/s)
 })
 
 test('Profile form displays the safe Preview diagnostic and correlation reference', () => {
   const form = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8')
-  assert.match(form, /j\?\.diagnosticCode, j\?\.diagnosticMessage/)
+  assert.match(form, /j\?\.stage, j\?\.diagnosticCode, j\?\.diagnosticMessage/)
   assert.match(form, /j\?\.traceId \? `rif\. \$\{j\.traceId\}`/)
 })

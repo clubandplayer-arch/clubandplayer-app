@@ -789,7 +789,7 @@ export default function ProfileEditForm() {
 
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        const diagnostic = [j?.diagnosticCode, j?.diagnosticMessage].filter(Boolean).join(' — ');
+        const diagnostic = [j?.stage, j?.diagnosticCode, j?.diagnosticMessage].filter(Boolean).join(' — ');
         const reference = j?.traceId ? `rif. ${j.traceId}` : '';
         const suffix = [diagnostic, reference].filter(Boolean).join('; ');
         throw new Error(`${j?.error ?? 'Salvataggio non riuscito'}${suffix ? ` (${suffix})` : ''}`);
