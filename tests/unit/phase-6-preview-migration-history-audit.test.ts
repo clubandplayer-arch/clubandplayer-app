@@ -22,3 +22,12 @@ test('Preview history report remains one-result and read-only', () => {
   assert.match(report, /rollback;/i)
   assert.doesNotMatch(report, /\b(insert|update|delete|alter|drop|truncate|create)\b/i)
 })
+
+test('verified Preview head reconciles to only the profile schema migration', () => {
+  const localVersions = migrations.map((name) => name.match(/^([0-9]+)_/)?.[1]).filter(Boolean).sort()
+  const remoteVersions = localVersions.filter((version) => version !== '20261211130000')
+
+  assert.deepEqual(localVersions.slice(0, remoteVersions.length), remoteVersions)
+  assert.deepEqual(localVersions.slice(remoteVersions.length), ['20261211130000'])
+  assert.equal(migrations.at(-1), '20261211130000_complete_profile_edit_schema.sql')
+})

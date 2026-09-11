@@ -1,5 +1,8 @@
 begin;
 
+-- This migration is intentionally the only version after the verified Preview
+-- head 20261211120000. Keep the file in supabase/migrations so the GitHub
+-- integration can discover and apply it through the normal ordered replay.
 -- These columns predated the repository migration history in Production but
 -- were absent from an empty branch reconstructed by the new baseline.
 alter table public.profiles
