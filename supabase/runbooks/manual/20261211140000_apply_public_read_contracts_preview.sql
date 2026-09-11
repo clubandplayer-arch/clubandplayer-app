@@ -46,10 +46,25 @@ do $verify$
 begin
   if not has_table_privilege('authenticated', 'public.players_view', 'select')
      or not has_table_privilege('authenticated', 'public.athletes_view', 'select')
+     or not has_table_privilege('anon', 'public.players_view', 'select')
+     or not has_table_privilege('anon', 'public.athletes_view', 'select')
      or not has_table_privilege('authenticated', 'public.regions', 'select')
      or not has_table_privilege('authenticated', 'public.provinces', 'select')
-     or not has_table_privilege('authenticated', 'public.municipalities', 'select') then
-    raise exception 'EFFECT CHECK FAILED: authenticated read contract incomplete';
+     or not has_table_privilege('authenticated', 'public.municipalities', 'select')
+     or not has_table_privilege('anon', 'public.regions', 'select')
+     or not has_table_privilege('anon', 'public.provinces', 'select')
+     or not has_table_privilege('anon', 'public.municipalities', 'select') then
+    raise exception 'EFFECT CHECK FAILED: API read grants incomplete';
+  end if;
+
+  if exists (
+    select 1
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname in ('regions', 'provinces', 'municipalities')
+      and not c.relrowsecurity
+  ) then
+    raise exception 'EFFECT CHECK FAILED: geography RLS is not enabled';
   end if;
 end
 $verify$;
