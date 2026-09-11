@@ -180,6 +180,7 @@ Non sono autorizzati automaticamente:
 | 6A | audit mirato dei consumer e matrice documentale Calcio IT/FR/ES/CH/SI/PL | **COMPLETATA** |
 | 6B | contratto e repository read-only country+sport(+organizer), bounded e fail-closed | **COMPLETATA repository-only** |
 | 6C | evidence pack e catalogo revisionabile del Calcio, una authority/country alla volta | **COMPLETATA review-only / candidate non confermate esplicite** |
+| 6C bis | compatibilità Italia Sport → Ente → opzione e catalogo review-only degli Enti calcio a 11 | **COMPLETATA audit/catalogo; runtime non iniziato** |
 | 6D | piano minimo di materializzazione dei cataloghi e verifica schema/policy, senza backfill deduttivi | non iniziata |
 | 6E | endpoint read-only per i selector, payload additivo e cache/limiti | non iniziata |
 | 6F | selector Club country-aware e denominazioni native indipendenti dalla lingua UI | non iniziata |

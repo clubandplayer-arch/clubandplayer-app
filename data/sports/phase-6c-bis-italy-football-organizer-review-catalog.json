@@ -1,0 +1,888 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-09-11.phase-6c-bis.italy-football-organizers.1",
+  "country": "IT",
+  "sportCode": "football",
+  "disciplineCode": "association_football",
+  "targetSeason": "2026/27",
+  "status": "review_only_contract_ready",
+  "codePolicy": "all codes are internal review codes, not authority identifiers",
+  "importAuthorized": false,
+  "runtimeAuthorized": false,
+  "productionAuthorized": false,
+  "cascadePolicy": {
+    "steps": [
+      "sport",
+      "organization",
+      "organization_option"
+    ],
+    "organizationSelector": "show_only_when_more_than_one_applicable_organization_or_user_choice_is_required",
+    "optionSelector": "show_only_when_selected_organization_has_applicable_options",
+    "singleOrganizationBehavior": "auto_select_and_omit_redundant_organization_control",
+    "zeroOptionBehavior": "omit_option_control",
+    "countrySource": "explicit_selected_context_country",
+    "localeAffectsOfficialNames": false
+  },
+  "legacyMovePlan": {
+    "removeFromFlatFootballCategoryMenu": [
+      "Serie D",
+      "Eccellenza",
+      "Promozione",
+      "Prima Categoria",
+      "Seconda Categoria",
+      "Terza Categoria",
+      "E.I.F.A.",
+      "CSI",
+      "UISP",
+      "CSEN",
+      "AICS",
+      "OPES",
+      "ASC",
+      "ENDAS",
+      "PGS",
+      "US ACLI",
+      "FIP",
+      "ELITE",
+      "Giovanili"
+    ],
+    "keepAsLndLevels": [
+      "Serie D",
+      "Eccellenza",
+      "Promozione",
+      "Prima Categoria",
+      "Seconda Categoria",
+      "Terza Categoria"
+    ],
+    "organizationMenuOrder": [
+      "lnd",
+      "eifa",
+      "csi",
+      "uisp",
+      "csen",
+      "aics",
+      "opes",
+      "asc",
+      "endas",
+      "pgs",
+      "us_acli",
+      "fip_unresolved"
+    ],
+    "neverCreateStandaloneOrganization": [
+      "ELITE"
+    ],
+    "notApplicableToFootballUntilResolved": [
+      "FIP"
+    ]
+  },
+  "organizations": [
+    {
+      "code": "lnd",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "LND",
+      "documentedAliases": [
+        "Lega Nazionale Dilettanti"
+      ],
+      "displayOrder": 1,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "product_owner_confirmed"
+    },
+    {
+      "code": "eifa",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "E.I.F.A.",
+      "documentedAliases": [
+        "EIFA",
+        "CalcioElite"
+      ],
+      "displayOrder": 2,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "csi",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "CSI",
+      "documentedAliases": [],
+      "displayOrder": 3,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "uisp",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "UISP",
+      "documentedAliases": [],
+      "displayOrder": 4,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "csen",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "CSEN",
+      "documentedAliases": [],
+      "displayOrder": 5,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "aics",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "AiCS",
+      "documentedAliases": [
+        "AICS"
+      ],
+      "displayOrder": 6,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "opes",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "OPES",
+      "documentedAliases": [],
+      "displayOrder": 7,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "asc",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "ASC",
+      "documentedAliases": [],
+      "displayOrder": 8,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "endas",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "ENDAS",
+      "documentedAliases": [],
+      "displayOrder": 9,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "historical_source_only"
+    },
+    {
+      "code": "pgs",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "PGS",
+      "documentedAliases": [],
+      "displayOrder": 10,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "us_acli",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "US ACLI",
+      "documentedAliases": [],
+      "displayOrder": 11,
+      "selectorEligibleAfterReview": true,
+      "evidenceState": "user_supplied_source"
+    },
+    {
+      "code": "fip_unresolved",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "FIP",
+      "documentedAliases": [],
+      "displayOrder": 12,
+      "selectorEligibleAfterReview": false,
+      "evidenceState": "unresolved_acronym_not_football_federation"
+    }
+  ],
+  "options": [
+    {
+      "organizationCode": "lnd",
+      "code": "serie_d",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Serie D",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 1,
+      "levelRank": 4,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "lnd",
+      "code": "eccellenza",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Eccellenza",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 2,
+      "levelRank": 5,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "lnd",
+      "code": "promozione",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Promozione",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 3,
+      "levelRank": 6,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "lnd",
+      "code": "prima_categoria",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Prima Categoria",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 4,
+      "levelRank": 7,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "lnd",
+      "code": "seconda_categoria",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Seconda Categoria",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 5,
+      "levelRank": 8,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "lnd",
+      "code": "terza_categoria",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Terza Categoria",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition_level",
+      "displayOrder": 6,
+      "levelRank": 9,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "lnd",
+      "code": "elite_giovanile",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "ELITE",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "youth_competition_label",
+      "displayOrder": 7,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": "LND youth-only label; never a standalone organization and never copied to other organizers by default"
+    },
+    {
+      "organizationCode": "lnd",
+      "code": "giovanili",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Giovanili",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "youth_umbrella",
+      "displayOrder": 8,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "product_owner_confirmed",
+      "selectorEligibleAfterReview": true,
+      "notes": "UX umbrella, not a senior competition level"
+    },
+    {
+      "organizationCode": "eifa",
+      "code": "serie_a_delite_lorenzo_cesari",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Serie A d’Elite “Lorenzo Cesari”",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "eifa",
+      "code": "campionato_challenge_elite",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato Challenge Elite",
+      "documentedAliases": [
+        "Serie B Challenge"
+      ],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 2,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "eifa",
+      "code": "super_champions_elite",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Super Champions Elite",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "parallel_tournament",
+      "displayOrder": 3,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "csi",
+      "code": "campionato_nazionale_open",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato Nazionale – categoria Open",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "csi",
+      "code": "eccellenza_milano",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Eccellenza",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "territorial_competition",
+      "displayOrder": 2,
+      "levelRank": null,
+      "territory": {
+        "code": "IT-MI",
+        "name": "Milano"
+      },
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "Valid only for CSI Milano"
+    },
+    {
+      "organizationCode": "csi",
+      "code": "open_a_milano",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Open A",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "territorial_competition",
+      "displayOrder": 3,
+      "levelRank": null,
+      "territory": {
+        "code": "IT-MI",
+        "name": "Milano"
+      },
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "Valid only for CSI Milano"
+    },
+    {
+      "organizationCode": "csi",
+      "code": "campionato_master_milano",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato Master",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "territorial_competition",
+      "displayOrder": 4,
+      "levelRank": null,
+      "territory": {
+        "code": "IT-MI",
+        "name": "Milano"
+      },
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "Valid only for CSI Milano"
+    },
+    {
+      "organizationCode": "uisp",
+      "code": "campionato_nazionale_calcio_11",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato Nazionale di calcio a 11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "uisp",
+      "code": "coppa_nazionale_calcio_11",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Coppa Nazionale di calcio a 11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "cup",
+      "displayOrder": 2,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "uisp",
+      "code": "trofeo_adriatico",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Trofeo Adriatico",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "parallel_tournament",
+      "displayOrder": 3,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "csen",
+      "code": "finali_nazionali_a11",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Finali Nazionali Calcio CSEN – settore A11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "final_event",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "No national Serie A/B/C hierarchy evidenced"
+    },
+    {
+      "organizationCode": "aics",
+      "code": "campionato_nazionale_calcio_11",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato nazionale di calcio a 11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "competition",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "Over 40 at seven-a-side is excluded"
+    },
+    {
+      "organizationCode": "opes",
+      "code": "torneo_eurosport_amatori_calcio_11",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Torneo Eurosport Amatori di Calcio a 11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "parallel_tournament",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "asc",
+      "code": "campionato_over_35_c11_calabria",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato Over 35 C-11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "territorial_competition",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": {
+        "code": "IT-78",
+        "name": "Calabria"
+      },
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "asc",
+      "code": "coppa_calabria_amatori_over_35",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Coppa Calabria Amatori Over 35",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "territorial_cup",
+      "displayOrder": 2,
+      "levelRank": null,
+      "territory": {
+        "code": "IT-78",
+        "name": "Calabria"
+      },
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "endas",
+      "code": "campionato_nazionale_calcio_11",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato Nazionale di Calcio a 11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "historical_competition",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": null,
+      "evidenceState": "historical_2017_current_activation_pending",
+      "selectorEligibleAfterReview": false,
+      "notes": null
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "under_14",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Under 14",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "age_category",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "under_15_maschile",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Under 15 maschile",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "age_category",
+      "displayOrder": 2,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "under_16",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Under 16",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "age_category",
+      "displayOrder": 3,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "under_17",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Under 17",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "age_category",
+      "displayOrder": 4,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "under_19",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Under 19",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "age_category",
+      "displayOrder": 5,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "open",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Open",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "age_category",
+      "displayOrder": 6,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "masters",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Masters",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "age_category",
+      "displayOrder": 7,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "pgs",
+      "code": "don_bosco_cup",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Don Bosco Cup",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "parallel_tournament",
+      "displayOrder": 8,
+      "levelRank": null,
+      "territory": null,
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": "11-a-side; all Under 13 categories intentionally excluded"
+    },
+    {
+      "organizationCode": "us_acli",
+      "code": "campionato_calcio_11_milano",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Campionato di calcio a 11",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "territorial_competition",
+      "displayOrder": 1,
+      "levelRank": null,
+      "territory": {
+        "code": "IT-MI",
+        "name": "Milano"
+      },
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    },
+    {
+      "organizationCode": "us_acli",
+      "code": "coppa_clerici",
+      "codeAuthority": "clubandplayer_internal_review",
+      "officialName": "Coppa Clerici",
+      "documentedAliases": [],
+      "commercialNames": [],
+      "optionKind": "territorial_cup",
+      "displayOrder": 2,
+      "levelRank": null,
+      "territory": {
+        "code": "IT-MI",
+        "name": "Milano"
+      },
+      "targetSeason": "2026/27",
+      "evidenceState": "user_supplied_source",
+      "selectorEligibleAfterReview": true,
+      "notes": null
+    }
+  ],
+  "evidenceSources": [
+    {
+      "organizationCode": "eifa",
+      "url": "https://www.calcioelite.it/chi-siamo/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "csi",
+      "url": "https://www.csi.milano.it/area-attivita-sportiva/calcio-att-sport.html",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "csi",
+      "url": "https://www.centrosportivoitaliano.it/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "uisp",
+      "url": "https://www.uisp.it/calcio/pagina/finali-nazionali-calcio-uisp-2026-assegnati-tutti-i-titoli",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "csen",
+      "url": "https://www.csen.it/eventi/Evento/4009-finali-nazionali-calcio-csen.html",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "aics",
+      "url": "https://www.aics.it/festa-del-calcio-aics-2026-tutti-i-vincitori-delle-finali-nazionali/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "opes",
+      "url": "https://www.opesitalia.it/finali-nazionali-calcio-opes-26-28-giugno/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "asc",
+      "url": "https://calcio.ascreggiocalabria.it/it/tournament/328/campionato-over-35-c-11/stream/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "asc",
+      "url": "https://calcio.ascreggiocalabria.it/it/album/320/coppa-calabria-amatori-over-35/gallery/98/finale-coppa-calabria-over-35-c-11/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "endas",
+      "url": "https://www.endas.it/download/239/calcio-e-calcetto/5770/regolamento-calcio-a-11.pdf",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "pgs",
+      "url": "https://www.pgsitalia.org/wp-content/uploads/2026/09/CALCIO-a-11-2026-2027-1.pdf",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "pgs",
+      "url": "https://www.pgsitalia.org/wp-content/uploads/2026/02/Calcio-Under-17-2026-2.pdf",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "us_acli",
+      "url": "https://www.usaclimilano.it/2026/08/05/calcio-a-11-2026-27/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "us_acli",
+      "url": "https://www.usaclimilano.it/2026/07/02/comunicato-n5-coppa-clerici-2026/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    },
+    {
+      "organizationCode": "fip_unresolved",
+      "url": "https://fip.it/",
+      "verificationState": "user_supplied_not_agent_retrieved",
+      "httpStatus": null,
+      "retrievalSha256": null
+    }
+  ],
+  "excluded": [
+    {
+      "reason": "under_13_or_younger",
+      "policy": "exclude every option explicitly limited to Under 13 or a younger age class"
+    },
+    {
+      "reason": "wrong_format",
+      "values": [
+        "AiCS Over 40 seven-a-side"
+      ]
+    },
+    {
+      "reason": "unresolved_organizer",
+      "values": [
+        "FIP football competitions"
+      ]
+    }
+  ]
+}
