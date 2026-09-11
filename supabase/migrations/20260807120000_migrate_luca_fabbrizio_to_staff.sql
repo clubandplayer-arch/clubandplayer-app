@@ -50,7 +50,9 @@ begin
 
   get diagnostics updated_users = row_count;
 
-  if updated_profiles <> 1 or updated_users <> 1 then
-    raise exception 'Luca Fabbrizio role migration expected 1 profile and 1 auth user, updated profiles %, users %', updated_profiles, updated_users;
+  -- Fresh branches do not contain Production identities; accept only coherent
+  -- absence or a complete pair, and still fail closed on partial matches.
+  if (updated_profiles, updated_users) not in ((0, 0), (1, 1)) then
+    raise exception 'Luca Fabbrizio role migration expected coherent 0/0 or 1/1 rows, updated profiles %, users %', updated_profiles, updated_users;
   end if;
 end $$;

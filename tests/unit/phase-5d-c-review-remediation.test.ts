@@ -17,7 +17,7 @@ const translator = (messages: Record<VocabularyMessageKey, string>) =>
   (key: VocabularyMessageKey) => messages[key];
 
 const nonFootballSports = Object.entries(SPORTS_ROLES).filter(([sport]) =>
-  !['Calcio', 'Calcio a 8'].includes(sport),
+  !['Calcio', 'Calcio a 8', 'Calcio a 7'].includes(sport),
 );
 
 test('every non-football player role has an English, Spanish and French presentation label', () => {

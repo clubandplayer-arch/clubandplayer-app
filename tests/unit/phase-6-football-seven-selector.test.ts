@@ -22,6 +22,8 @@ test('Calcio a 7 resolves independently and additive SQL derives database ids', 
   assert.match(sql, /'calcio_a_7'/);
   assert.match(sql, /join public\.sport_variants/);
   assert.doesNotMatch(sql, /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i);
+  assert.match(sql, /insert into public\.player_position_applicability/);
+  assert.match(sql, /variants\.code = 'seven_a_side'/);
   assert.doesNotMatch(sql, /(?:insert into|update|delete from) public\.(?:profiles|opportunities|applications|sports_organizations|competitions)/i);
 });
 

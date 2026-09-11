@@ -170,7 +170,11 @@ test('5D-C maps every current legacy player and staff option exactly once withou
   const playerSourceValues = manifest.records
     .filter((record) => record.kind === 'legacy_player_position_mapping')
     .map((record) => String(record.attributes?.sourceValue));
-  const expectedPlayerValues = Object.values(SPORTS_ROLES).flat();
+  // Calcio a 7 intentionally reuses the six canonical small-sided positions
+  // already mapped for Calcio a 8; global legacy source keys remain unique.
+  const expectedPlayerValues = Object.entries(SPORTS_ROLES)
+    .filter(([sport]) => sport !== 'Calcio a 7')
+    .flatMap(([, roles]) => roles);
   assert.deepEqual(playerSourceValues.sort(), expectedPlayerValues.sort());
   const staffSourceValues = manifest.records
     .filter((record) => record.kind === 'legacy_staff_role_mapping')

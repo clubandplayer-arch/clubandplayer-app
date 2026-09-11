@@ -33,4 +33,23 @@ on conflict (normalized_source_value) do update set
   is_active = true,
   notes = excluded.notes;
 
+-- The six existing small-sided position identities are shared by C8 and C7.
+-- Legacy position mappings stay unique; applicability supplies the variant scope.
+insert into public.player_position_applicability
+  (position_id, sport_id, discipline_id, variant_id)
+select positions.id, sports.id, disciplines.id, variants.id
+from public.player_positions positions
+cross join public.sports sports
+join public.sport_disciplines disciplines
+  on disciplines.sport_id = sports.id and disciplines.code = 'association_football'
+join public.sport_variants variants
+  on variants.discipline_id = disciplines.id and variants.code = 'seven_a_side'
+where sports.code = 'football'
+  and positions.code in (
+    'eight_a_side_goalkeeper', 'eight_a_side_central_defender',
+    'eight_a_side_wide_defender', 'eight_a_side_playmaker',
+    'eight_a_side_wide_attacker', 'eight_a_side_centre_forward'
+  )
+on conflict (position_id, sport_id, discipline_id, variant_id) do nothing;
+
 commit;

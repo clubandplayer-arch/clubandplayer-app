@@ -57,11 +57,9 @@ begin
 
   get diagnostics updated_users = row_count;
 
-  if updated_profiles <> 2 then
-    raise exception 'Expected to migrate 2 Player profiles, updated %', updated_profiles;
-  end if;
-
-  if updated_users <> 2 then
-    raise exception 'Expected to update 2 auth users, updated %', updated_users;
+  -- A clean Preview has neither Production identity. Accept coherent absence or
+  -- the complete pair, while retaining the partial-match failure.
+  if (updated_profiles, updated_users) not in ((0, 0), (2, 2)) then
+    raise exception 'Expected coherent 0/0 or 2/2 Player rows, profiles %, users %', updated_profiles, updated_users;
   end if;
 end $$;
