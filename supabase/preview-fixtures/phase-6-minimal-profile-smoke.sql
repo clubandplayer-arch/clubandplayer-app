@@ -42,6 +42,33 @@ begin
 end
 $$;
 
+-- Synthetic public profiles exercise search and suggestions without Auth users
+-- or Production data. The publication trigger derives visibility consistently.
+insert into public.profiles
+  (id, user_id, account_type, type, full_name, display_name, status, birth_year,
+   country, interest_country, region, province, city, sport, role)
+values
+  ('60000000-0000-4000-8000-000000000001', null, 'athlete', 'athlete',
+   'Preview C7 Test Player', 'Preview C7 Test Player', 'active', 2000,
+   'Italia', 'IT', 'Preview Test Region', 'Preview Test Province', 'Preview Test City',
+   'Calcio a 7', 'Portiere'),
+  ('60000000-0000-4000-8000-000000000002', null, 'club', 'club',
+   'ASD Preview C7 Test Club', 'ASD Preview C7 Test Club', 'active', null,
+   'Italia', 'IT', 'Preview Test Region', 'Preview Test Province', 'Preview Test City',
+   'Calcio a 7', null)
+on conflict (id) do update set
+  full_name = excluded.full_name,
+  display_name = excluded.display_name,
+  status = excluded.status,
+  country = excluded.country,
+  interest_country = excluded.interest_country,
+  region = excluded.region,
+  province = excluded.province,
+  city = excluded.city,
+  sport = excluded.sport,
+  role = excluded.role,
+  updated_at = now();
+
 insert into public.registry_clubs_master
   (master_id, denominazione, regione, provincia, comune, sport_normalizzati, organisms, source_count, is_claimed)
 values

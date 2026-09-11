@@ -14,9 +14,12 @@ test('Phase 6 fixture is Preview-only, synthetic and outside migration history',
 
 test('Phase 6 fixture is idempotent and keeps C7/C8 identities separate', () => {
   assert.match(fixture, /on conflict \(master_id\) do update/i)
+  assert.match(fixture, /insert into public\.profiles/i)
+  assert.match(fixture, /on conflict \(id\) do update/i)
+  assert.match(fixture, /user_id, account_type/)
+  assert.match(fixture, /null, 'athlete'/)
   assert.match(fixture, /'Calcio a 7'/)
   assert.match(fixture, /'Calcio a 8'/)
-  assert.doesNotMatch(fixture, /insert into public\.profiles/i)
 })
 
 test('Profile write diagnostics correlate failures without returning database details', () => {
