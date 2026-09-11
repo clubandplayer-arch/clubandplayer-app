@@ -60,7 +60,7 @@ insert into public.profiles
    country, interest_country, region, province, city, sport, role)
 values
   ('60000000-0000-4000-8000-000000000001', null, 'athlete', 'athlete',
-   'Preview C7 Test Player', 'Preview C7 Test Player', 'active', 2000,
+   'Preview Test Player', 'Preview Test Player', 'active', 2000,
    'Italia', 'IT', 'Preview Test Region', 'Preview Test Province', 'Preview Test City',
    'Calcio a 7', 'Portiere'),
   ('60000000-0000-4000-8000-000000000002', null, 'club', 'club',

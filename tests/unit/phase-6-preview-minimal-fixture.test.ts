@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
+import { isValidProfilePersonName } from '../../lib/profiles/nameValidation'
+
 const fixture = readFileSync('supabase/preview-fixtures/phase-6-minimal-profile-smoke.sql', 'utf8')
 
 test('Phase 6 fixture is Preview-only, synthetic and outside migration history', () => {
@@ -9,6 +11,10 @@ test('Phase 6 fixture is Preview-only, synthetic and outside migration history',
   assert.match(fixture, /jbovlevodfouwuvtdlja/)
   assert.match(fixture, /Preview Test Region/)
   assert.match(fixture, /Preview C7 Test Club/)
+  assert.match(fixture, /Preview Test Player/)
+  assert.doesNotMatch(fixture, /Preview C7 Test Player/)
+  assert.equal(isValidProfilePersonName('Preview Test Player'), true)
+  assert.equal(isValidProfilePersonName('Preview C7 Test Player'), false)
   assert.match(fixture, /version = '20261211140000' and name = 'restore_public_read_contracts'/)
   assert.doesNotMatch(fixture, /auth\.users|@|codice_fiscale\s*[,)]/i)
 })
