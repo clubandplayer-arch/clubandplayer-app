@@ -31,9 +31,12 @@ export type MaterializedSportsOrganizationResult =
   | { status: 'ok'; derivation: 'materialized_options'; organizations: MaterializedSportsOrganization[] }
   | { status: 'invalid_query' | 'invalid_scope' | 'unsupported_country' | 'inactive_sport' | 'overflow'; organizations: [] };
 
-type CatalogParent = { id: string; isActive: boolean; isSupported?: boolean };
-type Discipline = CatalogParent & { sportId: string };
-type Variant = CatalogParent & { disciplineId: string };
+export type CatalogParent = { id: string; isActive: boolean; isSupported?: boolean };
+export type Discipline = CatalogParent & { sportId: string };
+export type Variant = CatalogParent & { disciplineId: string };
+export type SportsTaxonomyScopeSource = Pick<MaterializedSportsOrganizationDataSource,
+  'getDiscipline' | 'getVariant' | 'listActiveDisciplines' | 'listActiveVariants'>;
+export type ResolvedSportsTaxonomyScope = { disciplineId: string | null; variantId: string | null };
 type OrganizationCandidateQuery = { countryId: string; sportId: string; asOf: string; fetchLimit: number };
 type CompetitionCandidateQuery = OrganizationCandidateQuery & { disciplineId: string | null; variantId: string | null };
 
@@ -181,6 +184,35 @@ const validDate = (value: string): boolean => {
   return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 };
 
+export async function resolveSportsTaxonomyScope(
+  source: SportsTaxonomyScopeSource,
+  sportId: string,
+  disciplineId: string | null,
+  variantId: string | null,
+): Promise<ResolvedSportsTaxonomyScope | null> {
+  if (disciplineId) {
+    const discipline = await source.getDiscipline(disciplineId);
+    if (!discipline?.isActive || discipline.sportId !== sportId) return null;
+  }
+  if (variantId) {
+    const variant = await source.getVariant(variantId);
+    if (!variant?.isActive || variant.disciplineId !== disciplineId) return null;
+  }
+  let effectiveDisciplineId = disciplineId;
+  if (!effectiveDisciplineId) {
+    const disciplines = await source.listActiveDisciplines(sportId, 2);
+    if (disciplines.length > 1) return null;
+    effectiveDisciplineId = disciplines[0]?.id ?? null;
+  }
+  let effectiveVariantId = variantId;
+  if (effectiveDisciplineId && !effectiveVariantId) {
+    const variants = await source.listActiveVariants(effectiveDisciplineId, 2);
+    if (variants.length > 1) return null;
+    effectiveVariantId = variants[0]?.id ?? null;
+  }
+  return { disciplineId: effectiveDisciplineId, variantId: effectiveVariantId };
+}
+
 export class MaterializedSportsOrganizationRepository {
   constructor(private readonly source: MaterializedSportsOrganizationDataSource) {}
 
@@ -198,27 +230,9 @@ export class MaterializedSportsOrganizationRepository {
     if (!country?.isActive || !country.isSupported) return { status: 'unsupported_country', organizations: [] };
     const sport = await this.source.getSport(query.sportId);
     if (!sport?.isActive) return { status: 'inactive_sport', organizations: [] };
-    if (disciplineId) {
-      const discipline = await this.source.getDiscipline(disciplineId);
-      if (!discipline?.isActive || discipline.sportId !== query.sportId) return { status: 'invalid_scope', organizations: [] };
-    }
-    if (variantId) {
-      const variant = await this.source.getVariant(variantId);
-      if (!variant?.isActive || variant.disciplineId !== disciplineId) return { status: 'invalid_scope', organizations: [] };
-    }
-
-    let effectiveDisciplineId = disciplineId;
-    if (!effectiveDisciplineId) {
-      const disciplines = await this.source.listActiveDisciplines(query.sportId, 2);
-      if (disciplines.length > 1) return { status: 'invalid_scope', organizations: [] };
-      effectiveDisciplineId = disciplines[0]?.id ?? null;
-    }
-    let effectiveVariantId = variantId;
-    if (effectiveDisciplineId && !effectiveVariantId) {
-      const variants = await this.source.listActiveVariants(effectiveDisciplineId, 2);
-      if (variants.length > 1) return { status: 'invalid_scope', organizations: [] };
-      effectiveVariantId = variants[0]?.id ?? null;
-    }
+    const scope = await resolveSportsTaxonomyScope(this.source, query.sportId, disciplineId, variantId);
+    if (!scope) return { status: 'invalid_scope', organizations: [] };
+    const { disciplineId: effectiveDisciplineId, variantId: effectiveVariantId } = scope;
     const candidateQuery = { countryId: query.countryId, sportId: query.sportId, asOf, fetchLimit: limit + 1 };
     const [levels, competitions] = await Promise.all([
       effectiveDisciplineId ? Promise.resolve([]) : this.source.listLevelOrganizationIds(candidateQuery),
