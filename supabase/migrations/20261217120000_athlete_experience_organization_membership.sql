@@ -57,7 +57,8 @@ begin
       and c.sport_id = x.sport_id
       and c.discipline_id is not distinct from x.sport_discipline_id
       and c.variant_id is not distinct from x.sport_variant_id
-    where x.sports_organization_id is null or c.id is null
+    where (x.sports_organization_id is null) <> (x.sports_organization_category_id is null)
+      or (x.sports_organization_id is not null and c.id is null)
   ) then
     raise exception using errcode='23514', message='invalid experience organization membership';
   end if;

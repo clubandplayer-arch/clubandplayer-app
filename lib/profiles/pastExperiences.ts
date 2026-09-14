@@ -88,6 +88,7 @@ export function isPastExperienceEmpty(experience: PastExperience): boolean {
 }
 
 export function isPastExperienceComplete(experience: PastExperience): boolean {
+  const hasCompleteMembership = Boolean(experience.organizationId) === Boolean(experience.categoryId);
   return !!experience.season && !!experience.club && !!experience.sport
-    && !!experience.organizationId && !!experience.categoryId && !!experience.role;
+    && hasCompleteMembership && !!experience.role;
 }

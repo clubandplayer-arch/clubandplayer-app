@@ -108,17 +108,19 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       if (!parsedSeason) {
         return jsonError(`Seleziona una stagione valida per l'esperienza #${index + 1}.`, 400);
       }
-      try {
-        await validateOrganizationMembership(supabase, {
-          organizationId: normalized.organizationId,
-          categoryId: normalized.categoryId,
-          sportId: sport.sport_id,
-          disciplineId: sport.sport_discipline_id,
-          variantId: sport.sport_variant_id,
-        });
-      } catch (membershipError) {
-        const code = membershipError instanceof OrganizationMembershipError ? membershipError.code : 'invalid_registration';
-        return jsonError(code, 400, { code });
+      if (normalized.organizationId && normalized.categoryId) {
+        try {
+          await validateOrganizationMembership(supabase, {
+            organizationId: normalized.organizationId,
+            categoryId: normalized.categoryId,
+            sportId: sport.sport_id,
+            disciplineId: sport.sport_discipline_id,
+            variantId: sport.sport_variant_id,
+          });
+        } catch (membershipError) {
+          const code = membershipError instanceof OrganizationMembershipError ? membershipError.code : 'invalid_registration';
+          return jsonError(code, 400, { code });
+        }
       }
       const canonicalExperience = { ...normalized, sport: sport.sport ?? '', primarySport: {
         sportId: sport.sport_id,
@@ -131,8 +133,8 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
         sport: canonicalExperience.sport,
         role: canonicalExperience.role,
         category: canonicalExperience.category,
-        sports_organization_id: canonicalExperience.organizationId,
-        sports_organization_category_id: canonicalExperience.categoryId,
+        sports_organization_id: canonicalExperience.organizationId || null,
+        sports_organization_category_id: canonicalExperience.categoryId || null,
         start_year: parsedSeason.startYear,
         end_year: parsedSeason.endYear,
         sport_id: sport.sport_id,

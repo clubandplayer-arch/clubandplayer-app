@@ -7,7 +7,7 @@ import {
   sanitizePastExperience,
 } from '../../lib/profiles/pastExperiences';
 
-test('past experiences require the canonical organization membership', () => {
+test('past experiences allow the explicit no-membership fallback', () => {
   const experience = sanitizePastExperience({
     season: '2025/26',
     club: 'ASD Example',
@@ -15,7 +15,11 @@ test('past experiences require the canonical organization membership', () => {
     role: 'Portiere',
     category: 'Serie D',
   });
-  assert.equal(isPastExperienceComplete(experience), false);
+  assert.equal(isPastExperienceComplete(experience), true);
+  assert.equal(isPastExperienceComplete({
+    ...experience,
+    organizationId: 'organization-id',
+  }), false);
   assert.equal(isPastExperienceComplete({
     ...experience,
     organizationId: 'organization-id',
@@ -37,7 +41,10 @@ test('experience API validates and persists canonical memberships', () => {
   const route = readFileSync('app/api/profiles/me/experiences/route.ts', 'utf8');
   const migration = readFileSync('supabase/migrations/20261217120000_athlete_experience_organization_membership.sql', 'utf8');
   assert.match(route, /validateOrganizationMembership/);
+  assert.match(route, /if \(normalized\.organizationId && normalized\.categoryId\)/);
+  assert.match(route, /sports_organization_id: canonicalExperience\.organizationId \|\| null/);
   assert.match(route, /sports_organization_id/);
   assert.match(route, /sports_organization_category_id/);
   assert.match(migration, /invalid experience organization membership/);
+  assert.match(migration, /x\.sports_organization_id is not null and c\.id is null/);
 });
