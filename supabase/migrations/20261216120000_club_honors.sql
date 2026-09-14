@@ -31,7 +31,19 @@ create index club_honors_public_order
 
 create function public.validate_club_honor() returns trigger
 language plpgsql set search_path = public as $$
+declare
+  season_start integer;
+  season_end integer;
+  latest_start integer;
 begin
+  season_start := split_part(new.season, '/', 1)::integer;
+  season_end := split_part(new.season, '/', 2)::integer;
+  latest_start := extract(year from current_date)::integer
+    - case when extract(month from current_date) >= 7 then 1 else 2 end;
+  if season_end <> season_start + 1 or season_start < 1900 or season_start > latest_start then
+    raise exception 'invalid_club_honor_season';
+  end if;
+
   if not exists (
     select 1 from public.profiles p
     where p.id = new.club_profile_id and p.account_type = 'club'

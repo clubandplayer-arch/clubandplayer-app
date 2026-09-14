@@ -222,7 +222,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const { data: honors } = await supabase.from('club_honors')
     .select('id,season,placement,sports:sport_id(code,canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
     .eq('club_profile_id', profileWithVerification.id).eq('is_active', true)
-    .order('season', { ascending: false }).order('placement').order('created_at');
+    .order('season', { ascending: false }).order('placement').order('created_at').order('id');
   const primarySportLabel = primaryRegistration?.sports ? (localizeSport(primaryRegistration.sports.code, t) ?? primaryRegistration.sports.canonical_name) : sportLabel;
   const organizationLabel = primaryRegistration?.organization ? sportsOrganizationDisplayName(primaryRegistration.organization.code, primaryRegistration.organization.canonical_name) : null;
   const canonicalCategoryLabel = primaryRegistration?.category?.canonical_name ?? categoryLabel;

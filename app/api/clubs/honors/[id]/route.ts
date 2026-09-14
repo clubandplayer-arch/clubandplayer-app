@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api/auth';
 import { validateOrganizationMembership, OrganizationMembershipError } from '@/lib/sports/organizationMembership.server';
+import { isClubHonorSeasonAvailable } from '@/lib/clubs/honorSeasons';
 
 const errorJson = (error: string, status: number) => NextResponse.json({ error }, { status });
-const validSeason = (value: unknown) => typeof value === 'string' && /^\d{4}\/\d{4}$/.test(value);
 const validPlacement = (value: unknown) => value === 1 || value === 2 || value === 3;
 
 export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
@@ -14,7 +14,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (!old) return errorJson('not_found', 404);
   const body = await req.json();
   const next = { ...old, ...body };
-  if (!validSeason(next.season) || !validPlacement(next.placement)) return errorJson('invalid_honor', 400);
+  if (!isClubHonorSeasonAvailable(next.season) || !validPlacement(next.placement)) return errorJson('invalid_honor', 400);
   try {
     await validateOrganizationMembership(supabase, { organizationId: next.sports_organization_id, categoryId: next.sports_organization_category_id, sportId: next.sport_id, disciplineId: next.sport_discipline_id, variantId: next.sport_variant_id });
   } catch (error) {

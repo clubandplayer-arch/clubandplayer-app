@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { clubHonorSeasonOptions, isClubHonorSeasonAvailable } from '../../lib/clubs/honorSeasons';
 
 const migration = readFileSync('supabase/migrations/20261216120000_club_honors.sql', 'utf8');
 const profile = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8');
@@ -36,5 +37,30 @@ test('honor APIs validate canonical membership and owner scope', () => {
     const route = readFileSync(path, 'utf8');
     assert.match(route, /validateOrganizationMembership/);
     assert.match(route, /club_profile_id/);
+  }
+});
+
+test('season menu rolls over every July 1 and is newest first', () => {
+  assert.deepEqual(clubHonorSeasonOptions(new Date(2026, 5, 30), 2022), ['2024/2025', '2023/2024', '2022/2023']);
+  assert.deepEqual(clubHonorSeasonOptions(new Date(2026, 6, 1), 2022), ['2025/2026', '2024/2025', '2023/2024', '2022/2023']);
+  assert.equal(isClubHonorSeasonAvailable('2025/2026', new Date(2026, 6, 1)), true);
+  assert.equal(isClubHonorSeasonAvailable('2026/2027', new Date(2026, 6, 1)), false);
+});
+
+test('the UI uses a season select, keeps Giovanili last and labels first place only Campione', () => {
+  const ui = readFileSync('components/clubs/ClubHonorsSection.tsx', 'utf8');
+  const categories = readFileSync('components/sports/OrganizationCategoryFields.tsx', 'utf8');
+  const italian = readFileSync('lib/i18n/messages/operations/it.ts', 'utf8');
+  assert.match(ui, /seasonOptions\.map/);
+  assert.doesNotMatch(ui, /placeholder="2025\/2026"/);
+  assert.match(categories, /canonical_name === 'Giovanili'/);
+  assert.match(italian, /'club\.honors\.champion':'Campione'/);
+  assert.doesNotMatch(italian, /Campione · 1° posto/);
+});
+
+test('private and public honors reads are chronological and stable', () => {
+  for (const path of ['app/api/clubs/honors/route.ts', 'app/api/clubs/[id]/honors/route.ts', 'app/(dashboard)/clubs/[id]/page.tsx']) {
+    const source = readFileSync(path, 'utf8');
+    assert.match(source, /order\('season', \{ ascending: false \}\)\.order\('placement'\)\.order\('created_at'\)\.order\('id'\)/);
   }
 });

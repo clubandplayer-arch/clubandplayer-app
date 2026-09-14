@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 export type OrganizationCategoryValue = { organizationId: string; categoryId: string };
 type Organization = { id:string; code:string; canonical_name:string; display_name:string; display_order:number };
-type Category = { id:string; organization_id:string; sport_id:string; discipline_id:string|null; variant_id:string|null; canonical_name:string };
+type Category = { id:string; organization_id:string; sport_id:string; discipline_id:string|null; variant_id:string|null; canonical_name:string; display_order?:number };
 
 export default function OrganizationCategoryFields({ sport, value, onChange, organizationLabel='Ente/Federazione', categoryLabel='Categoria' }: {
   sport: { sportId:string; disciplineId:string; variantId:string };
@@ -21,7 +21,12 @@ export default function OrganizationCategoryFields({ sport, value, onChange, org
     && (c.discipline_id ?? '')===(sport.disciplineId || '') && (c.variant_id ?? '')===(sport.variantId || '')), [catalog, sport]);
   const organizationIds = useMemo(() => new Set(categories.map(c => c.organization_id)), [categories]);
   const organizations = catalog.organizations.filter(o => organizationIds.has(o.id));
-  const selectedCategories = categories.filter(c => c.organization_id===value.organizationId);
+  const selectedCategories = categories.filter(c => c.organization_id===value.organizationId).sort((a, b) => {
+    if (a.canonical_name === 'Giovanili' && b.canonical_name === 'Giovanili') return 0;
+    if (a.canonical_name === 'Giovanili') return 1;
+    if (b.canonical_name === 'Giovanili') return -1;
+    return (a.display_order ?? 0) - (b.display_order ?? 0);
+  });
 
   return <>
     <div><label className="mb-1 block text-sm font-medium">{organizationLabel}</label><select className="w-full rounded-xl border px-3 py-2" value={value.organizationId} disabled={!sport.sportId} onChange={e => onChange({ organizationId:e.target.value, categoryId:'' }, '')}>
