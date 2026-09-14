@@ -10,18 +10,25 @@
 | --- | --- |
 | FASE 5 Web certificata | `d69768bb2df05bb8fb7ead409cba83e806b4c76b` |
 | FASE 6 Web handoff source | `0718850ac16824afa68a12a0a2b1ed993d64bf70` |
+| FASE 6 Player/Staff Experience source | `382398419b81ff8a03d8aab574f6176bb3961e75` + fix `90a14b0a876da26deb141711c679d0f8c113f70b` |
 | FASE 6 Production | **NON ASSUMERE APPLICATA/CERTIFICATA** |
 | Mobile implementation | **NOT STARTED** |
 | Android certification | **NOT STARTED** |
 | iOS certification | **NOT STARTED** |
 
-La FASE 5 è la fondazione canonica. La FASE 6 aggiunge, soltanto per i Club:
+La FASE 5 è la fondazione canonica. La FASE 6 aggiunge per i Club:
 
 - iscrizioni sportive ripetibili e multisport;
 - una sola iscrizione attiva principale;
 - scelta di un'iscrizione nelle Opportunity con snapshot canonico;
 - Palmarès ripetibile con stagione conclusa e piazzamento;
 - catalogo italiano Sport → Ente/Federazione → Categoria/Campionato.
+
+La FASE 6 aggiorna inoltre le **Esperienze passate di Player e Staff** con la cascata
+Sport → Ente/Federazione → Categoria/Campionato → Ruolo. Questa estensione non rende
+però obbligatoria la membership: il catalogo verificato non copre ancora tutti i 14
+Sport selezionabili. Il fix Web `90a14b0a876da26deb141711c679d0f8c113f70b` è parte vincolante del contratto Mobile e
+prevale sulla prima implementazione `3823984` che richiedeva sempre entrambi gli ID.
 
 La parity richiesta è funzionale, contrattuale, di sicurezza e di localizzazione; non
 è una copia pixel-perfect del Web. Non modificare il repository Web. Non creare
@@ -41,6 +48,7 @@ Leggere integralmente prima di modificare il Mobile:
 
 In caso di divergenza prevalgono, in ordine: test Web correnti, route/builder Web
 correnti, questo handoff, documenti storici. Registrare ogni divergenza nel log.
+In particolare, non replicare la validazione Experience antecedente a `90a14b0a876da26deb141711c679d0f8c113f70b`.
 
 ## 1. Istruzione pronta da usare in Codex Mobile
 
@@ -54,7 +62,9 @@ volta nell'ordine indicato. Non modificare il Web, migration, RLS o Production. 
 usare service_role. Non dichiarare parity in base a soli test unitari o replay API:
 M5 e M6 richiedono evidenze separate Android/iOS e payload catturati dalla UI reale.
 Fermati solo per un blocker concreto o prima di scritture/teardown remoti non ancora
-autorizzati.
+autorizzati. Per le Esperienze Player/Staff considera obbligatorio anche il contratto
+corretto dai commit Web 382398419b81ff8a03d8aab574f6176bb3961e75 e 90a14b0a876da26deb141711c679d0f8c113f70b:
+membership assente o completa, mai parziale; non bloccare gli Sport senza catalogo.
 ```
 
 ## 2. Audit Mobile obbligatorio
@@ -186,6 +196,68 @@ Fonte UI Web: `components/sports/OrganizationCategoryFields.tsx`. Fonte label:
 `lib/sports/organizationDisplay.ts`. Fonte API:
 `app/api/sports/organization-memberships/route.ts`. Non copiare il catalogo in una costante Mobile:
 leggerlo dall'API e conservarne ordine/relazioni.
+
+### Esperienze passate Player/Staff: contratto corretto
+
+Fonti Web vincolanti:
+
+- `components/profiles/ProfileEditForm.tsx`;
+- `lib/profiles/pastExperiences.ts`;
+- `app/api/profiles/me/experiences/route.ts`;
+- `lib/sports/organizationMembership.server.ts`;
+- `tests/unit/past-experience-membership.test.ts`;
+- `supabase/migrations/20261217120000_athlete_experience_organization_membership.sql`
+  (solo come specifica server; non copiarla né eseguirla dal Mobile).
+
+Il form è disponibile esclusivamente per Player/Athlete e Staff. Ogni riga conserva
+`season`, `club`, `sport`, `category`, `organizationId`, `categoryId`, `role` e il
+contesto `primarySport`. Il percorso controllato è:
+
+1. Sport canonico tramite il selector condiviso FASE 5;
+2. Ente/Federazione filtrato sull'intero scope canonico;
+3. Categoria/Campionato filtrata per scope ed ente, con `Giovanili` ultima;
+4. Ruolo Player specifico dello Sport oppure ruolo Staff.
+
+Stagione e Club restano campi della riga e sono obbligatori. Una Experience completa
+richiede `season + club + sport + role` e ammette **esattamente** due stati membership:
+
+```text
+FALLBACK: organizationId="" e categoryId=""
+CANONICAL: organizationId=<uuid> e categoryId=<uuid>
+INVALID: uno solo dei due ID è valorizzato
+```
+
+Il fallback vuoto è intenzionale e deve essere realmente selezionabile/salvabile:
+Pallamano, Rugby, Hockey su prato, Hockey su ghiaccio, Baseball, Softball e Lacrosse
+possono non avere alcuna categoria nello snapshot catalogo. Il Mobile non deve
+disabilitare Salva, inventare enti/categorie, usare costanti locali o impedire il
+salvataggio dell'intero Profile in questi casi. Per parity con il Web corrente, la
+coppia vuota è accettata anche se lo Sport possiede opzioni; quando entrambi gli ID
+sono presenti sarà il server a verificarne attività, relazione e scope esatto.
+
+Cambiando Sport per azione utente azzerare `role`, `organizationId`, `categoryId` e
+`category`; cambiando Ente azzerare `categoryId` e `category`. Non alterare questi
+valori durante la sola idratazione/rilettura. Le righe legacy già salvate senza UUID
+devono restare modificabili e risalvabili senza perdita della categoria testuale.
+
+Usare `GET /api/profiles/me/experiences` per idratare e
+`PATCH /api/profiles/me/experiences` con `{ "experiences": [...] }` per sostituire
+atomicamente l'elenco owner-scoped (massimo 50 righe). Nel payload canonical inviare
+la coppia di UUID; nel fallback omettere gli ID o inviarli vuoti secondo il builder
+Mobile, senza produrre una coppia parziale. Dopo il PATCH rileggere la risposta/GET e
+verificare che il fallback torni con ID vuoti e che la membership canonical torni
+invariata. Non chiamare direttamente RPC o tabelle Supabase.
+
+Test Mobile minimi, separati su Android e iOS:
+
+- create/edit/reread/delete di una Experience Player e una Staff con membership;
+- create/edit/reread/delete con uno Sport privo di opzioni e coppia vuota;
+- Profile con Experience legacy scoperta dal GET: modifica di un altro campo e save
+  senza blocco o perdita dati;
+- rifiuto client di ogni coppia parziale e osservazione del rifiuto server per una
+  coppia completa ma incompatibile/foreign;
+- reset dipendenze al cambio Sport/Ente, ruoli Player/Staff e quattro locale;
+- sostituzione atomica: un errore in una riga non deve produrre salvataggi parziali.
 
 ## 5. Iscrizioni sportive del Club
 
@@ -381,7 +453,7 @@ duplicati, self-application, ownership e teardown.
 | --- | --- | --- |
 | 1 | Audit + F5 catalog models/parser/cache/payload builder | unit parser/XOR/cache |
 | 2 | Selector unico + Search + Opportunity filters/deep link | filter-only + reset |
-| 3 | Profile Player/Staff/Club fallback + Experience | payload UI + reread/atomic replace |
+| 3 | Profile Player/Staff/Club fallback + Experience corretta (`90a14b0a876da26deb141711c679d0f8c113f70b`) | membership assente/completa, sport scoperto, legacy, payload UI + reread/atomic replace |
 | 4 | Opportunity CRUD + Applications FASE 5 | due account, ownership, teardown |
 | 5 | Discover/WhoToFollow + F5 i18n/offline/performance | IT/EN/FR/ES + retry |
 | 6 | Catalogo Enti/Categorie + cascata condivisa FASE 6 | ordine/filtro/reset/Giovanili ultima |
@@ -436,7 +508,7 @@ evidenza reale durante l'esecuzione:
 | M5-05 | Opportunity filter canonical + legacy | NOT STARTED | NOT STARTED | — |
 | M5-06 | Profile canonical save/reread | NOT STARTED | NOT STARTED | — |
 | M5-07 | Profile legacy senza perdita | NOT STARTED | NOT STARTED | — |
-| M5-08 | Experience replacement atomico | NOT STARTED | NOT STARTED | — |
+| M5-08 | Experience Player/Staff: replace atomico, legacy e membership assente/completa | NOT STARTED | NOT STARTED | includere Sport senza categorie |
 | M5-09 | Opportunity CRUD | NOT STARTED | NOT STARTED | — |
 | M5-10 | Applications/ownership | NOT STARTED | NOT STARTED | — |
 | M5-11 | Discover/WhoToFollow | NOT STARTED | NOT STARTED | — |
@@ -449,7 +521,7 @@ evidenza reale durante l'esecuzione:
 | ID | Scenario | Android | iOS | Evidenza/blocker |
 | --- | --- | --- | --- | --- |
 | M6-01 | Catalogo enti: 12 label e ordine esatti | NOT STARTED | NOT STARTED | — |
-| M6-02 | Cascata Sport → Ente → Categoria e reset | NOT STARTED | NOT STARTED | — |
+| M6-02 | Cascata Sport → Ente → Categoria e reset, incluse Experience Player/Staff | NOT STARTED | NOT STARTED | — |
 | M6-03 | `Giovanili` sempre ultima | NOT STARTED | NOT STARTED | — |
 | M6-04 | Iscrizione singola, multisport, più enti | NOT STARTED | NOT STARTED | — |
 | M6-05 | Unicità e una sola principale | NOT STARTED | NOT STARTED | — |
@@ -484,6 +556,7 @@ su Android e iOS, l'API FASE 6 usata dalla build è realmente disponibile e il t
 MOBILE_PARITY_PHASE_5_6_PASS
 phase5_web_release=d69768bb2df05bb8fb7ead409cba83e806b4c76b
 phase6_web_release=0718850ac16824afa68a12a0a2b1ed993d64bf70
+phase6_player_staff_experience=382398419b81ff8a03d8aab574f6176bb3961e75+90a14b0a876da26deb141711c679d0f8c113f70b
 mobile_release=<sha-or-build>
 android=pass ios=pass phase5=pass phase6=pass catalog=pass selector=pass
 profile=pass experience=pass registrations=pass honors=pass opportunity=pass
