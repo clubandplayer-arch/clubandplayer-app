@@ -1,5 +1,6 @@
 import { dbError, successResponse } from '@/lib/api/standardResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,5 +17,9 @@ export async function GET() {
   ]);
   const error = organizations.error ?? organizationCategories.error;
   if (error) return dbError('Impossibile caricare enti e categorie.');
-  return successResponse({ organizations:organizations.data ?? [], organizationCategories:organizationCategories.data ?? [] });
+  const orderedOrganizations = (organizations.data ?? []).map((organization) => ({
+    ...organization,
+    display_name: sportsOrganizationDisplayName(organization.code, organization.canonical_name),
+  }));
+  return successResponse({ organizations:orderedOrganizations, organizationCategories:organizationCategories.data ?? [] });
 }

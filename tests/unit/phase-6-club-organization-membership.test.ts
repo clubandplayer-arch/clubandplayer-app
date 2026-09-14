@@ -29,8 +29,15 @@ test('organization catalog has the authorized order, official evidence and no un
 
 test('organization labels use LND and the requested public acronyms', () => {
   const display = readFileSync('lib/sports/organizationDisplay.ts', 'utf8');
-  assert.match(display, /lega_nazionale_dilettanti: 'LND'/);
-  assert.match(display, /eifa: 'E\.I\.F\.A\.'/);
+  const labels = ['LND', 'Lega Calcio a 8', 'E.I.F.A.', 'CSI', 'UISP', 'CSEN', 'AICS', 'OPES', 'ASC', 'ENDAS', 'PGS', 'US ACLI'];
+  let previous = -1;
+  for (const label of labels) {
+    const position = display.indexOf(`'${label}'`);
+    assert.ok(position > previous, `${label} must occur in the requested order`);
+    previous = position;
+  }
+  const endpoint = readFileSync('app/api/sports/organization-memberships/route.ts', 'utf8');
+  assert.match(endpoint, /display_name: sportsOrganizationDisplayName/);
   const publicPage = readFileSync('app/(dashboard)/clubs/[id]/page.tsx', 'utf8');
   assert.match(publicPage, /sportsOrganizationDisplayName\(organization\.code, organization\.canonical_name\)/);
 });
