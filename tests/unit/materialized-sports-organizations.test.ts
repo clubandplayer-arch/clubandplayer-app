@@ -17,14 +17,14 @@ const organization = (organizationId: string, officialName: string, countries = 
 });
 
 class FakeSource implements MaterializedSportsOrganizationDataSource {
-  levelIds: string[] = [];
-  competitionIds: string[] = [];
-  competitionIdsBySport = new Map<string, string[]>();
+  categoryIds: string[] = [];
+  categoryIdsBySport = new Map<string, string[]>();
+  categoryOverflow = false;
   disciplines: Array<{ id: string; sportId: string; isActive: boolean }> = [];
   variants: Array<{ id: string; disciplineId: string; isActive: boolean }> = [];
   organizations = new Map<string, MaterializedSportsOrganization>();
   excludedOrganizationIds = new Set<string>();
-  calls = { levels: 0, competitions: 0 };
+  calls = { categories: 0 };
   country = { id: ids.country, isActive: true, isSupported: true };
   sport = { id: ids.sport, isActive: true };
   discipline = { id: ids.discipline, sportId: ids.sport, isActive: true };
@@ -35,9 +35,9 @@ class FakeSource implements MaterializedSportsOrganizationDataSource {
   async getVariant() { return this.variant; }
   async listActiveDisciplines() { return this.disciplines; }
   async listActiveVariants() { return this.variants; }
-  async listLevelOrganizationIds() { this.calls.levels++; return this.levelIds; }
-  async listCompetitionOrganizationIds(query: { sportId: string }) {
-    this.calls.competitions++; return this.competitionIdsBySport.get(query.sportId) ?? this.competitionIds;
+  async listCategoryOrganizationIds(query: { sportId: string }) {
+    this.calls.categories++;
+    return { organizationIds: this.categoryIdsBySport.get(query.sportId) ?? this.categoryIds, overflow: this.categoryOverflow };
   }
   async listActiveOrganizations(candidateIds: string[], countryId: string) {
     return candidateIds.flatMap((candidate) => {
@@ -71,9 +71,9 @@ test('rejects unavailable parents and incompatible discipline/variant scopes', a
   assert.equal((await state.repository.list({ ...base, disciplineId: ids.discipline, variantId: ids.variant })).status, 'invalid_scope');
 });
 
-test('unions all representable families and deduplicates organizations deterministically', async () => {
+test('deduplicates category-derived organizations deterministically', async () => {
   const { source, repository } = setup();
-  source.levelIds = [ids.lnd]; source.competitionIds = [ids.eifa, ids.lnd];
+  source.categoryIds = [ids.lnd, ids.eifa, ids.lnd];
   source.organizations.set(ids.lnd, organization(ids.lnd, 'Lega Nazionale Dilettanti'));
   source.organizations.set(ids.eifa, organization(ids.eifa, 'E.I.F.A.'));
   const result = await repository.list(base);
@@ -82,17 +82,17 @@ test('unions all representable families and deduplicates organizations determini
   assert.equal(result.status === 'ok' && result.derivation, 'materialized_options');
 });
 
-test('Lega Calcio a 8 is excluded from incompatible variants because scoped queries use exact-scope competitions only', async () => {
+test('Lega Calcio a 8 is excluded from incompatible variants because category queries use the exact structural scope', async () => {
   const { source, repository } = setup();
-  source.levelIds = [ids.lnd]; source.competitionIds = [ids.eifa];
+  source.categoryIds = [ids.eifa];
   source.organizations.set(ids.eifa, organization(ids.eifa, 'E.I.F.A.'));
   const result = await repository.list({ ...base, disciplineId: ids.discipline, variantId: ids.variant });
   assert.equal(result.status, 'ok');
   assert.deepEqual(result.status === 'ok' && result.organizations.map((item) => item.id), [ids.eifa]);
-  assert.deepEqual(source.calls, { levels: 0, competitions: 1 });
+  assert.deepEqual(source.calls, { categories: 1 });
 });
 
-test('requires discipline or variant from stable taxonomy cardinality, independently of materialized competitions', async () => {
+test('requires discipline or variant from stable taxonomy cardinality, independently of materialized categories', async () => {
   let state = setup(); state.source.disciplines = [state.source.discipline, { ...state.source.discipline, id: id('a') }];
   assert.equal((await state.repository.list(base)).status, 'invalid_scope');
   state = setup(); state.source.variants = [state.source.variant, { ...state.source.variant, id: ids.otherVariant }];
@@ -102,17 +102,17 @@ test('requires discipline or variant from stable taxonomy cardinality, independe
 test('returns zero, one and multiple organizations while preserving native names and multi-country matches', async () => {
   let state = setup();
   assert.deepEqual(await state.repository.list(base), { status: 'ok', derivation: 'materialized_options', organizations: [] });
-  state = setup(); state.source.levelIds = [ids.lnd];
+  state = setup(); state.source.categoryIds = [ids.lnd];
   state.source.organizations.set(ids.lnd, organization(ids.lnd, 'Lega Nazionale Dilettanti', [ids.secondCountry, ids.country]));
   let result = await state.repository.list(base);
   assert.deepEqual(result.status === 'ok' && result.organizations.map((item) => item.officialName), ['Lega Nazionale Dilettanti']);
-  state.source.competitionIds = [ids.eifa]; state.source.organizations.set(ids.eifa, organization(ids.eifa, 'Élite Française'));
+  state.source.categoryIds = [ids.lnd, ids.eifa]; state.source.organizations.set(ids.eifa, organization(ids.eifa, 'Élite Française'));
   result = await state.repository.list(base);
   assert.deepEqual(result.status === 'ok' && result.organizations.map((item) => item.officialName), ['Élite Française', 'Lega Nazionale Dilettanti']);
 });
 
 test('excludes inactive or expired organizations returned by an option source', async () => {
-  const { source, repository } = setup(); source.levelIds = [ids.lnd, ids.fip];
+  const { source, repository } = setup(); source.categoryIds = [ids.lnd, ids.fip];
   source.organizations.set(ids.lnd, organization(ids.lnd, 'LND'));
   source.organizations.set(ids.fip, organization(ids.fip, 'Federazione Italiana Pallacanestro'));
   // The datasource applies is_active and asOf before returning organizations.
@@ -123,8 +123,8 @@ test('excludes inactive or expired organizations returned by an option source', 
 
 test('derives E.I.F.A. for Football and FIP only for Basket, while ELITE is never invented as an organizer', async () => {
   const { source, repository } = setup();
-  source.competitionIdsBySport.set(ids.sport, [ids.eifa]);
-  source.competitionIdsBySport.set(ids.basket, [ids.fip]);
+  source.categoryIdsBySport.set(ids.sport, [ids.eifa]);
+  source.categoryIdsBySport.set(ids.basket, [ids.fip]);
   source.organizations.set(ids.fip, organization(ids.fip, 'Federazione Italiana Pallacanestro'));
   source.organizations.set(ids.eifa, organization(ids.eifa, 'E.I.F.A.'));
   let result = await repository.list(base);
@@ -135,9 +135,14 @@ test('derives E.I.F.A. for Football and FIP only for Basket, while ELITE is neve
   assert.equal(result.status === 'ok' && result.organizations.some((item) => item.officialName === 'ELITE'), false);
 });
 
-test('fails closed when a source or the deduplicated union exceeds the requested limit', async () => {
-  let state = setup(); state.source.levelIds = [ids.lnd, ids.eifa];
+test('fails closed when distinct category-derived organizations exceed the requested limit', async () => {
+  const state = setup(); state.source.categoryIds = [ids.lnd, ids.eifa];
   assert.equal((await state.repository.list({ ...base, limit: 1 })).status, 'overflow');
-  state = setup(); state.source.levelIds = [ids.lnd]; state.source.competitionIds = [ids.eifa];
-  assert.equal((await state.repository.list({ ...base, limit: 1 })).status, 'overflow');
+});
+
+test('fails closed when duplicate category rows exhaust the bounded scan before another organization', async () => {
+  const state = setup();
+  state.source.categoryIds = Array.from({ length: 200 }, () => ids.lnd);
+  state.source.categoryOverflow = true;
+  assert.deepEqual(await state.repository.list({ ...base, limit: 200 }), { status: 'overflow', organizations: [] });
 });

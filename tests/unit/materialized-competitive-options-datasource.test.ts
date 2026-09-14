@@ -1,9 +1,35 @@
-import assert from 'node:assert/strict'; import test from 'node:test'; import type { SupabaseClient } from '@supabase/supabase-js';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseMaterializedCompetitiveOptionDataSource } from '../../lib/taxonomy/materializedCompetitiveOptions.server';
-type Result={data:any[]|null;error:null}; type Call={table:string;method:string;args:any[]};
-class Query{constructor(private table:string,private calls:Call[],private results:Record<string,Result>){} private call(method:string,...args:any[]){this.calls.push({table:this.table,method,args});return this}select(...x:any[]){return this.call('select',...x)}eq(...x:any[]){return this.call('eq',...x)}neq(...x:any[]){return this.call('neq',...x)}is(...x:any[]){return this.call('is',...x)}in(...x:any[]){return this.call('in',...x)}or(...x:any[]){return this.call('or',...x)}limit(...x:any[]){return this.call('limit',...x)}then(resolve:(r:Result)=>unknown){return Promise.resolve(this.results[this.table]??{data:[],error:null}).then(resolve)}}
-const setup=(results:Record<string,Result>)=>{const calls:Call[]=[];return{calls,source:new SupabaseMaterializedCompetitiveOptionDataSource({from:(t:string)=>new Query(t,calls,results)} as unknown as SupabaseClient)}};const has=(calls:Call[],table:string,method:string,field:string)=>calls.some(x=>x.table===table&&x.method===method&&x.args[0]===field);
-test('direct level query structurally filters organization/country/sport/activity/asOf and is bounded',async()=>{const {source,calls}=setup({competition_levels:{data:[],error:null}});await source.listDirectLevels({countryId:'c',sportId:'s',organizationId:'o',asOf:'2026-09-13',fetchLimit:201});for(const f of ['country_id','sport_id','organization_id','is_active'])assert.equal(has(calls,'competition_levels','eq',f),true);assert.equal(has(calls,'competition_levels','limit',201 as any),true);assert.equal(calls.filter(x=>x.method==='or').length,2)});
-test('linked level lookup constrains explicit IDs and all structural parents',async()=>{const {source,calls}=setup({competition_levels:{data:[],error:null}});await source.listLevelsByIds({ids:['l1','l2'],countryId:'it',sportId:'football',organizationId:'lnd',asOf:'2026-09-13',fetchLimit:201});assert.equal(calls.some(x=>x.table==='competition_levels'&&x.method==='in'&&x.args[0]==='id'&&JSON.stringify(x.args[1])==='["l1","l2"]'),true);for(const f of ['country_id','sport_id','organization_id','is_active'])assert.equal(has(calls,'competition_levels','eq',f),true);assert.equal(calls.filter(x=>x.table==='competition_levels'&&x.method==='or').length,2);assert.equal(calls.some(x=>x.table==='competition_levels'&&x.method==='limit'&&x.args[0]===201),true)});
-test('competition query applies exact scope and returns bounded, sorted, deduplicated detail IDs',async()=>{const row={id:'x',organization_id:'o',sport_id:'s',discipline_id:'d',variant_id:'v',code:'c',canonical_name:'Coppa',primary_country_id:'it',territorial_scope_code:'national',default_level_id:'l'};const {source,calls}=setup({competitions:{data:[row],error:null},competition_countries:{data:[{country_id:'pl'},{country_id:'it'},{country_id:'pl'}],error:null},competition_editions:{data:[{id:'e2',level_id:'l'},{id:'e1',level_id:'l'},{id:'e2',level_id:'l'}],error:null},competition_geo_areas:{data:[{geo_area_id:'g2'},{geo_area_id:'g1'},{geo_area_id:'g2'}],error:null}});const result=await source.listCompetitions({countryId:'it',sportId:'s',organizationId:'o',disciplineId:'d',variantId:'v',asOf:'2026-09-13',fetchLimit:201});assert.equal(result.overflow,false);assert.deepEqual(result.options[0]?.activeEditionIds,['e1','e2']);assert.deepEqual(result.options[0]?.countryIds,['it','pl']);assert.deepEqual(result.options[0]?.geoAreaIds,['g1','g2']);assert.deepEqual(result.linkedLevelIds,['l']);assert.equal(result.options[0]?.competitionType,null);for(const f of ['organization_id','sport_id','discipline_id','variant_id'])assert.equal(calls.some(x=>x.method==='eq'&&String(x.args[0]).endsWith(f)),true,f);assert.equal(has(calls,'competitions','eq','primary_country_id'),true);assert.equal(has(calls,'competition_countries','eq','country_id'),true);assert.equal(has(calls,'competition_editions','neq','status'),true);assert.equal(calls.filter(x=>x.method==='limit'&&x.args[0]===201).length>=5,true)});
-test('competition detail collections overflow fail closed and inactive editions produce no option',async()=>{const row={id:'x',organization_id:'o',sport_id:'s',discipline_id:null,variant_id:null,code:'c',canonical_name:'Name',primary_country_id:'it',territorial_scope_code:'national',default_level_id:null};let state=setup({competitions:{data:[row],error:null},competition_countries:{data:[],error:null},competition_editions:{data:[{id:'e',level_id:null}],error:null},competition_geo_areas:{data:[],error:null}});assert.equal((await state.source.listCompetitions({countryId:'it',sportId:'s',organizationId:'o',disciplineId:null,variantId:null,asOf:'2026-09-13',fetchLimit:1})).overflow,true);state=setup({competitions:{data:[row],error:null},competition_countries:{data:[],error:null},competition_editions:{data:[],error:null},competition_geo_areas:{data:[],error:null}});assert.deepEqual((await state.source.listCompetitions({countryId:'it',sportId:'s',organizationId:'o',disciplineId:null,variantId:null,asOf:'2026-09-13',fetchLimit:2})).options,[])});
+
+type Call = { table: string; method: string; args: unknown[] };
+class Query {
+  constructor(private table: string, private calls: Call[], private data: unknown[]) {}
+  private call(method: string, ...args: unknown[]) { this.calls.push({ table: this.table, method, args }); return this; }
+  select(...a: unknown[]) { return this.call('select', ...a); } eq(...a: unknown[]) { return this.call('eq', ...a); }
+  is(...a: unknown[]) { return this.call('is', ...a); } order(...a: unknown[]) { return this.call('order', ...a); }
+  limit(...a: unknown[]) { return this.call('limit', ...a); }
+  then(resolve: (result: {data:unknown[];error:null}) => unknown) { return Promise.resolve({ data: this.data, error: null }).then(resolve); }
+}
+const setup = (data: unknown[] = []) => { const calls: Call[] = []; const client = { from: (table: string) => new Query(table, calls, data) } as unknown as SupabaseClient; return { calls, source: new SupabaseMaterializedCompetitiveOptionDataSource(client) }; };
+
+test('category query uses only the category table and exact structural scope', async () => {
+  const { calls, source } = setup([{ id: 'category', code: 'c8_serie_a', canonical_name: 'Serie A' }]);
+  assert.deepEqual(await source.listCategories({ countryId: 'it', sportId: 'football', organizationId: 'c8', disciplineId: 'association', variantId: 'eight', fetchLimit: 201 }), [
+    { kind: 'organization_category', id: 'category', code: 'c8_serie_a', officialName: 'Serie A' },
+  ]);
+  assert.deepEqual(new Set(calls.map((call) => call.table)), new Set(['sports_organization_categories']));
+  for (const [field, value] of [['organization_id', 'c8'], ['country_id', 'it'], ['sport_id', 'football'], ['discipline_id', 'association'], ['variant_id', 'eight'], ['is_active', true]] as const) {
+    assert.equal(calls.some((call) => call.method === 'eq' && call.args[0] === field && call.args[1] === value), true, field);
+  }
+  assert.deepEqual(calls.filter((call) => call.method === 'order').map((call) => call.args[0]), ['display_order', 'canonical_name', 'id']);
+  assert.equal(calls.some((call) => call.method === 'limit' && call.args[0] === 201), true);
+});
+
+test('category query requires null discipline and variant for an unscoped request', async () => {
+  const { calls, source } = setup();
+  await source.listCategories({ countryId: 'it', sportId: 'football', organizationId: 'org', disciplineId: null, variantId: null, fetchLimit: 2 });
+  assert.equal(calls.some((call) => call.method === 'is' && call.args[0] === 'discipline_id' && call.args[1] === null), true);
+  assert.equal(calls.some((call) => call.method === 'is' && call.args[0] === 'variant_id' && call.args[1] === null), true);
+});

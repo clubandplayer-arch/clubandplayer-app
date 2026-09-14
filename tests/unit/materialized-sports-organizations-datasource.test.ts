@@ -30,36 +30,30 @@ const setup = (results: Record<string, Result>) => {
 const has = (calls: Call[], table: string, method: string, first: unknown) =>
   calls.some((call) => call.table === table && call.method === method && call.args[0] === first);
 
-test('competition queries constrain primary and linked countries, sport, exact scope, edition status and asOf', async () => {
-  const { source, calls } = setup({
-    competitions: { data: [{ id: 'c1', organization_id: 'o1' }], error: null },
-    competition_countries: { data: [{ competitions: { organization_id: 'o2', discipline_id: 'd1', variant_id: 'v1' } }], error: null },
-  });
-  assert.deepEqual(await source.listCompetitionOrganizationIds({
-    countryId: 'country', sportId: 'sport', disciplineId: 'd1', variantId: 'v1', asOf: '2026-09-12', fetchLimit: 201,
-  }), ['o1', 'o2']);
-  assert.equal(has(calls, 'competitions', 'eq', 'primary_country_id'), true);
-  assert.equal(has(calls, 'competition_countries', 'eq', 'country_id'), true);
-  for (const field of ['sport_id', 'discipline_id', 'variant_id', 'competition_editions.is_active'])
-    assert.equal(calls.some((call) => call.method === 'eq' && call.args[0] === field || call.args[0] === `competitions.${field}`), true, field);
-  assert.equal(calls.some((call) => call.method === 'neq' && String(call.args[0]).endsWith('status') && call.args[1] === 'cancelled'), true);
-  assert.equal(calls.some((call) => call.method === 'or' && String(call.args[0]).includes('starts_on.lte.2026-09-12')), true);
-  assert.equal(calls.some((call) => call.method === 'or' && String(call.args[0]).includes('ends_on.gte.2026-09-12')), true);
-  assert.equal(calls.filter((call) => call.method === 'limit' && call.args[0] === 201).length, 2);
+test('category query uses only exact country, sport, discipline and variant scope', async () => {
+  const { source, calls } = setup({ sports_organization_categories: { data: [{ organization_id: 'o1' }], error: null } });
+  assert.deepEqual(await source.listCategoryOrganizationIds({
+    countryId: 'country', sportId: 'sport', disciplineId: 'd1', variantId: 'v1',
+  }), { organizationIds: ['o1'], overflow: false });
+  assert.deepEqual(new Set(calls.map((call) => call.table)), new Set(['sports_organization_categories']));
+  for (const [field, value] of [['country_id', 'country'], ['sport_id', 'sport'], ['discipline_id', 'd1'], ['variant_id', 'v1'], ['is_active', true]] as const)
+    assert.equal(calls.some((call) => call.method === 'eq' && call.args[0] === field && call.args[1] === value), true, field);
+  assert.equal(calls.some((call) => call.method === 'limit' && call.args[0] === 201), true);
 });
 
-test('competition queries enforce null discipline and variant consistently for primary and linked country paths', async () => {
-  const { source, calls } = setup({ competitions: { data: [], error: null }, competition_countries: { data: [], error: null } });
-  await source.listCompetitionOrganizationIds({
-    countryId: 'country', sportId: 'sport', disciplineId: null, variantId: null, asOf: '2026-09-12', fetchLimit: 201,
-  });
-  for (const table of ['competitions', 'competition_countries']) {
-    const prefix = table === 'competitions' ? '' : 'competitions.';
-    assert.equal(calls.some((call) => call.table === table && call.method === 'is' &&
-      call.args[0] === `${prefix}discipline_id` && call.args[1] === null), true, `${table} discipline`);
-    assert.equal(calls.some((call) => call.table === table && call.method === 'is' &&
-      call.args[0] === `${prefix}variant_id` && call.args[1] === null), true, `${table} variant`);
-  }
+test('category query enforces null discipline and variant for an unscoped request', async () => {
+  const { source, calls } = setup({ sports_organization_categories: { data: [], error: null } });
+  await source.listCategoryOrganizationIds({ countryId: 'country', sportId: 'sport', disciplineId: null, variantId: null });
+  assert.equal(calls.some((call) => call.method === 'is' && call.args[0] === 'discipline_id' && call.args[1] === null), true);
+  assert.equal(calls.some((call) => call.method === 'is' && call.args[0] === 'variant_id' && call.args[1] === null), true);
+});
+
+test('category scan fails closed at its hard row cap before de-duplication', async () => {
+  const rows = Array.from({ length: 201 }, () => ({ organization_id: 'first-organization' }));
+  const { source } = setup({ sports_organization_categories: { data: rows, error: null } });
+  assert.deepEqual(await source.listCategoryOrganizationIds({
+    countryId: 'country', sportId: 'sport', disciplineId: 'discipline', variantId: 'variant',
+  }), { organizationIds: [], overflow: true });
 });
 
 test('organization loading applies activity and validity and returns primary plus every linked country', async () => {
