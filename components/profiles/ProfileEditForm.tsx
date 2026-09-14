@@ -23,6 +23,7 @@ import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import ClubRegistrationsSection from '@/components/clubs/ClubRegistrationsSection';
+import ClubHonorsSection from '@/components/clubs/ClubHonorsSection';
 import {
   buildCanonicalSportRequestFields,
   buildExperienceFormPayload,
@@ -1459,6 +1460,7 @@ export default function ProfileEditForm() {
         )}
 
         {isClub && <ClubRegistrationsSection />}
+        {isClub && <ClubHonorsSection />}
 
         {/* Social */}
         {!isFan && (
