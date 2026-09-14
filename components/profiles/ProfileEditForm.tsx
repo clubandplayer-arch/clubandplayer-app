@@ -18,11 +18,11 @@ import { ProfileSkill, type ProfileVisibilityStatus } from '@/types/profile';
 import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
 import { getProfileClubNameValidationError, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '@/lib/profiles/publication';
-import { CATEGORIES_BY_SPORT, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
+import OrganizationCategoryFields, { type OrganizationCategoryValue } from '@/components/sports/OrganizationCategoryFields';
 import {
   buildCanonicalSportRequestFields,
   buildExperienceFormPayload,
@@ -150,6 +150,8 @@ type Profile = {
   club_stadium_lat: number | null;
   club_stadium_lng: number | null;
   club_league_category: string | null;
+  sports_organization_id: string | null;
+  sports_organization_category_id: string | null;
   club_motto: string | null;
 
   // social / notifiche
@@ -303,7 +305,8 @@ export default function ProfileEditForm() {
 
   // Club only
   const [sport, setSport] = useState('Calcio');
-  const [clubCategory, setClubCategory] = useState('Altro');
+  const [clubCategory, setClubCategory] = useState('');
+  const [clubMembership, setClubMembership] = useState<OrganizationCategoryValue>({ organizationId:'', categoryId:'' });
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
   const [stadium, setStadium] = useState('');
   const [stadiumAddress, setStadiumAddress] = useState('');
@@ -312,16 +315,7 @@ export default function ProfileEditForm() {
   const [clubMotto, setClubMotto] = useState('');
 
   // categorie dinamiche per sport
-  const normalizedClubSport = normalizeSport(sport) ?? sport;
   const normalizedAthleteSport = normalizeSport(athleteSport) ?? athleteSport;
-  const sportCategories = CATEGORIES_BY_SPORT[normalizedClubSport] ?? DEFAULT_CLUB_CATEGORIES;
-
-  useEffect(() => {
-    if (!sportCategories.includes(clubCategory)) {
-      setClubCategory(sportCategories[0] ?? 'Altro');
-    }
-  }, [sport, sportCategories, clubCategory]);
-
   const athleteRoles = useMemo(() => {
     if (isStaff) return [...STAFF_ROLES];
     return SPORTS_ROLES[normalizedAthleteSport] ?? SPORTS_ROLES.Calcio ?? [];
@@ -404,6 +398,8 @@ export default function ProfileEditForm() {
       club_stadium_lat: (j as any)?.club_stadium_lat ?? null,
       club_stadium_lng: (j as any)?.club_stadium_lng ?? null,
       club_league_category: (j as any)?.club_league_category ?? null,
+      sports_organization_id: (j as any)?.sports_organization_id ?? null,
+      sports_organization_category_id: (j as any)?.sports_organization_category_id ?? null,
       club_motto: (j as any)?.club_motto ?? null,
 
       links: (j as any)?.links ?? null,
@@ -516,7 +512,8 @@ export default function ProfileEditForm() {
     setX(p.links?.x || '');
     // club
     setSport(normalizeSport(p.sport) || 'Calcio');
-    setClubCategory(p.club_league_category || 'Altro');
+    setClubCategory(p.club_league_category || '');
+    setClubMembership({ organizationId:p.sports_organization_id || '', categoryId:p.sports_organization_category_id || '' });
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');
     setStadiumAddress(p.club_stadium_address || '');
@@ -681,6 +678,8 @@ export default function ProfileEditForm() {
         Object.assign(basePayload, {
           sport: isClub ? (sport || '').trim() || null : null,
           club_league_category: isClub ? (clubCategory || '').trim() || null : null,
+          sports_organization_id: isClub ? clubMembership.organizationId || null : null,
+          sports_organization_category_id: isClub ? clubMembership.categoryId || null : null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
           club_stadium_address: (stadiumAddress || '').trim() || null,
@@ -1033,9 +1032,13 @@ export default function ProfileEditForm() {
                 <CanonicalSportFilter
                   idPrefix="club-profile-sport"
                   value={primarySport}
-                  onChange={(next) => {
+                  onChange={(next, meta) => {
                     setPrimarySport(next);
                     setSport(next.legacySport);
+                    if (meta.source === 'user') {
+                      setClubMembership({ organizationId:'', categoryId:'' });
+                      setClubCategory('');
+                    }
                   }}
                   sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
                   labels={{
@@ -1047,23 +1050,9 @@ export default function ProfileEditForm() {
               )}
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-                {isClub && (
-                <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">{t('club.category')}</label>
-                  <select
-                    className="w-full min-w-0 rounded-lg border p-2"
-                    value={clubCategory}
-                    onChange={(e) => setClubCategory(e.target.value)}
-                  >
-                    {sportCategories.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                )}
+                {isClub && <OrganizationCategoryFields sport={primarySport} value={clubMembership} onChange={(next, categoryName) => {
+                  setClubMembership(next); if (categoryName !== undefined) setClubCategory(categoryName);
+                }} organizationLabel={t('club.organization')} categoryLabel={t('club.category')} />}
 
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">{t('club.foundationYear')}</label>

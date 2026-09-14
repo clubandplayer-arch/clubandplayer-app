@@ -39,6 +39,8 @@ type ClubProfileRow = {
   links: ProfileLinks;
   sport: string | null;
   club_league_category: string | null;
+  sports_organization_id: string | null;
+  sports_organization_category_id: string | null;
   club_foundation_year: number | null;
   club_stadium: string | null;
   club_stadium_address: string | null;
@@ -98,6 +100,8 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
     'links',
     'sport',
     'club_league_category',
+    'sports_organization_id',
+    'sports_organization_category_id',
     'club_foundation_year',
     'club_stadium',
     'club_stadium_address',
@@ -213,8 +217,14 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const displayName = buildClubDisplayName(profileWithVerification.full_name, profileWithVerification.display_name, 'Club');
   const sportLabel = localizeSport(normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport, t);
   const categoryLabel = localizeOpportunityCategory(profileWithVerification.club_league_category, t);
+  const [{ data: organization }, { data: organizationCategory }] = await Promise.all([
+    profileWithVerification.sports_organization_id ? supabase.from('sports_organizations').select('canonical_name').eq('id', profileWithVerification.sports_organization_id).maybeSingle() : Promise.resolve({ data:null }),
+    profileWithVerification.sports_organization_category_id ? supabase.from('sports_organization_categories').select('canonical_name').eq('id', profileWithVerification.sports_organization_category_id).maybeSingle() : Promise.resolve({ data:null }),
+  ]);
+  const organizationLabel = organization?.canonical_name ?? null;
+  const canonicalCategoryLabel = organizationCategory?.canonical_name ?? categoryLabel;
   const subtitle =
-    [categoryLabel, sportLabel].filter(Boolean).join(' · ') || '—';
+    [sportLabel, organizationLabel, canonicalCategoryLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profileWithVerification, provinceAbbreviations, locale, t('vocabulary.category.other')) || undefined;
   const headerLocationContent = (
     <div className="space-y-1">
@@ -275,18 +285,22 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
       <section className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="heading-h2 text-xl">{t('club.data')}</h2>
-          <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.headquarters')}</div>
               <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile, provinceAbbreviations, locale, t('vocabulary.category.other')) || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.mainSport')}</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.sport')}</div>
               <div className="mt-1 font-medium text-neutral-900">{sportLabel || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.typeCategory')}</div>
-              <div className="mt-1 font-medium text-neutral-900">{categoryLabel || '—'}</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.organization')}</div>
+              <div className="mt-1 font-medium text-neutral-900">{organizationLabel || '—'}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.category')}</div>
+              <div className="mt-1 font-medium text-neutral-900">{canonicalCategoryLabel || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.facility')}</div>

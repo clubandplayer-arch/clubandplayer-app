@@ -16,6 +16,7 @@ import { CanonicalSportWritePlanService } from '@/lib/taxonomy/canonicalSportWri
 import { planProfilePrimarySportRequest } from '@/lib/taxonomy/profilePrimarySportRuntimeContract';
 import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
 import { projectOpportunityCanonicalContext, resolveOpportunityRoleColumns } from '@/lib/opportunities/canonicalSportsContext.server';
+import { OrganizationMembershipError, validateOrganizationMembership } from '@/lib/sports/organizationMembership.server';
 
 export const runtime = 'nodejs';
 
@@ -27,7 +28,7 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code';
+  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code';
 
 function parseRoleGroup(value: unknown): 'player' | 'staff' | null {
   if (value == null) return null;
@@ -273,6 +274,16 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (Object.prototype.hasOwnProperty.call(body, 'club_name')) update.club_name = clubName;
   if (Object.prototype.hasOwnProperty.call(body, 'category')) update.category = category;
+  const hasOrganization = Object.prototype.hasOwnProperty.call(body, 'sports_organization_id');
+  const hasOrganizationCategory = Object.prototype.hasOwnProperty.call(body, 'sports_organization_category_id');
+  if (hasOrganization !== hasOrganizationCategory) return jsonError('sports_organization_and_category_required_together', 400);
+  if (hasOrganization) {
+    const organizationId = norm(body.sports_organization_id);
+    const organizationCategoryId = norm(body.sports_organization_category_id);
+    if (Boolean(organizationId) !== Boolean(organizationCategoryId)) return jsonError('sports_organization_and_category_required_together', 400);
+    update.sports_organization_id = organizationId;
+    update.sports_organization_category_id = organizationCategoryId;
+  }
   if (hasRoleGroupField) update.role_group = roleGroup;
   if (hasGenderField) {
     update.gender = genderDb;
@@ -350,6 +361,21 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
   } else if (hasRequiredField) {
     update.required_category = requiredCandidate ?? null;
+  }
+
+  if (hasOrganization || hasOrganizationCategory || Object.prototype.hasOwnProperty.call(update,'sport_id')) {
+    try {
+      await validateOrganizationMembership(supabase, {
+        organizationId:(hasOrganization ? update.sports_organization_id : opp.sports_organization_id) as string|null,
+        categoryId:(hasOrganizationCategory ? update.sports_organization_category_id : opp.sports_organization_category_id) as string|null,
+        sportId:(Object.prototype.hasOwnProperty.call(update,'sport_id') ? update.sport_id : opp.sport_id) as string|null,
+        disciplineId:(Object.prototype.hasOwnProperty.call(update,'sport_discipline_id') ? update.sport_discipline_id : opp.sport_discipline_id) as string|null,
+        variantId:(Object.prototype.hasOwnProperty.call(update,'sport_variant_id') ? update.sport_variant_id : opp.sport_variant_id) as string|null,
+      });
+    } catch (error) {
+      if (error instanceof OrganizationMembershipError) return jsonError(error.code,400,{ code:error.code });
+      throw error;
+    }
   }
 
   // Migrazione soft: se manca l’owner, impostalo ora

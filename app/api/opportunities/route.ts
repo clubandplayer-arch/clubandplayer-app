@@ -21,6 +21,7 @@ import { planProfilePrimarySportRequest } from '@/lib/taxonomy/profilePrimarySpo
 import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
 import { projectOpportunityCanonicalContext, resolveOpportunityRoleColumns } from '@/lib/opportunities/canonicalSportsContext.server';
 import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
+import { OrganizationMembershipError, validateOrganizationMembership } from '@/lib/sports/organizationMembership.server';
 
 export const runtime = 'nodejs';
 
@@ -130,7 +131,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,owner_id,club_id,status',
+      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,owner_id,club_id,status',
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
@@ -349,6 +350,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   const category = norm((body as any).category);
+  const sportsOrganizationId = norm((body as any).sports_organization_id);
+  const sportsOrganizationCategoryId = norm((body as any).sports_organization_category_id);
+  if (Boolean(sportsOrganizationId) !== Boolean(sportsOrganizationCategoryId)) return invalidPayload('sports_organization_and_category_required_together');
 
   let canonicalSport;
   let canonicalRole;
@@ -390,6 +394,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     role: roleHuman,
     role_group: effectiveRoleGroup,
     category,
+    sports_organization_id: sportsOrganizationId,
+    sports_organization_category_id: sportsOrganizationCategoryId,
     required_category,
     age_min,
     age_max,
@@ -399,6 +405,18 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     ...canonicalRole,
     gender_code: genderCode,
   };
+
+  try {
+    await validateOrganizationMembership(supabase, {
+      organizationId:sportsOrganizationId, categoryId:sportsOrganizationCategoryId,
+      sportId:(canonicalSport.sport_id as string|null) ?? null,
+      disciplineId:(canonicalSport.sport_discipline_id as string|null) ?? null,
+      variantId:(canonicalSport.sport_variant_id as string|null) ?? null,
+    });
+  } catch (error) {
+    if (error instanceof OrganizationMembershipError) return invalidPayload(error.code);
+    throw error;
+  }
 
   if (geographyCommand.kind !== 'absent' && geographyCommand.kind !== 'legacy') {
     try {
@@ -414,7 +432,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,club_id',
+        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,club_id',
       )
       .single();
 

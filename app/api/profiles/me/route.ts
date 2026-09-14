@@ -20,6 +20,7 @@ import {
   SportsTaxonomyRepository,
   SupabaseSportsTaxonomyDataSource,
 } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
+import { OrganizationMembershipError, validateOrganizationMembership } from '@/lib/sports/organizationMembership.server';
 
 export const runtime = 'nodejs';
 
@@ -122,6 +123,8 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   club_stadium_lat: 'number',
   club_stadium_lng: 'number',
   club_league_category: 'text',
+  sports_organization_id: 'text',
+  sports_organization_category_id: 'text',
   club_motto: 'text',
   // -------------------------------------
 };
@@ -194,6 +197,11 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const hasPrimarySportInput = Object.prototype.hasOwnProperty.call(body, 'sport') ||
     Object.prototype.hasOwnProperty.call(body, 'primarySport');
+  const hasOrganization = Object.prototype.hasOwnProperty.call(body, 'sports_organization_id');
+  const hasOrganizationCategory = Object.prototype.hasOwnProperty.call(body, 'sports_organization_category_id');
+  if (hasOrganization !== hasOrganizationCategory || (hasOrganization && Boolean(updates.sports_organization_id) !== Boolean(updates.sports_organization_category_id))) {
+    return jsonError('sports_organization_and_category_required_together', 400);
+  }
   if (hasPrimarySportInput) {
     try {
       const repository = new SportsTaxonomyRepository(new SupabaseSportsTaxonomyDataSource(supabase));
@@ -247,10 +255,10 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
   }
 
-  let currentProfile: { account_type: string | null; role: string | null } | null = null;
+  let currentProfile: { account_type: string | null; role: string | null; sport_id:string|null; sport_discipline_id:string|null; sport_variant_id:string|null; sports_organization_id:string|null; sports_organization_category_id:string|null } | null = null;
   const { data: existingProfile } = await supabase
     .from('profiles')
-    .select('account_type, role')
+    .select('account_type, role, sport_id, sport_discipline_id, sport_variant_id, sports_organization_id, sports_organization_category_id')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -303,6 +311,21 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
     updates.full_name = normalizeProfilePersonName(rawFullName);
     updates.display_name = updates.full_name;
+  }
+
+  if (hasPrimarySportInput || hasOrganization || hasOrganizationCategory) {
+    try {
+      await validateOrganizationMembership(supabase, {
+        organizationId:(hasOrganization ? updates.sports_organization_id : currentProfile?.sports_organization_id) as string|null,
+        categoryId:(hasOrganizationCategory ? updates.sports_organization_category_id : currentProfile?.sports_organization_category_id) as string|null,
+        sportId:(hasPrimarySportInput ? updates.sport_id : currentProfile?.sport_id) as string|null,
+        disciplineId:(hasPrimarySportInput ? updates.sport_discipline_id : currentProfile?.sport_discipline_id) as string|null,
+        variantId:(hasPrimarySportInput ? updates.sport_variant_id : currentProfile?.sport_variant_id) as string|null,
+      });
+    } catch (error) {
+      if (error instanceof OrganizationMembershipError) return jsonError(error.code,400,{ code:error.code });
+      throw error;
+    }
   }
 
   const { data, error } = await supabase
