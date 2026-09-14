@@ -28,7 +28,7 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code';
+  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,club_sport_registration_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code';
 
 function parseRoleGroup(value: unknown): 'player' | 'staff' | null {
   if (value == null) return null;
@@ -274,6 +274,11 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (Object.prototype.hasOwnProperty.call(body, 'club_name')) update.club_name = clubName;
   if (Object.prototype.hasOwnProperty.call(body, 'category')) update.category = category;
+  if (Object.prototype.hasOwnProperty.call(body, 'club_sport_registration_id')) {
+    const registrationId=norm(body.club_sport_registration_id);
+    if (registrationId) { const {data:registration}=await supabase.from('club_sport_registrations').select('id').eq('id',registrationId).eq('club_profile_id',opp.club_id).eq('is_active',true).maybeSingle(); if(!registration)return jsonError('invalid_club_registration',400); }
+    update.club_sport_registration_id=registrationId;
+  }
   const hasOrganization = Object.prototype.hasOwnProperty.call(body, 'sports_organization_id');
   const hasOrganizationCategory = Object.prototype.hasOwnProperty.call(body, 'sports_organization_category_id');
   if (hasOrganization !== hasOrganizationCategory) return jsonError('sports_organization_and_category_required_together', 400);

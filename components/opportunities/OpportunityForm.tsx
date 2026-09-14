@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import { buildCanonicalSportRequestFields } from '@/lib/taxonomy/canonicalSportFormPayload';
 import OrganizationCategoryFields, { type OrganizationCategoryValue } from '@/components/sports/OrganizationCategoryFields';
+import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, normalizeSport, sportRequiresPlayerRole, SPORTS_ROLES } from '@/lib/opps/constants';
@@ -126,6 +127,12 @@ export default function OpportunityForm({
   const [membership, setMembership] = useState<OrganizationCategoryValue>({
     organizationId: initial?.sports_organization_id ?? '', categoryId: initial?.sports_organization_category_id ?? '',
   });
+  const [registrationId, setRegistrationId] = useState(initial?.club_sport_registration_id ?? '');
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  // Initial registration selection intentionally runs once; later edits are user-driven.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetch('/api/clubs/registrations').then(r => r.json()).then(j => { const rows=j.data??[]; setRegistrations(rows); if (!initial && rows.length) { const primary=rows.find((x:any)=>x.is_primary)??rows[0]; chooseRegistration(primary); } }).catch(()=>{}); }, []);
+  function chooseRegistration(r:any) { setRegistrationId(r.id); setPrimarySport({sportId:r.sport_id,disciplineId:r.sport_discipline_id??'',variantId:r.sport_variant_id??'',legacySport:r.sports?.canonical_name??''}); setSport(r.sports?.canonical_name??''); setMembership({organizationId:r.sports_organization_id,categoryId:r.sports_organization_category_id}); setCategory(r.category?.canonical_name??''); }
   const normalizedSport = normalizeSport(sport) ?? sport;
   const roleOptions = useMemo(() => SPORTS_ROLES[normalizedSport] ?? [], [normalizedSport]);
   const playerRoleRequired = sportRequiresPlayerRole(normalizedSport);
@@ -166,6 +173,7 @@ export default function OpportunityForm({
         category: category || null,
         sports_organization_id: membership.organizationId || null,
         sports_organization_category_id: membership.categoryId || null,
+        club_sport_registration_id: registrationId || null,
         gender: normalizedGender,
         age_bracket: ageBracket || undefined,
         age_min,
@@ -252,6 +260,13 @@ export default function OpportunityForm({
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">{t('opportunity.sportProfile')}</legend>
+        <div>
+          <label className="block text-sm font-medium mb-1">Iscrizione del Club</label>
+          <select className="w-full rounded-xl border px-3 py-2" value={registrationId} onChange={e => { const row=registrations.find(r=>r.id===e.target.value); if(row)chooseRegistration(row); }}>
+            <option value="">—</option>{registrations.map(r=><option key={r.id} value={r.id}>{r.sports?.canonical_name} · {r.organization ? sportsOrganizationDisplayName(r.organization.code, r.organization.canonical_name) : ''} · {r.category?.canonical_name}</option>)}
+          </select>
+        </div>
+
         <CanonicalSportFilter
           idPrefix="opportunity-form-sport"
           value={primarySport}

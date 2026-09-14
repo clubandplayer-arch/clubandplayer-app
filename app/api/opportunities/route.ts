@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,owner_id,club_id,status',
+      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,club_sport_registration_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,owner_id,club_id,status',
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
@@ -350,6 +350,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   const category = norm((body as any).category);
+  const registrationId = norm((body as any).club_sport_registration_id);
   const sportsOrganizationId = norm((body as any).sports_organization_id);
   const sportsOrganizationCategoryId = norm((body as any).sports_organization_category_id);
   if (Boolean(sportsOrganizationId) !== Boolean(sportsOrganizationCategoryId)) return invalidPayload('sports_organization_and_category_required_together');
@@ -394,6 +395,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     role: roleHuman,
     role_group: effectiveRoleGroup,
     category,
+    club_sport_registration_id: registrationId,
     sports_organization_id: sportsOrganizationId,
     sports_organization_category_id: sportsOrganizationCategoryId,
     required_category,
@@ -405,6 +407,11 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     ...canonicalRole,
     gender_code: genderCode,
   };
+
+  if (registrationId) {
+    const { data: registration } = await supabase.from('club_sport_registrations').select('*').eq('id', registrationId).eq('club_profile_id', clubId).eq('is_active', true).maybeSingle();
+    if (!registration || registration.sport_id !== canonicalSport.sport_id || registration.sport_discipline_id !== canonicalSport.sport_discipline_id || registration.sport_variant_id !== canonicalSport.sport_variant_id || registration.sports_organization_id !== sportsOrganizationId || registration.sports_organization_category_id !== sportsOrganizationCategoryId) return invalidPayload('invalid_club_registration');
+  }
 
   try {
     await validateOrganizationMembership(supabase, {
@@ -432,7 +439,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,club_id',
+        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,sport_id,sport_discipline_id,sport_variant_id,club_sport_registration_id,sports_organization_id,sports_organization_category_id,role,role_group,player_position_id,staff_role_id,category,required_category,age_min,age_max,club_name,gender,gender_code,club_id',
       )
       .single();
 

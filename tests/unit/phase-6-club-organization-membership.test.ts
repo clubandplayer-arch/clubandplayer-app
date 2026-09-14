@@ -1,98 +1,10 @@
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import test from 'node:test';
-
-const migration = readFileSync('supabase/migrations/20261213120000_lnd_club_organization_membership.sql', 'utf8');
-const catalogMigration = readFileSync('supabase/migrations/20261214120000_sports_organization_catalog_order.sql', 'utf8');
-
-test('LND is seeded once as a league with exactly the authorized categories', () => {
-  assert.match(migration, /'lega_nazionale_dilettanti', 'Lega Nazionale Dilettanti', 'league'/);
-  for (const name of ['Serie D','Eccellenza','Promozione','Prima Categoria','Seconda Categoria','Terza Categoria']) {
-    assert.equal((migration.match(new RegExp(`'${name}'`, 'g')) ?? []).length, 1);
-  }
-  assert.doesNotMatch(migration, /insert[\s\S]*lega_calcio_a_8/i);
-});
-
-test('organization catalog has the authorized order, official evidence and no unverified links', () => {
-  const orderedCodes = [
-    'lega_nazionale_dilettanti', 'lega_calcio_a_8', 'eifa', 'csi', 'uisp',
-    'csen', 'aics', 'opes', 'asc', 'endas', 'pgs', 'us_acli',
-  ];
-  assert.match(catalogMigration, new RegExp(`array\\[${orderedCodes.map((code) => `'${code}'`).join(',')}\\]::text\\[\\]`));
-  assert.match(catalogMigration, /'consultedOn', '2026-09-14'/);
-  assert.match(catalogMigration, /'evidenceUse', 'official_organization_identity_only'/);
-  assert.match(catalogMigration, /'eifa_serie_a_delite', 'Serie A d''Elite'/);
-  for (const code of ['csi', 'uisp', 'csen', 'aics', 'opes', 'asc', 'endas', 'pgs', 'us_acli']) {
-    assert.doesNotMatch(catalogMigration, new RegExp(`${code}:category:`));
-  }
-});
-
-test('organization labels use LND and the requested public acronyms', () => {
-  const display = readFileSync('lib/sports/organizationDisplay.ts', 'utf8');
-  const labels = ['LND', 'Lega Calcio a 8', 'E.I.F.A.', 'CSI', 'UISP', 'CSEN', 'AICS', 'OPES', 'ASC', 'ENDAS', 'PGS', 'US ACLI'];
-  let previous = -1;
-  for (const label of labels) {
-    const position = display.indexOf(`'${label}'`);
-    assert.ok(position > previous, `${label} must occur in the requested order`);
-    previous = position;
-  }
-  const endpoint = readFileSync('app/api/sports/organization-memberships/route.ts', 'utf8');
-  assert.match(endpoint, /display_name: sportsOrganizationDisplayName/);
-  const publicPage = readFileSync('app/(dashboard)/clubs/[id]/page.tsx', 'utf8');
-  assert.match(publicPage, /sportsOrganizationDisplayName\(organization\.code, organization\.canonical_name\)/);
-});
-
-test('membership references stay nullable for legacy rows and are validated atomically', () => {
-  assert.match(migration, /add column sports_organization_id uuid references/);
-  assert.match(migration, /add column sports_organization_category_id uuid references/);
-  assert.match(migration, /sports_organization_and_category_required_together/);
-  assert.match(migration, /c\.sport_id=new\.sport_id/);
-  assert.match(migration, /c\.discipline_id is not distinct from new\.sport_discipline_id/);
-  assert.match(migration, /c\.variant_id is not distinct from new\.sport_variant_id/);
-  assert.match(migration, /before insert or update[\s\S]*on public\.profiles/);
-  assert.match(migration, /before insert or update[\s\S]*on public\.opportunities/);
-});
-
-test('the shared UI implements the dependent organization/category selectors', () => {
-  const component = readFileSync('components/sports/OrganizationCategoryFields.tsx', 'utf8');
-  assert.match(component, /c\.sport_id===sport\.sportId/);
-  assert.match(component, /c\.organization_id===value\.organizationId/);
-  assert.match(component, /onChange\(\{ organizationId:e\.target\.value, categoryId:'' \}, ''\)/);
-  assert.match(component, /disabled=\{!value\.organizationId\}/);
-  assert.match(component, /required=\{Boolean\(value\.organizationId\)\}/);
-  assert.match(component, /selected\?\.canonical_name \?\? ''/);
-});
-
-test('profile and opportunity writes carry both canonical references', () => {
-  for (const path of ['components/profiles/ProfileEditForm.tsx','components/opportunities/OpportunityForm.tsx']) {
-    const source=readFileSync(path,'utf8');
-    assert.match(source,/sports_organization_id/);
-    assert.match(source,/sports_organization_category_id/);
-  }
-});
-
-test('catalog hydration preserves legacy membership fields until a genuine user sport change', () => {
-  const selector=readFileSync('components/sports/CanonicalSportFilter.tsx','utf8');
-  assert.match(selector, /onChange\(hydrated, \{ source: 'hydration' \}\)/);
-  assert.match(selector, /\}, \{ source: 'user' \}\)/);
-  for (const path of ['components/profiles/ProfileEditForm.tsx','components/opportunities/OpportunityForm.tsx']) {
-    const source=readFileSync(path,'utf8');
-    assert.match(source,/meta\.source === 'user'/);
-  }
-  const profile=readFileSync('components/profiles/ProfileEditForm.tsx','utf8');
-  assert.match(profile,/setClubCategory\(p\.club_league_category \|\| ''\)/);
-});
-
-test('route handlers validate the final exact membership scope before writing', () => {
-  const helper=readFileSync('lib/sports/organizationMembership.server.ts','utf8');
-  assert.match(helper,/eq\('organization_id',scope\.organizationId\)/);
-  assert.match(helper,/eq\('sport_id',scope\.sportId\)/);
-  assert.match(helper,/\.is\('discipline_id',null\)/);
-  assert.match(helper,/\.is\('variant_id',null\)/);
-  assert.match(helper,/from\('sports_organizations'\)[\s\S]*eq\('is_active',true\)/);
-  for (const path of ['app/api/profiles/me/route.ts','app/api/opportunities/route.ts','app/api/opportunities/[id]/route.ts']) {
-    const source=readFileSync(path,'utf8');
-    assert.match(source,/await validateOrganizationMembership\(supabase/);
-    assert.match(source,/OrganizationMembershipError/);
-  }
-});
+import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import test from 'node:test';
+const schema=readFileSync('supabase/migrations/20261213120000_lnd_club_organization_membership.sql','utf8');const catalog=readFileSync('supabase/migrations/20261214120000_sports_organization_catalog_order.sql','utf8');
+const labels=['LND','Lega Calcio a 8','E.I.F.A.','CSI','UISP','CSEN','AICS','OPES','ASC','ENDAS','PGS','US ACLI'];
+test('exact organization labels and stable order',()=>{const d=readFileSync('lib/sports/organizationDisplay.ts','utf8');let n=-1;for(const x of labels){const p=d.indexOf(`'${x}'`);assert.ok(p>n,x);n=p}for(let i=3;i<=12;i++)assert.match(catalog,new RegExp(`,${i}\\)`));});
+test('authorized sport organization category matrix is complete',()=>{for(const x of ['Campionato Nazionale CSI','Flag Football','OPES Volley','Summerbasket 3x3','CSEN in Volley Misto Amatori','VerdeAzzurro','Baskettando Assieme Open','Coppa Italia ENDAS','Don Bosco Cup Calcio Open','Coppa Clerici'])assert.match(catalog,new RegExp(x));for(const s of ['handball','rugby','field_hockey','ice_hockey','baseball','softball','lacrosse'])assert.doesNotMatch(catalog,new RegExp(`sport_key='${s}'`));});
+test('youth labels are collapsed to one Giovanili per scope',()=>{assert.doesNotMatch(catalog,/Under 1[3-8]|Allievi|Juniores|Top Junior|Ragazzi|Minivolley|Supervolley|Minibasket|Micro/);const rows=[...catalog.matchAll(/\('([^']+)','([^']+)','giovanili','Giovanili',\d+\)/g)];const scopes=rows.map(r=>`${r[1]}:${r[2]}`);assert.equal(new Set(scopes).size,scopes.length);assert.ok(scopes.length>0);});
+test('registration schema supports multisport uniqueness primary and RLS',()=>{assert.match(schema,/create table public\.club_sport_registrations/);assert.doesNotMatch(schema,/alter table public\.profiles[\s\S]*sports_organization_id/);assert.match(schema,/unique nulls not distinct\(club_profile_id,sport_id/);assert.match(schema,/club_sport_registrations_one_primary/);assert.match(schema,/update public\.club_sport_registrations set is_primary=false/);assert.match(schema,/enable row level security/);assert.match(schema,/p\.user_id=auth\.uid\(\)/);});
+test('Club UI and APIs implement repeatable registration lifecycle',()=>{const ui=readFileSync('components/clubs/ClubRegistrationsSection.tsx','utf8');for(const x of ['Iscrizioni','Aggiungi iscrizione','Principale','Modifica','Disattiva'])assert.match(ui,new RegExp(x));for(const p of ['app/api/clubs/registrations/route.ts','app/api/clubs/registrations/[id]/route.ts','app/api/clubs/[id]/registrations/route.ts'])assert.ok(readFileSync(p,'utf8').includes('club_sport_registrations'));});
+test('opportunities copy and validate a Club registration snapshot',()=>{const form=readFileSync('components/opportunities/OpportunityForm.tsx','utf8');assert.match(form,/Iscrizione del Club/);assert.match(form,/club_sport_registration_id/);const post=readFileSync('app/api/opportunities/route.ts','utf8');assert.match(post,/eq\('club_profile_id', clubId\)/);assert.match(schema,/on delete restrict/);});
+test('public profile is registration-first with legacy fallback',()=>{const page=readFileSync('app/(dashboard)/clubs/[id]/page.tsx','utf8');assert.match(page,/primaryRegistration/);assert.match(page,/registrations\?\.length/);assert.match(page,/\?\? sportLabel/);assert.match(page,/\?\? categoryLabel/);});

@@ -1,105 +1,166 @@
 begin;
-
-alter table public.sports_organizations
-  add column display_order integer not null default 0;
-
-update public.sports_organizations
-set display_order = case code
-  when 'lega_nazionale_dilettanti' then 1
-  when 'lega_calcio_a_8' then 2
-  else display_order
-end
-where code in ('lega_nazionale_dilettanti', 'lega_calcio_a_8');
-
--- This tranche records only identities confirmed by each organization's official
--- website. Sport/category links remain absent until a stable category is proven.
-with italy as (
-  select id from public.countries where iso2 = 'IT' and is_active and is_supported
-), seed(id, code, canonical_name, organization_type, source_record_id, display_order, source_url) as (
-  values
-    ('f10d0000-0000-4000-8000-000000000201'::uuid, 'eifa', 'Elite Italian Football Association', 'league', 'IT:organization:eifa', 3, 'https://www.calcioelite.it/'),
-    ('f10d0000-0000-4000-8000-000000000202'::uuid, 'csi', 'Centro Sportivo Italiano', 'sports_promotion_body', 'IT:organization:csi', 4, 'https://www.csi-net.it/'),
-    ('f10d0000-0000-4000-8000-000000000203'::uuid, 'uisp', 'Unione Italiana Sport Per tutti', 'sports_promotion_body', 'IT:organization:uisp', 5, 'https://www.uisp.it/nazionale/'),
-    ('f10d0000-0000-4000-8000-000000000204'::uuid, 'csen', 'Centro Sportivo Educativo Nazionale', 'sports_promotion_body', 'IT:organization:csen', 6, 'https://www.csen.it/'),
-    ('f10d0000-0000-4000-8000-000000000205'::uuid, 'aics', 'Associazione Italiana Cultura Sport', 'sports_promotion_body', 'IT:organization:aics', 7, 'https://www.aics.it/'),
-    ('f10d0000-0000-4000-8000-000000000206'::uuid, 'opes', 'Organizzazione Per l''Educazione allo Sport', 'sports_promotion_body', 'IT:organization:opes', 8, 'https://www.opesitalia.it/'),
-    ('f10d0000-0000-4000-8000-000000000207'::uuid, 'asc', 'Attivita Sportive Confederate', 'sports_promotion_body', 'IT:organization:asc', 9, 'https://www.ascsport.it/'),
-    ('f10d0000-0000-4000-8000-000000000208'::uuid, 'endas', 'Ente Nazionale Democratico di Azione Sociale e Sportiva', 'sports_promotion_body', 'IT:organization:endas', 10, 'https://www.endas.it/'),
-    ('f10d0000-0000-4000-8000-000000000209'::uuid, 'pgs', 'Polisportive Giovanili Salesiane', 'sports_promotion_body', 'IT:organization:pgs', 11, 'https://www.pgsitalia.org/'),
-    ('f10d0000-0000-4000-8000-000000000210'::uuid, 'us_acli', 'Unione Sportiva ACLI', 'sports_promotion_body', 'IT:organization:us_acli', 12, 'https://www.usacli.it/')
+alter table public.sports_organizations add column display_order integer not null default 0;
+update public.sports_organizations set display_order=case code when 'lega_nazionale_dilettanti' then 1 when 'lega_calcio_a_8' then 2 else display_order end where code in ('lega_nazionale_dilettanti','lega_calcio_a_8');
+with italy as (select id from public.countries where iso2='IT'), seed(code,name,kind,ord) as (values
+  ('eifa','Elite Italian Football Association','league',3),
+  ('csi','Centro Sportivo Italiano','sports_promotion_body',4),
+  ('uisp','Unione Italiana Sport Per tutti','sports_promotion_body',5),
+  ('csen','Centro Sportivo Educativo Nazionale','sports_promotion_body',6),
+  ('aics','Associazione Italiana Cultura Sport','sports_promotion_body',7),
+  ('opes','Organizzazione Per l''Educazione allo Sport','sports_promotion_body',8),
+  ('asc','Attivita Sportive Confederate','sports_promotion_body',9),
+  ('endas','Ente Nazionale Democratico di Azione Sociale e Sportiva','sports_promotion_body',10),
+  ('pgs','Polisportive Giovanili Salesiane','sports_promotion_body',11),
+  ('us_acli','Unione Sportiva ACLI','sports_promotion_body',12))
+insert into public.sports_organizations(id,code,canonical_name,organization_type,primary_country_id,provider,source_record_id,source_version,source_metadata,is_active,display_order)
+select md5('phase6:org:'||code)::uuid,code,name,kind,italy.id,'clubandplayer_authorized_catalog','IT:organization:'||code,'2026-09-14.phase-6','{"evidence":"user_authorized_catalog"}',true,ord from seed cross join italy
+on conflict(provider,source_record_id) do update set canonical_name=excluded.canonical_name,organization_type=excluded.organization_type,display_order=excluded.display_order,is_active=true,updated_at=now();
+with seed(org_code,sport_key,code,name,ord) as (values
+  ('lnd','calcio','giovanili','Giovanili',1),
+  ('eifa','calcio','serie_a_d_elite_lorenzo_cesari','Serie A d’Elite “Lorenzo Cesari”',1),
+  ('eifa','calcio','campionato_challenge_elite','Campionato Challenge Elite',2),
+  ('eifa','calcio','super_champions_elite','Super Champions Elite',3),
+  ('eifa','calcio','eifa_champions_elite','EIFA Champions Elite',4),
+  ('eifa','calcio','eifa_europa_elite','EIFA Europa Elite',5),
+  ('eifa','calcio','eifa_conference_elite','EIFA Conference Elite',6),
+  ('eifa','calcio','eifa_cup','EIFA Cup',7),
+  ('eifa','calcio','eifa_national_road_to_rome','EIFA National Road to Rome',8),
+  ('eifa','calcio','miv_eifa_national_league','MIV EIFA National League',9),
+  ('eifa','calcio','poule_scudetto_eifa','Poule Scudetto EIFA',10),
+  ('eifa','calcio','coppa_italia_eifa','Coppa Italia EIFA',11),
+  ('eifa','calcio','trofeo_lorenzo_cesari','Trofeo Lorenzo Cesari',12),
+  ('eifa','calcio','giovanili','Giovanili',13),
+  ('csi','calcio','campionato_nazionale_csi','Campionato Nazionale CSI',1),
+  ('csi','calcio','poule_scudetto_csi','Poule Scudetto CSI',2),
+  ('csi','calcio','coppa_csi','Coppa CSI',3),
+  ('csi','calcio','giovanili','Giovanili',4),
+  ('csi','calcio_a_8','campionati_territoriali_provinciali_csi','Campionati Territoriali/Provinciali CSI',1),
+  ('csi','futsal','campionato_nazionale_calcio_a_5_csi','Campionato Nazionale Calcio a 5 CSI',1),
+  ('csi','futsal','tornei_paralimpici_plus','Tornei Paralimpici Plus',2),
+  ('csi','futsal','tornei_paralimpici_superplus','Tornei Paralimpici SuperPlus',3),
+  ('csi','futsal','giovanili','Giovanili',4),
+  ('csi','pallavolo','campionato_nazionale_pallavolo_csi','Campionato Nazionale Pallavolo CSI',1),
+  ('csi','pallavolo','giovanili','Giovanili',2),
+  ('csi','pallacanestro','campionato_nazionale_pallacanestro_csi','Campionato Nazionale Pallacanestro CSI',1),
+  ('csi','pallacanestro','pallacanestro_integrata','Pallacanestro Integrata',2),
+  ('csi','pallacanestro','giovanili','Giovanili',3),
+  ('csi','pallanuoto','circuiti_e_tornei_provinciali_regionali_csi','Circuiti e Tornei Provinciali/Regionali CSI',1),
+  ('csi','football_americano','campionati_e_tornei_nazionali_promozionali_csi','Campionati e Tornei Nazionali/Promozionali CSI',1),
+  ('csi','football_americano','flag_football','Flag Football',2),
+  ('opes','calcio','campionato_amatori_opes','Campionato Amatori OPES',1),
+  ('opes','calcio','finali_nazionali_opes_league','Finali Nazionali OPES League',2),
+  ('opes','calcio','giovanili','Giovanili',3),
+  ('opes','calcio_a_8','campionato_provinciale_calcio_a_8_opes','Campionato Provinciale Calcio a 8 OPES',1),
+  ('opes','calcio_a_8','finali_regionali_calcio_a_8_opes','Finali Regionali Calcio a 8 OPES',2),
+  ('opes','calcio_a_8','coppe_locali_opes','Coppe Locali OPES',3),
+  ('opes','futsal','finali_nazionali_calcio_a_5_opes','Finali Nazionali Calcio a 5 OPES',1),
+  ('opes','futsal','over_40','Over 40',2),
+  ('opes','futsal','opes_league_c5_femminile','OPES League C5 Femminile',3),
+  ('opes','futsal','campionati_locali_opes','Campionati Locali OPES',4),
+  ('opes','pallavolo','opes_volley','OPES Volley',1),
+  ('opes','pallavolo','trofeo_delle_regioni_opes','Trofeo delle Regioni OPES',2),
+  ('opes','pallavolo','campionati_provinciali_opes','Campionati Provinciali OPES',3),
+  ('opes','pallacanestro','campionati_e_tornei_amatoriali_provinciali_regionali_opes','Campionati e Tornei Amatoriali Provinciali/Regionali OPES',1),
+  ('opes','football_americano','tornei_promozionali_opes','Tornei Promozionali OPES',1),
+  ('opes','football_americano','flag_football','Flag Football',2),
+  ('uisp','calcio','campionato_nazionale_calcio_a_11_uisp','Campionato Nazionale Calcio a 11 UISP',1),
+  ('uisp','calcio','coppa_nazionale_calcio_a_11_uisp','Coppa Nazionale Calcio a 11 UISP',2),
+  ('uisp','calcio','rassegna_nazionale_calcio_a_7_uisp','Rassegna Nazionale Calcio a 7 UISP',3),
+  ('uisp','calcio','over_35','Over 35',4),
+  ('uisp','calcio','matti_per_il_calcio','Matti per il Calcio',5),
+  ('uisp','calcio_a_8','campionati_locali_territoriali_uisp','Campionati Locali/Territoriali UISP',1),
+  ('uisp','futsal','campionato_nazionale_calcio_a_5_uisp','Campionato Nazionale Calcio a 5 UISP',1),
+  ('uisp','futsal','campionato_nazionale_calcio_a_5_femminile_uisp','Campionato Nazionale Calcio a 5 Femminile UISP',2),
+  ('uisp','futsal','coppa_nazionale_calcio_a_5_uisp','Coppa Nazionale Calcio a 5 UISP',3),
+  ('uisp','pallavolo','campionato_nazionale_pallavolo_open_maschile_uisp','Campionato Nazionale Pallavolo Open Maschile UISP',1),
+  ('uisp','pallavolo','campionato_nazionale_pallavolo_open_femminile_uisp','Campionato Nazionale Pallavolo Open Femminile UISP',2),
+  ('uisp','pallavolo','campionato_nazionale_pallavolo_misto_uisp','Campionato Nazionale Pallavolo Misto UISP',3),
+  ('uisp','pallavolo','tornei_stagionali_uisp','Tornei Stagionali UISP',4),
+  ('uisp','pallavolo','giovanili','Giovanili',5),
+  ('uisp','pallacanestro','campionati_territoriali_regionali_uisp','Campionati Territoriali/Regionali UISP',1),
+  ('uisp','pallacanestro','summerbasket_3x3','Summerbasket 3x3',2),
+  ('uisp','pallanuoto','campionato_nazionale_pallanuoto_amatori_uisp','Campionato Nazionale Pallanuoto Amatori UISP',1),
+  ('uisp','pallanuoto','circuito_nazionale_pallanuoto_master_uisp','Circuito Nazionale Pallanuoto Master UISP',2),
+  ('csen','calcio_a_8','tornei_amatoriali_csen','Tornei Amatoriali CSEN',1),
+  ('csen','calcio_a_8','coppe_provinciali_regionali_csen','Coppe Provinciali/Regionali CSEN',2),
+  ('csen','futsal','tornei_amatoriali_calcio_a_5_csen','Tornei Amatoriali Calcio a 5 CSEN',1),
+  ('csen','futsal','coppe_provinciali_regionali_calcio_a_5_csen','Coppe Provinciali/Regionali Calcio a 5 CSEN',2),
+  ('csen','pallavolo','csen_in_volley_open_maschile','CSEN in Volley Open Maschile',1),
+  ('csen','pallavolo','csen_in_volley_open_femminile','CSEN in Volley Open Femminile',2),
+  ('csen','pallavolo','csen_in_volley_misto_amatori','CSEN in Volley Misto Amatori',3),
+  ('csen','pallavolo','tornei_zonali_provinciali_csen','Tornei Zonali/Provinciali CSEN',4),
+  ('csen','pallavolo','giovanili','Giovanili',5),
+  ('csen','pallacanestro','tornei_promozionali_csen','Tornei Promozionali CSEN',1),
+  ('csen','pallacanestro','campionati_amatoriali_territoriali_csen','Campionati Amatoriali Territoriali CSEN',2),
+  ('aics','calcio','campionato_nazionale_aics','Campionato Nazionale AICS',1),
+  ('aics','calcio','festa_del_calcio_aics','Festa del Calcio AICS',2),
+  ('aics','calcio','giovanili','Giovanili',3),
+  ('aics','calcio_a_8','campionati_e_tornei_amatoriali_provinciali_locali_aics','Campionati e Tornei Amatoriali Provinciali/Locali AICS',1),
+  ('aics','futsal','campionato_nazionale_aics_calcio_a_5','Campionato Nazionale AICS Calcio a 5',1),
+  ('aics','futsal','tornei_amatoriali_regionali_provinciali_aics','Tornei Amatoriali Regionali/Provinciali AICS',2),
+  ('aics','futsal','giovanili','Giovanili',3),
+  ('aics','pallavolo','campionato_nazionale_aics_pallavolo_open','Campionato Nazionale AICS Pallavolo Open',1),
+  ('aics','pallavolo','campionato_nazionale_aics_pallavolo_misto','Campionato Nazionale AICS Pallavolo Misto',2),
+  ('aics','pallavolo','verdeazzurro','VerdeAzzurro',3),
+  ('aics','pallavolo','giovanili','Giovanili',4),
+  ('aics','pallacanestro','campionato_nazionale_aics_pallacanestro_open','Campionato Nazionale AICS Pallacanestro Open',1),
+  ('aics','pallacanestro','giovanili','Giovanili',2),
+  ('asc','calcio','campionati_amatoriali_territoriali_asc','Campionati Amatoriali Territoriali ASC',1),
+  ('asc','calcio','over_35','Over 35',2),
+  ('asc','calcio','over_40','Over 40',3),
+  ('asc','calcio','giovanili','Giovanili',4),
+  ('asc','calcio_a_8','campionato_nazionale_calcio_a_8_asc','Campionato Nazionale Calcio a 8 ASC',1),
+  ('asc','calcio_a_8','campionato_regionale_calcio_a_8_asc','Campionato Regionale Calcio a 8 ASC',2),
+  ('asc','calcio_a_8','trofei_locali_asc','Trofei Locali ASC',3),
+  ('asc','futsal','campionati_provinciali_regionali_asc','Campionati Provinciali/Regionali ASC',1),
+  ('asc','futsal','campionato_femminile_asc','Campionato Femminile ASC',2),
+  ('asc','futsal','giovanili','Giovanili',3),
+  ('asc','pallavolo','campionato_nazionale_volley_misto_asc','Campionato Nazionale Volley Misto ASC',1),
+  ('asc','pallavolo','campionati_provinciali_regionali_asc_volley','Campionati Provinciali/Regionali ASC Volley',2),
+  ('asc','pallacanestro','baskettando_assieme_open','Baskettando Assieme Open',1),
+  ('asc','pallacanestro','basket_inclusivo','Basket Inclusivo',2),
+  ('asc','pallacanestro','giovanili','Giovanili',3),
+  ('endas','calcio','campionato_nazionale_calcio_a_11_endas','Campionato Nazionale Calcio a 11 ENDAS',1),
+  ('endas','calcio','coppa_italia_endas','Coppa Italia ENDAS',2),
+  ('endas','calcio_a_8','campionato_nazionale_endas_calcio_a_8','Campionato Nazionale ENDAS Calcio a 8',1),
+  ('endas','calcio_a_8','tornei_locali_endas','Tornei Locali ENDAS',2),
+  ('endas','futsal','campionati_territoriali_regionali_amatoriali_endas','Campionati Territoriali/Regionali Amatoriali ENDAS',1),
+  ('endas','futsal','giovanili','Giovanili',2),
+  ('endas','pallavolo','tornei_amatoriali_territoriali_endas','Tornei Amatoriali Territoriali ENDAS',1),
+  ('endas','pallavolo','rassegne_promozionali_endas','Rassegne Promozionali ENDAS',2),
+  ('endas','pallacanestro','campionato_nazionale_endas_basket_3vs3','Campionato Nazionale ENDAS Basket 3vs3',1),
+  ('endas','pallacanestro','campionati_regionali_provinciali_amatoriali_endas','Campionati Regionali/Provinciali Amatoriali ENDAS',2),
+  ('endas','pallacanestro','giovanili','Giovanili',3),
+  ('pgs','calcio','don_bosco_cup_calcio_open','Don Bosco Cup Calcio Open',1),
+  ('pgs','calcio','tornei_oratoriani_pgs','Tornei Oratoriani PGS',2),
+  ('pgs','calcio','giovanili','Giovanili',3),
+  ('pgs','calcio_a_8','tornei_e_campionati_locali_provinciali_pgs','Tornei e Campionati Locali/Provinciali PGS',1),
+  ('pgs','futsal','don_bosco_cup_calcio_a_5_open','Don Bosco Cup Calcio a 5 Open',1),
+  ('pgs','futsal','don_bosco_cup_calcio_a_5_amatori','Don Bosco Cup Calcio a 5 Amatori',2),
+  ('pgs','futsal','giovanili','Giovanili',3),
+  ('pgs','pallavolo','don_bosco_cup_pallavolo_open_maschile','Don Bosco Cup Pallavolo Open Maschile',1),
+  ('pgs','pallavolo','don_bosco_cup_pallavolo_open_femminile','Don Bosco Cup Pallavolo Open Femminile',2),
+  ('pgs','pallavolo','don_bosco_cup_pallavolo_misto','Don Bosco Cup Pallavolo Misto',3),
+  ('pgs','pallavolo','giovanili','Giovanili',4),
+  ('pgs','pallacanestro','pgs_basket_cup_5vs5','PGS Basket Cup 5vs5',1),
+  ('pgs','pallacanestro','pgs_basket_cup_3vs3','PGS Basket Cup 3vs3',2),
+  ('pgs','pallacanestro','pgs_basket_cup_open','PGS Basket Cup Open',3),
+  ('pgs','pallacanestro','giovanili','Giovanili',4),
+  ('us_acli','calcio','campionato_nazionale_calcio_a_11_open_us_acli','Campionato Nazionale Calcio a 11 Open US ACLI',1),
+  ('us_acli','calcio','sport_in_tour','Sport in Tour',2),
+  ('us_acli','calcio','coppa_clerici','Coppa Clerici',3),
+  ('us_acli','calcio_a_8','campionati_e_tornei_amatoriali_provinciali_locali_us_acli','Campionati e Tornei Amatoriali Provinciali/Locali US ACLI',1),
+  ('us_acli','futsal','campionato_nazionale_futsal_us_acli','Campionato Nazionale Futsal US ACLI',1),
+  ('us_acli','futsal','finali_nazionali_futsal_us_acli','Finali Nazionali Futsal US ACLI',2),
+  ('us_acli','futsal','campionati_territoriali_amatoriali_us_acli','Campionati Territoriali Amatoriali US ACLI',3),
+  ('us_acli','pallavolo','campionato_nazionale_pallavolo_us_acli','Campionato Nazionale Pallavolo US ACLI',1),
+  ('us_acli','pallavolo','finali_nazionali_pallavolo_us_acli','Finali Nazionali Pallavolo US ACLI',2),
+  ('us_acli','pallavolo','campionati_open_pallavolo_us_acli','Campionati Open Pallavolo US ACLI',3),
+  ('us_acli','pallavolo','giovanili','Giovanili',4),
+  ('us_acli','pallacanestro','campionati_e_tornei_amatoriali_locali_provinciali_us_acli','Campionati e Tornei Amatoriali Locali/Provinciali US ACLI',1)), scope as (
+ select seed.*,o.id organization_id,c.id country_id,s.id sport_id,d.id discipline_id,v.id variant_id from seed join public.sports_organizations o on o.code=case when seed.org_code='lnd' then 'lega_nazionale_dilettanti' else seed.org_code end cross join public.countries c join public.sports s on s.code=case when sport_key in ('calcio','calcio_a_8','futsal') then 'football' when sport_key='pallavolo' then 'volleyball' when sport_key='pallacanestro' then 'basketball' when sport_key='pallanuoto' then 'water_polo' else 'american_football' end left join public.sport_disciplines d on d.sport_id=s.id and d.code=case when sport_key in ('calcio','calcio_a_8') then 'association_football' when sport_key='futsal' then 'futsal' end left join public.sport_variants v on v.discipline_id=d.id and v.code=case when sport_key='calcio' then 'eleven_a_side' when sport_key='calcio_a_8' then 'eight_a_side' end where c.iso2='IT'
 )
-insert into public.sports_organizations (
-  id, code, canonical_name, organization_type, primary_country_id, provider,
-  source_record_id, source_version, source_metadata, is_active, display_order
-)
-select seed.id, seed.code, seed.canonical_name, seed.organization_type, italy.id,
-  'clubandplayer_official_web_review', seed.source_record_id, '2026-09-14.phase-6.2',
-  jsonb_build_object(
-    'officialSourceUrl', seed.source_url,
-    'consultedOn', '2026-09-14',
-    'evidenceUse', 'official_organization_identity_only',
-    'sportCategoryAssociations', 'not_materialized_without_stable_official_evidence'
-  ), true, seed.display_order
-from seed cross join italy
-on conflict (provider, source_record_id) do update set
-  code = excluded.code,
-  canonical_name = excluded.canonical_name,
-  organization_type = excluded.organization_type,
-  primary_country_id = excluded.primary_country_id,
-  source_version = excluded.source_version,
-  source_metadata = excluded.source_metadata,
-  is_active = excluded.is_active,
-  display_order = excluded.display_order,
-  updated_at = now();
-
--- The official E.I.F.A. site identifies its activity as eleven-a-side football
--- and publishes Serie A d'Elite as a league. No other E.I.F.A. competition is
--- materialized here because the reviewed pages describe cups, youth classes or
--- explicitly annual editions rather than another stable Club category.
-with scope as (
-  select o.id organization_id, c.id country_id, s.id sport_id, d.id discipline_id, v.id variant_id
-  from public.sports_organizations o
-  join public.countries c on c.iso2 = 'IT'
-  join public.sports s on s.code = 'football'
-  join public.sport_disciplines d on d.sport_id = s.id and d.code = 'association_football'
-  join public.sport_variants v on v.discipline_id = d.id and v.code = 'eleven_a_side'
-  where o.provider = 'clubandplayer_official_web_review' and o.source_record_id = 'IT:organization:eifa'
-)
-insert into public.sports_organization_categories (
-  id, organization_id, country_id, sport_id, discipline_id, variant_id, code,
-  canonical_name, provider, source_record_id, source_version, source_metadata,
-  is_active, display_order
-)
-select 'f10d0000-0000-4000-8000-000000000301'::uuid, scope.organization_id,
-  scope.country_id, scope.sport_id, scope.discipline_id, scope.variant_id,
-  'eifa_serie_a_delite', 'Serie A d''Elite', 'clubandplayer_official_web_review',
-  'IT:football:association_football:eleven_a_side:eifa:category:serie_a_delite',
-  '2026-09-14.phase-6.2', jsonb_build_object(
-    'officialSourceUrl', 'https://www.calcioelite.it/league/serie-a-delite-lorenzo-cesari/',
-    'consultedOn', '2026-09-14',
-    'evidenceUse', 'organization_eleven_a_side_football_and_stable_league_name'
-  ), true, 1
-from scope
-on conflict (provider, source_record_id) do update set
-  organization_id = excluded.organization_id,
-  country_id = excluded.country_id,
-  sport_id = excluded.sport_id,
-  discipline_id = excluded.discipline_id,
-  variant_id = excluded.variant_id,
-  code = excluded.code,
-  canonical_name = excluded.canonical_name,
-  source_version = excluded.source_version,
-  source_metadata = excluded.source_metadata,
-  is_active = excluded.is_active,
-  display_order = excluded.display_order,
-  updated_at = now();
-
-do $$
-begin
-  if (select array_agg(code order by display_order) from public.sports_organizations where display_order between 1 and 12)
-    is distinct from array['lega_nazionale_dilettanti','lega_calcio_a_8','eifa','csi','uisp','csen','aics','opes','asc','endas','pgs','us_acli']::text[] then
-    raise exception 'Phase 6 organization order postcondition mismatch';
-  end if;
-end $$;
-
+insert into public.sports_organization_categories(id,organization_id,country_id,sport_id,discipline_id,variant_id,code,canonical_name,provider,source_record_id,source_version,source_metadata,is_active,display_order)
+select md5('phase6:cat:'||org_code||':'||sport_key||':'||code)::uuid,organization_id,country_id,sport_id,discipline_id,variant_id,org_code||'_'||sport_key||'_'||code,name,'clubandplayer_authorized_catalog','IT:'||sport_key||':'||org_code||':category:'||code,'2026-09-14.phase-6','{"evidence":"user_authorized_catalog"}',true,ord from scope
+on conflict(provider,source_record_id) do update set organization_id=excluded.organization_id,country_id=excluded.country_id,sport_id=excluded.sport_id,discipline_id=excluded.discipline_id,variant_id=excluded.variant_id,code=excluded.code,canonical_name=excluded.canonical_name,is_active=true,display_order=excluded.display_order,updated_at=now();
 commit;

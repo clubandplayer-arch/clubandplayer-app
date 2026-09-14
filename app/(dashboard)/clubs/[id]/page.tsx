@@ -40,8 +40,6 @@ type ClubProfileRow = {
   links: ProfileLinks;
   sport: string | null;
   club_league_category: string | null;
-  sports_organization_id: string | null;
-  sports_organization_category_id: string | null;
   club_foundation_year: number | null;
   club_stadium: string | null;
   club_stadium_address: string | null;
@@ -101,8 +99,6 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
     'links',
     'sport',
     'club_league_category',
-    'sports_organization_id',
-    'sports_organization_category_id',
     'club_foundation_year',
     'club_stadium',
     'club_stadium_address',
@@ -218,14 +214,16 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const displayName = buildClubDisplayName(profileWithVerification.full_name, profileWithVerification.display_name, 'Club');
   const sportLabel = localizeSport(normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport, t);
   const categoryLabel = localizeOpportunityCategory(profileWithVerification.club_league_category, t);
-  const [{ data: organization }, { data: organizationCategory }] = await Promise.all([
-    profileWithVerification.sports_organization_id ? supabase.from('sports_organizations').select('code,canonical_name').eq('id', profileWithVerification.sports_organization_id).maybeSingle() : Promise.resolve({ data:null }),
-    profileWithVerification.sports_organization_category_id ? supabase.from('sports_organization_categories').select('canonical_name').eq('id', profileWithVerification.sports_organization_category_id).maybeSingle() : Promise.resolve({ data:null }),
-  ]);
-  const organizationLabel = organization ? sportsOrganizationDisplayName(organization.code, organization.canonical_name) : null;
-  const canonicalCategoryLabel = organizationCategory?.canonical_name ?? categoryLabel;
+  const { data: registrations } = await supabase.from('club_sport_registrations')
+    .select('id,is_primary,created_at,sports:sport_id(canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
+    .eq('club_profile_id', profileWithVerification.id).eq('is_active', true)
+    .order('is_primary', { ascending:false }).order('created_at');
+  const primaryRegistration = registrations?.[0] as any;
+  const primarySportLabel = primaryRegistration?.sports?.canonical_name ?? sportLabel;
+  const organizationLabel = primaryRegistration?.organization ? sportsOrganizationDisplayName(primaryRegistration.organization.code, primaryRegistration.organization.canonical_name) : null;
+  const canonicalCategoryLabel = primaryRegistration?.category?.canonical_name ?? categoryLabel;
   const subtitle =
-    [sportLabel, organizationLabel, canonicalCategoryLabel].filter(Boolean).join(' · ') || '—';
+    [primarySportLabel, organizationLabel, canonicalCategoryLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profileWithVerification, provinceAbbreviations, locale, t('vocabulary.category.other')) || undefined;
   const headerLocationContent = (
     <div className="space-y-1">
@@ -293,7 +291,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.sport')}</div>
-              <div className="mt-1 font-medium text-neutral-900">{sportLabel || '—'}</div>
+              <div className="mt-1 font-medium text-neutral-900">{primarySportLabel || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.organization')}</div>
@@ -326,6 +324,8 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
       />
 
       <PublicClubRosterSection clubId={clubProfileId} clubSport={profile.sport} clubCity={profile.city} />
+
+      {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">Iscrizioni</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports?.canonical_name} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {r.category?.canonical_name} {r.is_primary&&<b className="ml-2">Principale</b>}</div>)}</div></section> : null}
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">

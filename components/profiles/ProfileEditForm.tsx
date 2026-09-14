@@ -22,7 +22,7 @@ import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
-import OrganizationCategoryFields, { type OrganizationCategoryValue } from '@/components/sports/OrganizationCategoryFields';
+import ClubRegistrationsSection from '@/components/clubs/ClubRegistrationsSection';
 import {
   buildCanonicalSportRequestFields,
   buildExperienceFormPayload,
@@ -150,8 +150,6 @@ type Profile = {
   club_stadium_lat: number | null;
   club_stadium_lng: number | null;
   club_league_category: string | null;
-  sports_organization_id: string | null;
-  sports_organization_category_id: string | null;
   club_motto: string | null;
 
   // social / notifiche
@@ -305,8 +303,6 @@ export default function ProfileEditForm() {
 
   // Club only
   const [sport, setSport] = useState('Calcio');
-  const [clubCategory, setClubCategory] = useState('');
-  const [clubMembership, setClubMembership] = useState<OrganizationCategoryValue>({ organizationId:'', categoryId:'' });
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
   const [stadium, setStadium] = useState('');
   const [stadiumAddress, setStadiumAddress] = useState('');
@@ -398,8 +394,6 @@ export default function ProfileEditForm() {
       club_stadium_lat: (j as any)?.club_stadium_lat ?? null,
       club_stadium_lng: (j as any)?.club_stadium_lng ?? null,
       club_league_category: (j as any)?.club_league_category ?? null,
-      sports_organization_id: (j as any)?.sports_organization_id ?? null,
-      sports_organization_category_id: (j as any)?.sports_organization_category_id ?? null,
       club_motto: (j as any)?.club_motto ?? null,
 
       links: (j as any)?.links ?? null,
@@ -512,8 +506,6 @@ export default function ProfileEditForm() {
     setX(p.links?.x || '');
     // club
     setSport(normalizeSport(p.sport) || 'Calcio');
-    setClubCategory(p.club_league_category || '');
-    setClubMembership({ organizationId:p.sports_organization_id || '', categoryId:p.sports_organization_category_id || '' });
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');
     setStadiumAddress(p.club_stadium_address || '');
@@ -676,10 +668,6 @@ export default function ProfileEditForm() {
         }
 
         Object.assign(basePayload, {
-          sport: isClub ? (sport || '').trim() || null : null,
-          club_league_category: isClub ? (clubCategory || '').trim() || null : null,
-          sports_organization_id: isClub ? clubMembership.organizationId || null : null,
-          sports_organization_category_id: isClub ? clubMembership.categoryId || null : null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
           club_stadium_address: (stadiumAddress || '').trim() || null,
@@ -1028,31 +1016,7 @@ export default function ProfileEditForm() {
                 />
               </div>
 
-              {isClub && (
-                <CanonicalSportFilter
-                  idPrefix="club-profile-sport"
-                  value={primarySport}
-                  onChange={(next, meta) => {
-                    setPrimarySport(next);
-                    setSport(next.legacySport);
-                    if (meta.source === 'user') {
-                      setClubMembership({ organizationId:'', categoryId:'' });
-                      setClubCategory('');
-                    }
-                  }}
-                  sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
-                  labels={{
-                    sport: t('profile.clubSport'),
-                    allSports: t('profile.select'),
-                    catalogUnavailable: t('sports.catalogUnavailable'),
-                  }}
-                />
-              )}
-
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {isClub && <OrganizationCategoryFields sport={primarySport} value={clubMembership} onChange={(next, categoryName) => {
-                  setClubMembership(next); if (categoryName !== undefined) setClubCategory(categoryName);
-                }} organizationLabel={t('club.organization')} categoryLabel={t('club.category')} />}
 
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">{t('club.foundationYear')}</label>
@@ -1559,6 +1523,8 @@ export default function ProfileEditForm() {
           </label>
         </section>
         )}
+
+        {isClub && <ClubRegistrationsSection />}
 
         <div className="flex items-center gap-3">
           <button

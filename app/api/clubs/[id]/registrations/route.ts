@@ -1,0 +1,3 @@
+import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
+export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params;const supabase=await getSupabaseServerClient();const {data,error}=await supabase.from('club_sport_registrations').select('*,sports:sport_id(canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)').eq('club_profile_id',id).eq('is_active',true).order('is_primary',{ascending:false}).order('created_at');return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json({data:data??[]});}
