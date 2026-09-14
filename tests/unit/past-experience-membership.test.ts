@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+
+import {
+  isPastExperienceComplete,
+  sanitizePastExperience,
+} from '../../lib/profiles/pastExperiences';
+
+test('past experiences require the canonical organization membership', () => {
+  const experience = sanitizePastExperience({
+    season: '2025/26',
+    club: 'ASD Example',
+    sport: 'Calcio',
+    role: 'Portiere',
+    category: 'Serie D',
+  });
+  assert.equal(isPastExperienceComplete(experience), false);
+  assert.equal(isPastExperienceComplete({
+    ...experience,
+    organizationId: 'organization-id',
+    categoryId: 'category-id',
+  }), true);
+});
+
+test('past experience editor follows Sport, organization, category, role order', () => {
+  const form = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8');
+  const section = form.slice(form.indexOf("t('profile.pastExperiences')"), form.indexOf('{/* Zona di interesse'));
+  const sport = section.indexOf('<CanonicalSportFilter');
+  const membership = section.indexOf('<OrganizationCategoryFields');
+  const role = section.indexOf("t('profile.role')");
+  assert.ok(sport >= 0 && sport < membership && membership < role);
+  assert.doesNotMatch(section, /getPastExperienceCategoriesBySport/);
+});
+
+test('experience API validates and persists canonical memberships', () => {
+  const route = readFileSync('app/api/profiles/me/experiences/route.ts', 'utf8');
+  const migration = readFileSync('supabase/migrations/20261217120000_athlete_experience_organization_membership.sql', 'utf8');
+  assert.match(route, /validateOrganizationMembership/);
+  assert.match(route, /sports_organization_id/);
+  assert.match(route, /sports_organization_category_id/);
+  assert.match(migration, /invalid experience organization membership/);
+});

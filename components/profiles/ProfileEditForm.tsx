@@ -22,18 +22,17 @@ import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
+import OrganizationCategoryFields from '@/components/sports/OrganizationCategoryFields';
 import ClubRegistrationsSection from '@/components/clubs/ClubRegistrationsSection';
 import ClubHonorsSection from '@/components/clubs/ClubHonorsSection';
 import {
   buildCanonicalSportRequestFields,
   buildExperienceFormPayload,
 } from '@/lib/taxonomy/canonicalSportFormPayload';
-import { localizeOpportunityCategory, localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
 import { isCanonicalProfileResidenceUiEnabled } from '@/lib/env/features';
 import {
-  ensurePastExperienceCategory,
-  getPastExperienceCategoriesBySport,
   getSeasonOptions,
   isPastExperienceComplete,
   isPastExperienceEmpty,
@@ -56,6 +55,8 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
   sport: '',
   role: '',
   category: '',
+  organizationId: '',
+  categoryId: '',
 };
 
 const PLAYER_BIO_MAX_LENGTH = 300;
@@ -331,7 +332,7 @@ export default function ProfileEditForm() {
     const raw = await response.json().catch(() => ({}));
     const list = Array.isArray(raw?.data) ? raw.data : [];
     const normalized = list
-      .map((value: unknown) => ensurePastExperienceCategory(sanitizePastExperience((value || {}) as Record<string, unknown>)))
+      .map((value: unknown) => sanitizePastExperience((value || {}) as Record<string, unknown>))
       .filter((item: PastExperience) => !isPastExperienceEmpty(item));
     setPastExperiences(normalized.length > 0 ? normalized : [{ ...EMPTY_PAST_EXPERIENCE }]);
   }
@@ -582,7 +583,7 @@ export default function ProfileEditForm() {
 
     try {
       const normalizedPastExperiences = pastExperiences
-        .map((experience) => ensurePastExperienceCategory(sanitizePastExperience(experience)))
+        .map((experience) => sanitizePastExperience(experience))
         .filter((experience) => !isPastExperienceEmpty(experience));
 
       if (!isOrganization && !isFan) {
@@ -822,7 +823,7 @@ export default function ProfileEditForm() {
     setPastExperiences((prev) =>
       prev.map((experience, currentIndex) => {
         if (currentIndex !== index) return experience;
-        const next = ensurePastExperienceCategory({ ...experience, ...patch });
+        const next = sanitizePastExperience({ ...experience, ...patch });
         return next;
       }),
     );
@@ -1299,7 +1300,6 @@ export default function ProfileEditForm() {
             <h2 className="mb-3 text-lg font-semibold">{t('profile.pastExperiences')}</h2>
             <div className="space-y-3">
               {pastExperiences.map((experience, index) => {
-                const categoryOptions = getPastExperienceCategoriesBySport(experience.sport);
                 const roleOptions = isStaff
                   ? [...STAFF_ROLES]
                   : SPORTS_ROLES[normalizeSport(experience.sport) ?? experience.sport] ?? [];
@@ -1309,7 +1309,7 @@ export default function ProfileEditForm() {
                       <div className="flex min-w-0 flex-col gap-1">
                         <label className="text-sm text-gray-600">{t('profile.season')}</label>
                         <select
-                          className="w-full min-w-0 rounded-lg border p-2"
+                          className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700"
                           value={experience.season}
                           onChange={(e) => updatePastExperience(index, { season: e.target.value })}
                         >
@@ -1325,7 +1325,7 @@ export default function ProfileEditForm() {
                       <div className="flex min-w-0 flex-col gap-1">
                         <label className="text-sm text-gray-600">Club</label>
                         <input
-                          className="w-full min-w-0 rounded-lg border p-2"
+                          className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700"
                           value={experience.club}
                           onChange={(e) => handlePastExperienceClubChange(index, e.target.value)}
                           placeholder="Es. ASD Carlentini"
@@ -1343,9 +1343,12 @@ export default function ProfileEditForm() {
                             variantId: experience.primarySport?.variantId ?? '',
                             legacySport: experience.sport,
                           }}
-                          onChange={(next) => updatePastExperience(index, {
+                          onChange={(next, meta) => updatePastExperience(index, {
                             sport: next.legacySport,
-                            role: isStaff ? experience.role : '',
+                            role: meta.source === 'user' ? '' : experience.role,
+                            organizationId: meta.source === 'user' ? '' : experience.organizationId,
+                            categoryId: meta.source === 'user' ? '' : experience.categoryId,
+                            category: meta.source === 'user' ? '' : experience.category,
                             primarySport: next.sportId ? {
                               sportId: next.sportId,
                               disciplineId: next.disciplineId || null,
@@ -1361,35 +1364,34 @@ export default function ProfileEditForm() {
                         />
                       </div>
 
-                      <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">{t('profile.role')}<RequiredMark /></label>
+                      <OrganizationCategoryFields
+                        sport={{
+                          sportId: experience.primarySport?.sportId ?? '',
+                          disciplineId: experience.primarySport?.disciplineId ?? '',
+                          variantId: experience.primarySport?.variantId ?? '',
+                        }}
+                        value={{ organizationId: experience.organizationId, categoryId: experience.categoryId }}
+                        onChange={(membership, categoryName) => updatePastExperience(index, {
+                          organizationId: membership.organizationId,
+                          categoryId: membership.categoryId,
+                          category: categoryName ?? '',
+                        })}
+                        organizationLabel={t('club.organization')}
+                        categoryLabel={t('club.registrations.category')}
+                      />
+
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-700">{t('profile.role')}<RequiredMark /></label>
                         <select
-                          className="w-full min-w-0 rounded-lg border p-2"
+                          className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100"
                           value={experience.role}
                           onChange={(e) => updatePastExperience(index, { role: e.target.value })}
-                          disabled={!isStaff && !experience.sport}
+                          disabled={!experience.sport}
                         >
                           <option value="">— {t('profile.select')} —</option>
                           {roleOptions.map((roleOption) => (
                             <option key={roleOption} value={roleOption}>
                               {localizeSportRole(roleOption, t)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">{t('club.category')}</label>
-                        <select
-                          className="w-full min-w-0 rounded-lg border p-2"
-                          value={experience.category}
-                          onChange={(e) => updatePastExperience(index, { category: e.target.value })}
-                          disabled={!experience.sport}
-                        >
-                          <option value="">— {t('profile.select')} —</option>
-                          {categoryOptions.map((category) => (
-                            <option key={category} value={category}>
-                              {localizeOpportunityCategory(category, t)}
                             </option>
                           ))}
                         </select>

@@ -1,4 +1,3 @@
-import { CATEGORIES_BY_SPORT, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { normalizeSport } from '@/lib/opps/constants';
 
 export const PAST_EXPERIENCES_START_SEASON_YEAR = 2000;
@@ -8,6 +7,8 @@ export type PastExperienceInput = {
   club?: string | null;
   sport?: string | null;
   category?: string | null;
+  organizationId?: string | null;
+  categoryId?: string | null;
   role?: string | null;
   primarySport?: {
     sportId?: string | null;
@@ -21,6 +22,8 @@ export type PastExperience = {
   club: string;
   sport: string;
   category: string;
+  organizationId: string;
+  categoryId: string;
   role: string;
   primarySport?: {
     sportId: string | null;
@@ -67,6 +70,8 @@ export function sanitizePastExperience(input: PastExperienceInput): PastExperien
     club: (input.club || '').trim(),
     sport,
     category: (input.category || '').trim(),
+    organizationId: (input.organizationId || '').trim(),
+    categoryId: (input.categoryId || '').trim(),
     role: (input.role || '').trim(),
     primarySport: input.primarySport?.sportId
       ? {
@@ -79,21 +84,10 @@ export function sanitizePastExperience(input: PastExperienceInput): PastExperien
 }
 
 export function isPastExperienceEmpty(experience: PastExperience): boolean {
-  return !experience.season && !experience.club && !experience.sport && !experience.category && !experience.role;
+  return !experience.season && !experience.club && !experience.sport && !experience.organizationId && !experience.categoryId && !experience.role;
 }
 
 export function isPastExperienceComplete(experience: PastExperience): boolean {
-  return !!experience.season && !!experience.club && !!experience.sport && !!experience.category && !!experience.role;
-}
-
-export function getPastExperienceCategoriesBySport(sport: string): string[] {
-  const normalizedSport = normalizeSport(sport) || sport;
-  return CATEGORIES_BY_SPORT[normalizedSport] ?? DEFAULT_CLUB_CATEGORIES;
-}
-
-export function ensurePastExperienceCategory(experience: PastExperience): PastExperience {
-  if (!experience.sport) return { ...experience, category: '' };
-  const categories = getPastExperienceCategoriesBySport(experience.sport);
-  if (experience.category && categories.includes(experience.category)) return experience;
-  return { ...experience, category: '' };
+  return !!experience.season && !!experience.club && !!experience.sport
+    && !!experience.organizationId && !!experience.categoryId && !!experience.role;
 }
