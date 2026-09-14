@@ -274,10 +274,10 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (Object.prototype.hasOwnProperty.call(body, 'club_name')) update.club_name = clubName;
   if (Object.prototype.hasOwnProperty.call(body, 'category')) update.category = category;
+  let requestedRegistrationId: string | null | undefined;
   if (Object.prototype.hasOwnProperty.call(body, 'club_sport_registration_id')) {
-    const registrationId=norm(body.club_sport_registration_id);
-    if (registrationId) { const {data:registration}=await supabase.from('club_sport_registrations').select('id').eq('id',registrationId).eq('club_profile_id',opp.club_id).eq('is_active',true).maybeSingle(); if(!registration)return jsonError('invalid_club_registration',400); }
-    update.club_sport_registration_id=registrationId;
+    requestedRegistrationId = norm(body.club_sport_registration_id);
+    update.club_sport_registration_id = requestedRegistrationId;
   }
   const hasOrganization = Object.prototype.hasOwnProperty.call(body, 'sports_organization_id');
   const hasOrganizationCategory = Object.prototype.hasOwnProperty.call(body, 'sports_organization_category_id');
@@ -381,6 +381,26 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       if (error instanceof OrganizationMembershipError) return jsonError(error.code,400,{ code:error.code });
       throw error;
     }
+  }
+
+  if (requestedRegistrationId) {
+    const { data: registration, error: registrationError } = await supabase
+      .from('club_sport_registrations')
+      .select('id,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id')
+      .eq('id', requestedRegistrationId)
+      .eq('club_profile_id', opp.club_id)
+      .eq('is_active', true)
+      .maybeSingle();
+    const resultingValue = (column: string) => Object.prototype.hasOwnProperty.call(update, column)
+      ? update[column] ?? null
+      : (opp as Record<string, unknown>)[column] ?? null;
+    const tupleMatches = registration
+      && registration.sport_id === resultingValue('sport_id')
+      && (registration.sport_discipline_id ?? null) === resultingValue('sport_discipline_id')
+      && (registration.sport_variant_id ?? null) === resultingValue('sport_variant_id')
+      && registration.sports_organization_id === resultingValue('sports_organization_id')
+      && registration.sports_organization_category_id === resultingValue('sports_organization_category_id');
+    if (registrationError || !tupleMatches) return jsonError('invalid_club_registration', 400);
   }
 
   // Migrazione soft: se manca l’owner, impostalo ora

@@ -132,7 +132,7 @@ export default function OpportunityForm({
   // Initial registration selection intentionally runs once; later edits are user-driven.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetch('/api/clubs/registrations').then(r => r.json()).then(j => { const rows=j.data??[]; setRegistrations(rows); if (!initial && rows.length) { const primary=rows.find((x:any)=>x.is_primary)??rows[0]; chooseRegistration(primary); } }).catch(()=>{}); }, []);
-  function chooseRegistration(r:any) { setRegistrationId(r.id); setPrimarySport({sportId:r.sport_id,disciplineId:r.sport_discipline_id??'',variantId:r.sport_variant_id??'',legacySport:r.sports?.canonical_name??''}); setSport(r.sports?.canonical_name??''); setMembership({organizationId:r.sports_organization_id,categoryId:r.sports_organization_category_id}); setCategory(r.category?.canonical_name??''); }
+  function chooseRegistration(r:any) { const legacySport=r.legacy_sport??r.sports?.canonical_name??''; setRegistrationId(r.id); setPrimarySport({sportId:r.sport_id,disciplineId:r.sport_discipline_id??'',variantId:r.sport_variant_id??'',legacySport}); setSport(legacySport); setMembership({organizationId:r.sports_organization_id,categoryId:r.sports_organization_category_id}); setCategory(r.category?.canonical_name??''); }
   const normalizedSport = normalizeSport(sport) ?? sport;
   const roleOptions = useMemo(() => SPORTS_ROLES[normalizedSport] ?? [], [normalizedSport]);
   const playerRoleRequired = sportRequiresPlayerRole(normalizedSport);
