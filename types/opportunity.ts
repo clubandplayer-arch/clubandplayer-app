@@ -92,6 +92,9 @@ export type Opportunity = {
   role_group?: OpportunityRoleGroup | null;
   roleGroup?: OpportunityRoleGroup;
   category?: string | null; // livello/lega dell'opportunità
+  club_sport_registration_id?: string | null;
+  sports_organization_id?: string | null;
+  sports_organization_category_id?: string | null;
   required_category?: string | null; // es. "U17", "Eccellenza", ecc.
   age_min?: number | null;
   age_max?: number | null;

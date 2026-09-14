@@ -305,6 +305,8 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     updates.display_name = updates.full_name;
   }
 
+
+
   const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })

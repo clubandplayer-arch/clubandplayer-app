@@ -17,7 +17,8 @@ non autorizza automaticamente modifiche al repository Mobile e non certifica la 
 | --- | --- | --- | --- | --- |
 | FASI 1–4 | Completate secondo roadmap Web | Da consolidare dagli audit esistenti | User-reported, da riverificare | Non certificata qui |
 | FASE 5 — canonical sports | Completata 5A–5J | **READY** — `phase-5-mobile-parity-handoff.md` | NOT STARTED | NOT STARTED |
-| FASI 6–8 | NOT STARTED | Non applicabile | NOT STARTED | NOT STARTED |
+| FASE 6 — iscrizioni Club e Palmarès | In sviluppo sul branch Web | **READY** — `phase-5-6-mobile-parity-handoff.md` | NOT STARTED | NOT STARTED |
+| FASI 7–8 | NOT STARTED | Non applicabile | NOT STARTED | NOT STARTED |
 | FASE 9 | Piano Mobile master | Questo documento | NOT STARTED | NOT STARTED |
 
 ## Procedura obbligatoria per ogni futura fase Web
