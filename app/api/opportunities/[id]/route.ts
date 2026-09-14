@@ -274,10 +274,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (Object.prototype.hasOwnProperty.call(body, 'club_name')) update.club_name = clubName;
   if (Object.prototype.hasOwnProperty.call(body, 'category')) update.category = category;
-  let requestedRegistrationId: string | null | undefined;
-  if (Object.prototype.hasOwnProperty.call(body, 'club_sport_registration_id')) {
-    requestedRegistrationId = norm(body.club_sport_registration_id);
-    update.club_sport_registration_id = requestedRegistrationId;
+  const hasRegistration = Object.prototype.hasOwnProperty.call(body, 'club_sport_registration_id');
+  if (hasRegistration) {
+    update.club_sport_registration_id = norm(body.club_sport_registration_id);
   }
   const hasOrganization = Object.prototype.hasOwnProperty.call(body, 'sports_organization_id');
   const hasOrganizationCategory = Object.prototype.hasOwnProperty.call(body, 'sports_organization_category_id');
@@ -383,11 +382,24 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
   }
 
-  if (requestedRegistrationId) {
+  const registrationSnapshotColumns = [
+    'sport_id',
+    'sport_discipline_id',
+    'sport_variant_id',
+    'sports_organization_id',
+    'sports_organization_category_id',
+  ];
+  const hasRegistrationSnapshotUpdate = registrationSnapshotColumns.some((column) =>
+    Object.prototype.hasOwnProperty.call(update, column)
+  );
+  const effectiveRegistrationId = (hasRegistration
+    ? update.club_sport_registration_id
+    : opp.club_sport_registration_id) as string | null;
+  if (effectiveRegistrationId && (hasRegistration || hasRegistrationSnapshotUpdate)) {
     const { data: registration, error: registrationError } = await supabase
       .from('club_sport_registrations')
       .select('id,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id')
-      .eq('id', requestedRegistrationId)
+      .eq('id', effectiveRegistrationId)
       .eq('club_profile_id', opp.club_id)
       .eq('is_active', true)
       .maybeSingle();

@@ -17,8 +17,15 @@ test('registration choices retain the legacy label for their complete canonical 
   assert.match(form, /setSport\(legacySport\)/);
 });
 
-test('PATCH compares a requested registration with every resulting snapshot field', () => {
-  assert.match(opportunityItem, /requestedRegistrationId/);
+test('PATCH compares the effective registration with every resulting snapshot field', () => {
+  assert.match(
+    opportunityItem,
+    /const effectiveRegistrationId = \(hasRegistration[\s\S]*?opp\.club_sport_registration_id/
+  );
+  assert.match(
+    opportunityItem,
+    /effectiveRegistrationId && \(hasRegistration \|\| hasRegistrationSnapshotUpdate\)/
+  );
   for (const column of [
     'sport_id',
     'sport_discipline_id',
