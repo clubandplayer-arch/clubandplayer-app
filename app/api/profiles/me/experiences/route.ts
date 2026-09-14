@@ -3,7 +3,6 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { jsonError, withAuth } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import {
-  ensurePastExperienceCategory,
   isPastExperienceComplete,
   isPastExperienceEmpty,
   parseSeasonLabel,
@@ -14,6 +13,7 @@ import { CanonicalSportWritePlanService } from '@/lib/taxonomy/canonicalSportWri
 import { planExperienceSportRequest, projectExperiencePrimarySport } from '@/lib/taxonomy/experienceSportRuntimeContract';
 import { mapProfilePrimarySportContractError } from '@/lib/taxonomy/profilePrimarySportRuntimeContract';
 import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
+import { OrganizationMembershipError, validateOrganizationMembership } from '@/lib/sports/organizationMembership.server';
 
 export const runtime = 'nodejs';
 const MAX_EXPERIENCES = 50;
@@ -44,7 +44,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data, error } = await supabase
     .from('athlete_experiences')
-    .select('club_name, sport, role, category, start_year, end_year, sport_id, sport_discipline_id, sport_variant_id')
+    .select('club_name, sport, role, category, start_year, end_year, sport_id, sport_discipline_id, sport_variant_id, sports_organization_id, sports_organization_category_id')
     .eq('profile_id', profile.id)
     .order('start_year', { ascending: false })
     .order('end_year', { ascending: false });
@@ -58,16 +58,16 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       if (typeof startYear !== 'number' || typeof endYear !== 'number' || endYear !== startYear + 1) {
         return null;
       }
-      const legacy = ensurePastExperienceCategory(
-        sanitizePastExperience({
-          season: `${startYear}/${String(endYear % 100).padStart(2, '0')}`,
-          club: item.club_name || '',
-          sport: item.sport || '',
-          role: item.role || '',
-          category: item.category || '',
-        }),
-      );
-      return { ...legacy, primarySport: projectExperiencePrimarySport(item) };
+      const experience = sanitizePastExperience({
+        season: `${startYear}/${String(endYear % 100).padStart(2, '0')}`,
+        club: item.club_name || '',
+        sport: item.sport || '',
+        role: item.role || '',
+        category: item.category || '',
+        organizationId: item.sports_organization_id || '',
+        categoryId: item.sports_organization_category_id || '',
+      });
+      return { ...experience, primarySport: projectExperiencePrimarySport(item) };
     })
     .filter((value): value is NonNullable<typeof value> => Boolean(value))
     .sort(sortBySeasonDescending);
@@ -100,13 +100,27 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (isPastExperienceEmpty(sanitizedInput) && !Object.prototype.hasOwnProperty.call(raw, 'primarySport')) continue;
     try {
       const sport = await planExperienceSportRequest(raw, planner);
-      const normalized = ensurePastExperienceCategory(sanitizePastExperience({ ...raw, sport: sport.sport }));
+      const normalized = sanitizePastExperience({ ...raw, sport: sport.sport });
       if (!isPastExperienceComplete(normalized)) {
         return jsonError(`Compila tutti i campi dell'esperienza #${index + 1}.`, 400);
       }
       const parsedSeason = parseSeasonLabel(normalized.season);
       if (!parsedSeason) {
         return jsonError(`Seleziona una stagione valida per l'esperienza #${index + 1}.`, 400);
+      }
+      if (normalized.organizationId && normalized.categoryId) {
+        try {
+          await validateOrganizationMembership(supabase, {
+            organizationId: normalized.organizationId,
+            categoryId: normalized.categoryId,
+            sportId: sport.sport_id,
+            disciplineId: sport.sport_discipline_id,
+            variantId: sport.sport_variant_id,
+          });
+        } catch (membershipError) {
+          const code = membershipError instanceof OrganizationMembershipError ? membershipError.code : 'invalid_registration';
+          return jsonError(code, 400, { code });
+        }
       }
       const canonicalExperience = { ...normalized, sport: sport.sport ?? '', primarySport: {
         sportId: sport.sport_id,
@@ -119,6 +133,8 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
         sport: canonicalExperience.sport,
         role: canonicalExperience.role,
         category: canonicalExperience.category,
+        sports_organization_id: canonicalExperience.organizationId || null,
+        sports_organization_category_id: canonicalExperience.categoryId || null,
         start_year: parsedSeason.startYear,
         end_year: parsedSeason.endYear,
         sport_id: sport.sport_id,

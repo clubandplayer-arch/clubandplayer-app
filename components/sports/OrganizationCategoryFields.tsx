@@ -29,10 +29,10 @@ export default function OrganizationCategoryFields({ sport, value, onChange, org
   });
 
   return <>
-    <div><label className="mb-1 block text-sm font-medium">{organizationLabel}</label><select className="w-full rounded-xl border px-3 py-2" value={value.organizationId} disabled={!sport.sportId} onChange={e => onChange({ organizationId:e.target.value, categoryId:'' }, '')}>
+    <div><label className="mb-2 block text-sm font-medium text-slate-700">{organizationLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.organizationId} disabled={!sport.sportId} onChange={e => onChange({ organizationId:e.target.value, categoryId:'' }, '')}>
       <option value="">—</option>{organizations.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}
     </select></div>
-    <div><label className="mb-1 block text-sm font-medium">{categoryLabel}</label><select className="w-full rounded-xl border px-3 py-2" value={value.categoryId} disabled={!value.organizationId} required={Boolean(value.organizationId)} onChange={e => {
+    <div><label className="mb-2 block text-sm font-medium text-slate-700">{categoryLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.categoryId} disabled={!value.organizationId} required={Boolean(value.organizationId)} onChange={e => {
       const selected=selectedCategories.find(c => c.id===e.target.value); onChange({ ...value, categoryId:e.target.value }, selected?.canonical_name ?? '');
     }}><option value="">—</option>{selectedCategories.map(c => <option key={c.id} value={c.id}>{c.canonical_name}</option>)}</select></div>
   </>;
