@@ -311,6 +311,8 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           </div>
         </div>
 
+        {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.registrations.title')}</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports ? (localizeSport(r.sports.code, t) ?? r.sports.canonical_name) : '—'} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {r.category?.canonical_name} {r.is_primary&&<b className="ml-2">{t('club.registrations.primary')}</b>}</div>)}</div></section> : null}
+
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="heading-h2 text-xl">{t('club.biography')}</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">{aboutText}</p>
@@ -324,8 +326,6 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
       />
 
       <PublicClubRosterSection clubId={clubProfileId} clubSport={profile.sport} clubCity={profile.city} />
-
-      {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.registrations.title')}</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports ? (localizeSport(r.sports.code, t) ?? r.sports.canonical_name) : '—'} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {r.category?.canonical_name} {r.is_primary&&<b className="ml-2">{t('club.registrations.primary')}</b>}</div>)}</div></section> : null}
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
