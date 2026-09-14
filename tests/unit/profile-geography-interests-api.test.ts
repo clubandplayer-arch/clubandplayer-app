@@ -5,6 +5,7 @@ import test from 'node:test';
 const source = readFileSync('app/api/profile-geography/interests/route.ts', 'utf8');
 const form = readFileSync('components/profiles/GeographicInterestsForm.tsx', 'utf8');
 const settings = readFileSync('app/settings/page.tsx', 'utf8');
+const profileEdit = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8');
 
 test('geography interests endpoint is owner-scoped and reads all three B6 concepts separately', () => {
   assert.match(source, /\.select\(['"]id,account_type['"]\)\.eq\(['"]user_id['"], userId\)\.maybeSingle\(\)/);
@@ -37,6 +38,12 @@ test('settings integrates the canonical B6 UI through the narrow endpoint', () =
   assert.match(form, /countryInterest: \{ countryId, selected: true \}/);
   assert.match(form, /geoAreaInterest: \{ geoAreaId, selected: true \}/);
   assert.match(form, /openToRelocation: event\.target\.checked/);
+});
+
+test('Player and Staff profile edit reuse the canonical geographic interests UI', () => {
+  assert.match(profileEdit, /import GeographicInterestsForm/);
+  assert.match(profileEdit, /!isOrganization && !isFan[\s\S]*<GeographicInterestsForm title=\{t\(['"]profile\.interestArea['"]\)\}/);
+  assert.doesNotMatch(profileEdit, /WORLD_COUNTRY_OPTIONS\.map[\s\S]{0,500}<LocationFields[\s\S]{0,300}interestLocation/);
 });
 
 test('Club, Institution and Fan cannot read or write personal mobility interests', () => {
