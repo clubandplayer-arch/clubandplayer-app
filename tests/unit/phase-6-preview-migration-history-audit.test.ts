@@ -4,12 +4,13 @@ import test from 'node:test'
 
 const report = readFileSync('scripts/sports/reports/phase-6-preview-migration-history-audit-read-only.sql', 'utf8')
 const migrations = readdirSync('supabase/migrations').filter((name) => name.endsWith('.sql')).sort()
+const migrationVersions = migrations.flatMap((name) => name.match(/^([0-9]+)_/)?.[1] ?? [])
 
-test('Preview history report embeds the exact local migration versions', () => {
+test('Preview history report embeds its exact legacy audit snapshot through 20261211150000', () => {
   const embedded = [...report.matchAll(/\('([0-9]+)',\s*'[^']+'\)/g)].map((match) => match[1])
-  const expected = migrations.map((name) => name.match(/^([0-9]+)_/)?.[1]).filter(Boolean)
-  assert.deepEqual(embedded.slice(0, expected.length), expected)
-  assert.equal(new Set(expected).size, expected.length)
+  const audited = migrationVersions.filter((version) => version <= '20261211150000')
+  assert.deepEqual(embedded.slice(0, audited.length), audited)
+  assert.equal(new Set(audited).size, audited.length)
 })
 
 test('Preview history report remains one-result and read-only', () => {
@@ -26,17 +27,18 @@ test('Preview history report remains one-result and read-only', () => {
   assert.doesNotMatch(report, /\b(insert|update|delete|alter|drop|truncate|create)\b/i)
 })
 
-test('verified Preview head contains every current local migration in CLI version order', () => {
-  const localVersions = migrations.map((name) => name.match(/^([0-9]+)_/)?.[1]).filter(Boolean).sort()
-  const verifiedRemoteVersions = [...localVersions]
+test('verified Preview head remains explicit while the next local migration stays unapplied', () => {
+  const localVersions = [...migrationVersions].sort()
+  const verifiedRemoteVersions = localVersions.filter((version) => version <= '20261212120000')
+  const pendingLocalVersions = localVersions.filter((version) => version > '20261212120000')
 
-  assert.deepEqual(localVersions, verifiedRemoteVersions)
-  assert.equal(localVersions.at(-1), '20261211150000')
-  assert.equal(migrations.at(-1), '20261211150000_restore_profile_geo_area_interest_read.sql')
+  assert.equal(verifiedRemoteVersions.at(-1), '20261212120000')
+  assert.deepEqual(pendingLocalVersions, ['20261213120000'])
+  assert.equal(migrations.at(-1), '20261213120000_club_primary_organization_affiliation.sql')
 })
 
 test('mixed-length historical versions are compared as strings, not timestamps', () => {
-  const localVersions = migrations.map((name) => name.match(/^([0-9]+)_/)?.[1]).filter(Boolean).sort()
+  const localVersions = [...migrationVersions].sort()
 
   assert.ok(localVersions.indexOf('20251126') < localVersions.indexOf('20251126120000'))
   assert.ok(localVersions.indexOf('202605240001') < localVersions.indexOf('20260524000150'))

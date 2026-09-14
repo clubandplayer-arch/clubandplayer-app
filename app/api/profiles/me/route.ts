@@ -20,6 +20,7 @@ import {
   SportsTaxonomyRepository,
   SupabaseSportsTaxonomyDataSource,
 } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
+import { parseClubAffiliation, validateClubAffiliation } from '@/lib/taxonomy/clubAffiliation.server';
 
 export const runtime = 'nodejs';
 
@@ -277,12 +278,14 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
   }
 
-  let currentProfile: { account_type: string | null; role: string | null } | null = null;
-  const { data: existingProfile } = await supabase
+  let currentProfile: { account_type: string | null; role: string | null; sport_id?: string | null; sport_discipline_id?: string | null; sport_variant_id?: string | null } | null = null;
+  const { data: existingProfile, error: existingProfileError } = await supabase
     .from('profiles')
-    .select('account_type, role')
+    .select('account_type, role, sport_id, sport_discipline_id, sport_variant_id')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  if (existingProfileError) return jsonError('Impossibile verificare il profilo.', 500);
 
   if (existingProfile) currentProfile = existingProfile;
 
@@ -296,6 +299,38 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const effectiveAccountType = ((updates.account_type as string | null | undefined) ?? currentProfile?.account_type ?? null) as
     | string
     | null;
+  if (Object.prototype.hasOwnProperty.call(body, 'clubAffiliation')) {
+    const affiliation = parseClubAffiliation(body.clubAffiliation);
+    if (effectiveAccountType !== 'club' || !affiliation) {
+      return jsonError('Affiliazione Club non valida.', 400);
+    }
+    if (!affiliation.countryId) {
+      updates.club_country_id = null;
+      updates.club_primary_organization_id = null;
+      updates.club_organization_category_id = null;
+    } else {
+      const sportId = (updates.sport_id ?? currentProfile?.sport_id) as string | null | undefined;
+      const disciplineId = (updates.sport_discipline_id ?? currentProfile?.sport_discipline_id) as string | null | undefined;
+      const variantId = (updates.sport_variant_id ?? currentProfile?.sport_variant_id) as string | null | undefined;
+      try {
+        const result = await validateClubAffiliation({
+          async category(input) { const {data,error}=await supabase.from('sports_organization_categories').select('id,organization_id,country_id,sport_id,discipline_id,variant_id,canonical_name,is_active').eq('id',input.categoryId).eq('organization_id',input.organizationId).eq('country_id',input.countryId).maybeSingle();if(error)throw error;return data; },
+          async organization(id) { const {data,error}=await supabase.from('sports_organizations').select('id,is_active,valid_from,valid_to').eq('id',id).maybeSingle();if(error)throw error;return data; },
+          async countryIso2(id) { const {data,error}=await supabase.from('countries').select('iso2').eq('id',id).eq('is_active',true).eq('is_supported',true).maybeSingle();if(error)throw error;return data?.iso2??null; },
+        },affiliation,{sportId:sportId??null,disciplineId:disciplineId??null,variantId:variantId??null});
+        if (!result || result.clear) {
+          return jsonError('Affiliazione Club non disponibile nello scope selezionato.', 400);
+        }
+        updates.club_country_id = result.countryId;
+        updates.club_primary_organization_id = result.organizationId;
+        updates.club_organization_category_id = result.categoryId;
+        updates.country = result.countryIso2;
+        updates.club_league_category = result.categoryName;
+      } catch {
+        return jsonError('Impossibile verificare l’affiliazione Club.', 500);
+      }
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(updates, 'account_type')) {
     updates.type = updates.account_type ?? null;
   }
@@ -366,7 +401,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       if (hasPrimarySportInput) {
         return primarySportFailure(up.error, 'upsert');
       }
-      return jsonError(up.error.message, 400);
+      return jsonError('Impossibile salvare il profilo.', 500);
     }
     return NextResponse.json({ data: up.data });
   }
@@ -375,7 +410,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (hasPrimarySportInput) {
       return primarySportFailure(error, 'update');
     }
-    return jsonError(error.message, 400);
+    return jsonError('Impossibile salvare il profilo.', 500);
   }
   return NextResponse.json({ data });
 });
