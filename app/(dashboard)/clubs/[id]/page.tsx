@@ -215,11 +215,11 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const sportLabel = localizeSport(normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport, t);
   const categoryLabel = localizeOpportunityCategory(profileWithVerification.club_league_category, t);
   const { data: registrations } = await supabase.from('club_sport_registrations')
-    .select('id,is_primary,created_at,sports:sport_id(canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
+    .select('id,is_primary,created_at,sports:sport_id(code,canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
     .eq('club_profile_id', profileWithVerification.id).eq('is_active', true)
     .order('is_primary', { ascending:false }).order('created_at');
   const primaryRegistration = registrations?.[0] as any;
-  const primarySportLabel = primaryRegistration?.sports?.canonical_name ?? sportLabel;
+  const primarySportLabel = primaryRegistration?.sports ? (localizeSport(primaryRegistration.sports.code, t) ?? primaryRegistration.sports.canonical_name) : sportLabel;
   const organizationLabel = primaryRegistration?.organization ? sportsOrganizationDisplayName(primaryRegistration.organization.code, primaryRegistration.organization.canonical_name) : null;
   const canonicalCategoryLabel = primaryRegistration?.category?.canonical_name ?? categoryLabel;
   const subtitle =
@@ -325,7 +325,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
 
       <PublicClubRosterSection clubId={clubProfileId} clubSport={profile.sport} clubCity={profile.city} />
 
-      {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">Iscrizioni</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports?.canonical_name} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {r.category?.canonical_name} {r.is_primary&&<b className="ml-2">Principale</b>}</div>)}</div></section> : null}
+      {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.registrations.title')}</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports ? (localizeSport(r.sports.code, t) ?? r.sports.canonical_name) : '—'} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {r.category?.canonical_name} {r.is_primary&&<b className="ml-2">{t('club.registrations.primary')}</b>}</div>)}</div></section> : null}
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
