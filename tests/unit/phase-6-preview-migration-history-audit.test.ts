@@ -6,7 +6,7 @@ const report = readFileSync('scripts/sports/reports/phase-6-preview-migration-hi
 const migrations = readdirSync('supabase/migrations').filter((name) => name.endsWith('.sql')).sort()
 const migrationVersions = migrations.flatMap((name) => name.match(/^([0-9]+)_/)?.[1] ?? [])
 
-test('Preview history report embeds the exact versions through its verified remote head', () => {
+test('Preview history report embeds its exact legacy audit snapshot through 20261211150000', () => {
   const embedded = [...report.matchAll(/\('([0-9]+)',\s*'[^']+'\)/g)].map((match) => match[1])
   const audited = migrationVersions.filter((version) => version <= '20261211150000')
   assert.deepEqual(embedded.slice(0, audited.length), audited)
@@ -27,14 +27,14 @@ test('Preview history report remains one-result and read-only', () => {
   assert.doesNotMatch(report, /\b(insert|update|delete|alter|drop|truncate|create)\b/i)
 })
 
-test('verified Preview head remains explicit while later local migrations stay unapplied', () => {
+test('verified Preview head remains explicit while the next local migration stays unapplied', () => {
   const localVersions = [...migrationVersions].sort()
-  const verifiedRemoteVersions = localVersions.filter((version) => version <= '20261211150000')
-  const pendingLocalVersions = localVersions.filter((version) => version > '20261211150000')
+  const verifiedRemoteVersions = localVersions.filter((version) => version <= '20261212120000')
+  const pendingLocalVersions = localVersions.filter((version) => version > '20261212120000')
 
-  assert.equal(verifiedRemoteVersions.at(-1), '20261211150000')
-  assert.deepEqual(pendingLocalVersions, ['20261212120000'])
-  assert.equal(migrations.at(-1), '20261212120000_sports_organization_categories.sql')
+  assert.equal(verifiedRemoteVersions.at(-1), '20261212120000')
+  assert.deepEqual(pendingLocalVersions, ['20261213120000'])
+  assert.equal(migrations.at(-1), '20261213120000_club_primary_organization_affiliation.sql')
 })
 
 test('mixed-length historical versions are compared as strings, not timestamps', () => {
