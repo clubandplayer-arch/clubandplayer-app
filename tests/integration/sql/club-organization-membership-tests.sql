@@ -40,3 +40,18 @@ do $$ begin
 end $$;
 
 rollback;
+
+do $$
+begin
+  if (select array_agg(code order by display_order) from public.sports_organizations where display_order between 1 and 12)
+    is distinct from array['lega_nazionale_dilettanti','lega_calcio_a_8','eifa','csi','uisp','csen','aics','opes','asc','endas','pgs','us_acli']::text[] then
+    raise exception 'unexpected organization catalog order';
+  end if;
+  if exists (
+    select 1 from public.sports_organization_categories c
+    join public.sports_organizations o on o.id = c.organization_id
+    where o.code in ('csi','uisp','csen','aics','opes','asc','endas','pgs','us_acli')
+  ) then
+    raise exception 'unverified organization/category association materialized';
+  end if;
+end $$;

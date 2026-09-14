@@ -22,6 +22,7 @@ import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { resolveRequestLocale } from '@/lib/i18n/server';
 import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
 import { localizeOpportunityCategory, localizeSport } from '@/lib/i18n/controlledVocabulary';
+import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
 
 type ClubProfileRow = {
@@ -218,10 +219,10 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const sportLabel = localizeSport(normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport, t);
   const categoryLabel = localizeOpportunityCategory(profileWithVerification.club_league_category, t);
   const [{ data: organization }, { data: organizationCategory }] = await Promise.all([
-    profileWithVerification.sports_organization_id ? supabase.from('sports_organizations').select('canonical_name').eq('id', profileWithVerification.sports_organization_id).maybeSingle() : Promise.resolve({ data:null }),
+    profileWithVerification.sports_organization_id ? supabase.from('sports_organizations').select('code,canonical_name').eq('id', profileWithVerification.sports_organization_id).maybeSingle() : Promise.resolve({ data:null }),
     profileWithVerification.sports_organization_category_id ? supabase.from('sports_organization_categories').select('canonical_name').eq('id', profileWithVerification.sports_organization_category_id).maybeSingle() : Promise.resolve({ data:null }),
   ]);
-  const organizationLabel = organization?.canonical_name ?? null;
+  const organizationLabel = organization ? sportsOrganizationDisplayName(organization.code, organization.canonical_name) : null;
   const canonicalCategoryLabel = organizationCategory?.canonical_name ?? categoryLabel;
   const subtitle =
     [sportLabel, organizationLabel, canonicalCategoryLabel].filter(Boolean).join(' · ') || '—';

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const migration = readFileSync('supabase/migrations/20261213120000_lnd_club_organization_membership.sql', 'utf8');
+const catalogMigration = readFileSync('supabase/migrations/20261214120000_sports_organization_catalog_order.sql', 'utf8');
 
 test('LND is seeded once as a league with exactly the authorized categories', () => {
   assert.match(migration, /'lega_nazionale_dilettanti', 'Lega Nazionale Dilettanti', 'league'/);
@@ -10,6 +11,28 @@ test('LND is seeded once as a league with exactly the authorized categories', ()
     assert.equal((migration.match(new RegExp(`'${name}'`, 'g')) ?? []).length, 1);
   }
   assert.doesNotMatch(migration, /insert[\s\S]*lega_calcio_a_8/i);
+});
+
+test('organization catalog has the authorized order, official evidence and no unverified links', () => {
+  const orderedCodes = [
+    'lega_nazionale_dilettanti', 'lega_calcio_a_8', 'eifa', 'csi', 'uisp',
+    'csen', 'aics', 'opes', 'asc', 'endas', 'pgs', 'us_acli',
+  ];
+  assert.match(catalogMigration, new RegExp(`array\\[${orderedCodes.map((code) => `'${code}'`).join(',')}\\]::text\\[\\]`));
+  assert.match(catalogMigration, /'consultedOn', '2026-09-14'/);
+  assert.match(catalogMigration, /'evidenceUse', 'official_organization_identity_only'/);
+  assert.match(catalogMigration, /'eifa_serie_a_delite', 'Serie A d''Elite'/);
+  for (const code of ['csi', 'uisp', 'csen', 'aics', 'opes', 'asc', 'endas', 'pgs', 'us_acli']) {
+    assert.doesNotMatch(catalogMigration, new RegExp(`${code}:category:`));
+  }
+});
+
+test('organization labels use LND and the requested public acronyms', () => {
+  const display = readFileSync('lib/sports/organizationDisplay.ts', 'utf8');
+  assert.match(display, /lega_nazionale_dilettanti: 'LND'/);
+  assert.match(display, /eifa: 'E\.I\.F\.A\.'/);
+  const publicPage = readFileSync('app/(dashboard)/clubs/[id]/page.tsx', 'utf8');
+  assert.match(publicPage, /sportsOrganizationDisplayName\(organization\.code, organization\.canonical_name\)/);
 });
 
 test('membership references stay nullable for legacy rows and are validated atomically', () => {

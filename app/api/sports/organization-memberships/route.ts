@@ -8,8 +8,8 @@ export async function GET() {
   const supabase = await getSupabaseServerClient();
   const [organizations, organizationCategories] = await Promise.all([
     supabase.from('sports_organizations')
-      .select('id,code,canonical_name,organization_type')
-      .eq('is_active', true).eq('organization_type', 'league').order('canonical_name'),
+      .select('id,code,canonical_name,organization_type,display_order')
+      .eq('is_active', true).order('display_order').order('canonical_name'),
     supabase.from('sports_organization_categories')
       .select('id,organization_id,sport_id,discipline_id,variant_id,code,canonical_name,display_order')
       .eq('is_active', true).order('display_order').order('canonical_name'),
