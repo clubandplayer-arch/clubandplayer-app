@@ -19,9 +19,6 @@ create table public.sports_organization_categories (
   display_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint sports_organization_categories_organization_country_fk
-    foreign key (organization_id, country_id)
-    references public.sports_organization_countries(organization_id, country_id) on delete restrict,
   constraint sports_organization_categories_discipline_sport_fk
     foreign key (discipline_id, sport_id)
     references public.sport_disciplines(id, sport_id) on delete restrict,
@@ -94,8 +91,8 @@ begin
 end
 $$;
 
--- UUIDv5 values are generated offline from the documented canonical keys using
--- the standard URL namespace. No environment-specific database UUID is copied.
+-- IDs are one-time generated values frozen as literals in this migration. They
+-- do not establish an ID-generation policy for later catalogue records.
 insert into public.sports_organizations (
   id, code, canonical_name, organization_type, primary_country_id,
   provider, source_record_id, source_version, source_metadata, is_active
@@ -104,16 +101,16 @@ select
   '219a9b21-1a63-5d16-a477-3e1fe51368ca'::uuid,
   'lega_calcio_a_8',
   'Lega Calcio a 8',
-  -- Deliberately generic: the available evidence establishes an organization,
-  -- not a controlled federation/league subtype.
-  'sports_organization',
+  -- Product-authorized classification for this organization only.
+  'league',
   c.id,
   'clubandplayer_internal_review',
   'IT:football:association_football:eight_a_side:organization:lega_calcio_a_8',
   '2026-09-14.phase-6d.1',
   jsonb_build_object(
-    'evidence', 'user_supplied_source',
-    'canonicalKey', 'clubandplayer:sports_organization:clubandplayer_internal_review:lega_calcio_a_8'
+    'officialSourceUrl', 'https://www.legacalcioa8.it/',
+    'evidenceUse', 'organization_name_only',
+    'organizationTypeDecision', 'product_owner_confirmed'
   ),
   true
 from public.countries c
@@ -127,14 +124,6 @@ on conflict (provider, source_record_id) do update set
   source_metadata = excluded.source_metadata,
   is_active = excluded.is_active,
   updated_at = now();
-
-insert into public.sports_organization_countries (organization_id, country_id)
-select o.id, c.id
-from public.sports_organizations o
-join public.countries c on c.iso2 = 'IT'
-where o.provider = 'clubandplayer_internal_review'
-  and o.source_record_id = 'IT:football:association_football:eight_a_side:organization:lega_calcio_a_8'
-on conflict (organization_id, country_id) do nothing;
 
 with scope as (
   select
@@ -150,20 +139,17 @@ with scope as (
   join public.sport_variants v on v.discipline_id = d.id and v.code = 'eight_a_side'
   where o.provider = 'clubandplayer_internal_review'
     and o.source_record_id = 'IT:football:association_football:eight_a_side:organization:lega_calcio_a_8'
-), seed(id, code, canonical_name, source_record_id, display_order, source_url, canonical_key) as (
+), seed(id, code, canonical_name, source_record_id, display_order, source_url) as (
   values
     ('d0f2c15e-925f-522b-84a4-aedd51fa61e3'::uuid, 'c8_serie_a', 'Serie A',
       'IT:football:association_football:eight_a_side:lega_calcio_a_8:category:serie_a', 1,
-      'https://www.legacalcioa8.it/it/tournament/122/serie-a-renovalo-2627/stream/',
-      'clubandplayer:sports_organization_category:clubandplayer_internal_review:lega_calcio_a_8:c8_serie_a'),
+      'https://www.legacalcioa8.it/it/tournament/122/serie-a-renovalo-2627/stream/'),
     ('8b37979c-07d4-5b59-8d5b-8180d1562287'::uuid, 'c8_serie_a2', 'Serie A2',
       'IT:football:association_football:eight_a_side:lega_calcio_a_8:category:serie_a2', 2,
-      'https://www.legacalcioa8.it/it/tournament/123/serie-a2-2627/stream/',
-      'clubandplayer:sports_organization_category:clubandplayer_internal_review:lega_calcio_a_8:c8_serie_a2'),
+      'https://www.legacalcioa8.it/it/tournament/123/serie-a2-2627/stream/'),
     ('c0b29110-46a3-5ea4-927e-890721ca2865'::uuid, 'c8_serie_b', 'Serie B',
       'IT:football:association_football:eight_a_side:lega_calcio_a_8:category:serie_b', 3,
-      'https://www.legacalcioa8.it/it/tournament/124/serie-b-2627/stream/',
-      'clubandplayer:sports_organization_category:clubandplayer_internal_review:lega_calcio_a_8:c8_serie_b')
+      'https://www.legacalcioa8.it/it/tournament/124/serie-b-2627/stream/')
 )
 insert into public.sports_organization_categories (
   id, organization_id, country_id, sport_id, discipline_id, variant_id,
@@ -175,10 +161,8 @@ select
   seed.code, seed.canonical_name, 'clubandplayer_internal_review', seed.source_record_id,
   '2026-09-14.phase-6d.1',
   jsonb_build_object(
-    'evidence', 'user_supplied_source',
-    'sourceUrl', seed.source_url,
-    'canonicalKey', seed.canonical_key,
-    'identityPolicy', 'stable_organization_category_not_season_or_tournament'
+    'officialSourceUrl', seed.source_url,
+    'evidenceUse', 'category_name_only'
   ),
   true, seed.display_order
 from scope cross join seed
@@ -205,14 +189,12 @@ begin
   select count(*) into organization_count
   from public.sports_organizations o
   join public.countries c on c.id = o.primary_country_id
-  join public.sports_organization_countries oc
-    on oc.organization_id = o.id and oc.country_id = c.id
   where o.id = '219a9b21-1a63-5d16-a477-3e1fe51368ca'::uuid
     and o.provider = 'clubandplayer_internal_review'
     and o.source_record_id = 'IT:football:association_football:eight_a_side:organization:lega_calcio_a_8'
     and o.code = 'lega_calcio_a_8'
     and o.canonical_name = 'Lega Calcio a 8'
-    and o.organization_type = 'sports_organization'
+    and o.organization_type = 'league'
     and o.is_active = true
     and c.iso2 = 'IT';
 

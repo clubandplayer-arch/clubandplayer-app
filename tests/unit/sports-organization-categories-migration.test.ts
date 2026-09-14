@@ -6,7 +6,8 @@ const migration = readFileSync(new URL('../../supabase/migrations/20261212120000
 
 test('creates the additive stable category table with exact structural scope constraints', () => {
   assert.match(migration, /create table public\.sports_organization_categories/);
-  assert.match(migration, /foreign key \(organization_id, country_id\)[\s\S]*sports_organization_countries/);
+  assert.match(migration, /organization_id uuid not null references public\.sports_organizations\(id\)/);
+  assert.match(migration, /country_id uuid not null references public\.countries\(id\)/);
   assert.match(migration, /foreign key \(discipline_id, sport_id\)[\s\S]*sport_disciplines/);
   assert.match(migration, /foreign key \(variant_id, discipline_id\)[\s\S]*sport_variants/);
   assert.match(migration, /unique nulls not distinct \(organization_id, country_id, sport_id, discipline_id, variant_id, code\)/);
@@ -16,7 +17,7 @@ test('creates the additive stable category table with exact structural scope con
 });
 
 test('materializes only Lega Calcio a 8 and three stable C8 categories', () => {
-  assert.match(migration, /'lega_calcio_a_8',[\s\S]*'Lega Calcio a 8',[\s\S]*'sports_organization'/);
+  assert.match(migration, /'lega_calcio_a_8',[\s\S]*'Lega Calcio a 8',[\s\S]*'league'/);
   for (const [code, name] of [['c8_serie_a', 'Serie A'], ['c8_serie_a2', 'Serie A2'], ['c8_serie_b', 'Serie B']]) {
     assert.match(migration, new RegExp(`'${code}', '${name}'`));
   }
@@ -27,8 +28,21 @@ test('materializes only Lega Calcio a 8 and three stable C8 categories', () => {
   for (const excluded of ["'lnd'", "'eifa'", "'fip'", "'seven_a_side'", "'futsal'"]) {
     assert.equal(migration.includes(excluded), false, excluded);
   }
-  assert.match(migration, /'sports_organization'/);
-  assert.doesNotMatch(migration, /'league'|'federation'/);
+  assert.match(migration, /'league'/);
+  assert.doesNotMatch(migration, /insert into public\.sports_organization_countries/);
+  assert.doesNotMatch(migration, /join public\.sports_organization_countries/);
+  assert.doesNotMatch(migration, /uuid_generate|uuidv5|uuid_v5|namespace/i);
+  assert.match(migration, /IDs are one-time generated values frozen as literals/);
+});
+
+test('keeps internal provenance separate from official evidence without a license claim', () => {
+  assert.match(migration, /'clubandplayer_internal_review'/);
+  assert.match(migration, /'officialSourceUrl', 'https:\/\/www\.legacalcioa8\.it\//);
+  assert.match(migration, /'evidenceUse', 'organization_name_only'/);
+  assert.match(migration, /'organizationTypeDecision', 'product_owner_confirmed'/);
+  assert.match(migration, /'officialSourceUrl', seed\.source_url/);
+  assert.doesNotMatch(migration, /license/i);
+  assert.doesNotMatch(migration, /canonicalKey|identityPolicy/);
 });
 
 test('fails closed on prerequisite cardinality and asserts the exact postcondition', () => {
