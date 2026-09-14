@@ -13,7 +13,7 @@ export type CanonicalSportFilterValue = CanonicalSportFormValue;
 type Props = {
   idPrefix: string;
   value: CanonicalSportFilterValue;
-  onChange: (value: CanonicalSportFilterValue) => void;
+  onChange: (value: CanonicalSportFilterValue, meta: { source: 'hydration' | 'user' }) => void;
   labels: { sport: string; allSports: string; catalogUnavailable: string };
   sportLabel?: (sport: Sport) => string;
 };
@@ -55,7 +55,7 @@ export default function CanonicalSportFilter({ idPrefix, value, onChange, labels
       || hydrated.disciplineId !== value.disciplineId
       || hydrated.variantId !== value.variantId
       || hydrated.legacySport !== value.legacySport)) {
-      onChange(hydrated);
+      onChange(hydrated, { source: 'hydration' });
     }
   }, [catalog.legacySports, onChange, value]);
 
@@ -73,7 +73,7 @@ export default function CanonicalSportFilter({ idPrefix, value, onChange, labels
               disciplineId: legacySport?.disciplineId ?? '',
               variantId: legacySport?.variantId ?? '',
               legacySport: legacySport?.legacyValue ?? '',
-            });
+            }, { source: 'user' });
           }}
           className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100"
           disabled={loadFailed}

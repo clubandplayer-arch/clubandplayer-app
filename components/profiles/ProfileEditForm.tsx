@@ -18,11 +18,12 @@ import { ProfileSkill, type ProfileVisibilityStatus } from '@/types/profile';
 import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
 import { getProfileClubNameValidationError, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '@/lib/profiles/publication';
-import { CATEGORIES_BY_SPORT, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
+import ClubRegistrationsSection from '@/components/clubs/ClubRegistrationsSection';
+import ClubHonorsSection from '@/components/clubs/ClubHonorsSection';
 import {
   buildCanonicalSportRequestFields,
   buildExperienceFormPayload,
@@ -302,8 +303,6 @@ export default function ProfileEditForm() {
   const [x, setX]                 = useState('');
 
   // Club only
-  const [sport, setSport] = useState('Calcio');
-  const [clubCategory, setClubCategory] = useState('Altro');
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
   const [stadium, setStadium] = useState('');
   const [stadiumAddress, setStadiumAddress] = useState('');
@@ -312,16 +311,7 @@ export default function ProfileEditForm() {
   const [clubMotto, setClubMotto] = useState('');
 
   // categorie dinamiche per sport
-  const normalizedClubSport = normalizeSport(sport) ?? sport;
   const normalizedAthleteSport = normalizeSport(athleteSport) ?? athleteSport;
-  const sportCategories = CATEGORIES_BY_SPORT[normalizedClubSport] ?? DEFAULT_CLUB_CATEGORIES;
-
-  useEffect(() => {
-    if (!sportCategories.includes(clubCategory)) {
-      setClubCategory(sportCategories[0] ?? 'Altro');
-    }
-  }, [sport, sportCategories, clubCategory]);
-
   const athleteRoles = useMemo(() => {
     if (isStaff) return [...STAFF_ROLES];
     return SPORTS_ROLES[normalizedAthleteSport] ?? SPORTS_ROLES.Calcio ?? [];
@@ -515,8 +505,6 @@ export default function ProfileEditForm() {
     setTiktok(p.links?.tiktok || '');
     setX(p.links?.x || '');
     // club
-    setSport(normalizeSport(p.sport) || 'Calcio');
-    setClubCategory(p.club_league_category || 'Altro');
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');
     setStadiumAddress(p.club_stadium_address || '');
@@ -553,7 +541,7 @@ export default function ProfileEditForm() {
     display_name: fullName,
     birth_year: birthYear === '' ? null : birthYear,
     country: normalizeCountryCode(country),
-    sport: isClub ? sport : athleteSport,
+    sport: isClub ? 'registrazioni club' : athleteSport,
     role: isOrganization || isFan ? null : athleteRole,
     region: isOrganization ? (clubLocation.regionName || clubLocationFallback.region || null) : profile?.region ?? null,
     province: isOrganization ? (clubLocation.provinceName || clubLocationFallback.province || null) : profile?.province ?? null,
@@ -561,7 +549,7 @@ export default function ProfileEditForm() {
     interest_region_id: isOrganization ? clubLocation.regionId : null,
     interest_province_id: isOrganization ? clubLocation.provinceId : null,
     interest_municipality_id: isOrganization ? clubLocation.municipalityId : null,
-  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile, sport]);
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile]);
   const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
@@ -679,8 +667,6 @@ export default function ProfileEditForm() {
         }
 
         Object.assign(basePayload, {
-          sport: isClub ? (sport || '').trim() || null : null,
-          club_league_category: isClub ? (clubCategory || '').trim() || null : null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
           club_stadium_address: (stadiumAddress || '').trim() || null,
@@ -766,7 +752,7 @@ export default function ProfileEditForm() {
         });
       }
 
-      const missingFields = getMissingRequiredProfileFields(basePayload);
+      const missingFields = getMissingRequiredProfileFields(isClub ? { ...basePayload, sport: 'registrazioni club' } : basePayload);
       if (missingFields.length > 0) {
         throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
       }
@@ -1029,41 +1015,7 @@ export default function ProfileEditForm() {
                 />
               </div>
 
-              {isClub && (
-                <CanonicalSportFilter
-                  idPrefix="club-profile-sport"
-                  value={primarySport}
-                  onChange={(next) => {
-                    setPrimarySport(next);
-                    setSport(next.legacySport);
-                  }}
-                  sportLabel={(sport) => localizeSport(sport.code, t) ?? sport.canonical_name}
-                  labels={{
-                    sport: t('profile.clubSport'),
-                    allSports: t('profile.select'),
-                    catalogUnavailable: t('sports.catalogUnavailable'),
-                  }}
-                />
-              )}
-
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-                {isClub && (
-                <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">{t('club.category')}</label>
-                  <select
-                    className="w-full min-w-0 rounded-lg border p-2"
-                    value={clubCategory}
-                    onChange={(e) => setClubCategory(e.target.value)}
-                  >
-                    {sportCategories.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                )}
 
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">{t('club.foundationYear')}</label>
@@ -1506,6 +1458,9 @@ export default function ProfileEditForm() {
             </div>
           </section>
         )}
+
+        {isClub && <ClubRegistrationsSection />}
+        {isClub && <ClubHonorsSection />}
 
         {/* Social */}
         {!isFan && (

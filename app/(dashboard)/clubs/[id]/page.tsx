@@ -22,6 +22,7 @@ import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { resolveRequestLocale } from '@/lib/i18n/server';
 import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
 import { localizeOpportunityCategory, localizeSport } from '@/lib/i18n/controlledVocabulary';
+import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
 
 type ClubProfileRow = {
@@ -213,8 +214,20 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const displayName = buildClubDisplayName(profileWithVerification.full_name, profileWithVerification.display_name, 'Club');
   const sportLabel = localizeSport(normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport, t);
   const categoryLabel = localizeOpportunityCategory(profileWithVerification.club_league_category, t);
+  const { data: registrations } = await supabase.from('club_sport_registrations')
+    .select('id,is_primary,created_at,sports:sport_id(code,canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
+    .eq('club_profile_id', profileWithVerification.id).eq('is_active', true)
+    .order('is_primary', { ascending:false }).order('created_at');
+  const primaryRegistration = registrations?.[0] as any;
+  const { data: honors } = await supabase.from('club_honors')
+    .select('id,season,placement,sports:sport_id(code,canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
+    .eq('club_profile_id', profileWithVerification.id).eq('is_active', true)
+    .order('season', { ascending: false }).order('placement').order('created_at').order('id');
+  const primarySportLabel = primaryRegistration?.sports ? (localizeSport(primaryRegistration.sports.code, t) ?? primaryRegistration.sports.canonical_name) : sportLabel;
+  const organizationLabel = primaryRegistration?.organization ? sportsOrganizationDisplayName(primaryRegistration.organization.code, primaryRegistration.organization.canonical_name) : null;
+  const canonicalCategoryLabel = primaryRegistration?.category?.canonical_name ?? categoryLabel;
   const subtitle =
-    [categoryLabel, sportLabel].filter(Boolean).join(' · ') || '—';
+    [primarySportLabel, organizationLabel, canonicalCategoryLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profileWithVerification, provinceAbbreviations, locale, t('vocabulary.category.other')) || undefined;
   const headerLocationContent = (
     <div className="space-y-1">
@@ -275,18 +288,22 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
       <section className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="heading-h2 text-xl">{t('club.data')}</h2>
-          <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.headquarters')}</div>
               <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile, provinceAbbreviations, locale, t('vocabulary.category.other')) || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.mainSport')}</div>
-              <div className="mt-1 font-medium text-neutral-900">{sportLabel || '—'}</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.sport')}</div>
+              <div className="mt-1 font-medium text-neutral-900">{primarySportLabel || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.typeCategory')}</div>
-              <div className="mt-1 font-medium text-neutral-900">{categoryLabel || '—'}</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.organization')}</div>
+              <div className="mt-1 font-medium text-neutral-900">{organizationLabel || '—'}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.category')}</div>
+              <div className="mt-1 font-medium text-neutral-900">{canonicalCategoryLabel || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.facility')}</div>
@@ -297,6 +314,10 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
             </div>
           </div>
         </div>
+
+        {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.registrations.title')}</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports ? (localizeSport(r.sports.code, t) ?? r.sports.canonical_name) : '—'} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {r.category?.canonical_name} {r.is_primary&&<b className="ml-2">{t('club.registrations.primary')}</b>}</div>)}</div></section> : null}
+
+        {honors?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.honors.title')}</h2><div className="mt-3 space-y-2">{honors.map((honor:any)=><div key={honor.id} className="rounded-xl border p-3">{honor.season} · {honor.sports ? (localizeSport(honor.sports.code, t) ?? honor.sports.canonical_name) : '—'} · {honor.organization ? sportsOrganizationDisplayName(honor.organization.code,honor.organization.canonical_name) : '—'} · {honor.category?.canonical_name ?? '—'} · <b>{honor.placement===1?t('club.honors.champion'):honor.placement===2?t('club.honors.place2'):t('club.honors.place3')}</b></div>)}</div></section> : null}
 
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="heading-h2 text-xl">{t('club.biography')}</h2>
