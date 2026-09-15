@@ -33,3 +33,21 @@ test('Club canonical geography is validated before the legacy base profile is sa
   const baseWrite = submit.indexOf("fetch('/api/profiles/me',");
   assert.ok(canonicalWrite >= 0 && canonicalWrite < baseWrite);
 });
+
+test('Club base profile save preserves the canonical geography dual-write', () => {
+  const submit = form.slice(form.indexOf('async function onSubmit'), form.indexOf('const handlePastExperienceClubChange'));
+  const canonicalWrite = submit.indexOf("fetch('/api/profiles/me/residence'");
+  const baseWrite = submit.indexOf("fetch('/api/profiles/me',");
+  const betweenWrites = submit.slice(canonicalWrite, baseWrite);
+
+  for (const field of [
+    'region',
+    'province',
+    'city',
+    'residence_region_id',
+    'residence_province_id',
+    'residence_municipality_id',
+  ]) {
+    assert.match(betweenWrites, new RegExp(`delete basePayload\\.${field}`));
+  }
+});

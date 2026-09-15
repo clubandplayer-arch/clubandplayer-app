@@ -795,6 +795,18 @@ export default function ProfileEditForm() {
         setResidenceDirty(false);
       }
 
+      // Club geography is owned by the canonical residence endpoint above. That
+      // endpoint also dual-writes the legacy names and Italian IDs, so the base
+      // profile update must not replace its result with stale hidden-form state.
+      if (isClub) {
+        delete basePayload.region;
+        delete basePayload.province;
+        delete basePayload.city;
+        delete basePayload.residence_region_id;
+        delete basePayload.residence_province_id;
+        delete basePayload.residence_municipality_id;
+      }
+
       const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
