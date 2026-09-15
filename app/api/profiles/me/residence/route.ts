@@ -9,6 +9,7 @@ import {
 import { getProfileGeography } from '@/lib/geo/profileGeography';
 import { SupabaseProfileGeographyRepository } from '@/lib/geo/profileGeography.server';
 import { writeMyProfileResidence } from '@/lib/geo/profileResidenceWrite.server';
+import { writeMyClubGeography } from '@/lib/geo/clubGeographyWrite.server';
 import { parseResidencePatch, ResidenceContractError } from '@/lib/geo/profileResidenceWriteContract';
 
 export const runtime = 'nodejs';
@@ -51,7 +52,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('account_type')
+    .select('id,account_type')
     .eq('user_id', user.id)
     .maybeSingle();
   if (error) return jsonError(error.message, 400);
@@ -79,14 +80,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   try {
     const result = profile.account_type === 'club'
-      ? await (async () => {
-          const { data, error: writeError } = await supabase.rpc('update_my_club_geography', {
-            p_residence_country_id: patch.residenceCountryId,
-            p_residence_geo_area_id: patch.residenceGeoAreaId,
-          });
-          if (writeError) throw writeError;
-          return { status: 'written', data } as const;
-        })()
+      ? await writeMyClubGeography(supabase, profile.id, patch)
       : await writeMyProfileResidence(supabase, patch);
     return NextResponse.json(result);
   } catch (reason) {

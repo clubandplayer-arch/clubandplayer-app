@@ -39,7 +39,7 @@ test('temporary residence canary allowlist accepts only explicitly configured va
   if (previous === undefined) delete process.env.CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS; else process.env.CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS = previous;
 });
 
-test('owner-only GET/PATCH keeps Player/Staff gates and uses the owner-derived Club RPC', () => {
+test('owner-only GET/PATCH keeps Player/Staff gates and uses the Club geography writer', () => {
   assert.match(route, /export const GET = withAuth/);
   assert.match(route, /export const PATCH = withAuth/);
   const patch = route.slice(route.indexOf('export const PATCH'));
@@ -49,7 +49,7 @@ test('owner-only GET/PATCH keeps Player/Staff gates and uses the owner-derived C
   assert.match(route, /accountType === 'athlete' \|\| accountType === 'staff' \|\| accountType === 'club'/);
   assert.match(route, /parseResidencePatch\(body\)/);
   assert.match(route, /writeMyProfileResidence\(supabase, patch\)/);
-  assert.match(route, /rpc\('update_my_club_geography'/);
+  assert.match(route, /writeMyClubGeography\(supabase, profile\.id, patch\)/);
   assert.doesNotMatch(route, /profile_id|profileId/);
 });
 
