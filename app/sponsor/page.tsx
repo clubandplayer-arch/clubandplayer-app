@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { fetchLocationChildren } from "@/lib/geo/location";
+import CanonicalGeographySelector from "@/components/geo/CanonicalGeographySelector";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 
 type PackageId = "starter" | "growth" | "performance";
 type DurationId = 30 | 60 | 90;
-type LocationOptionString = { id: string; name: string };
 
 const BRAND_BLUE = "#036f9a";
 
@@ -117,12 +115,15 @@ export default function SponsorPage() {
   const { t, locale } = useI18n();
   // configuratore
   const [pkg, setPkg] = useState<PackageId>("performance");
+  const [countryId, setCountryId] = useState<string | null>(null);
+  const [countryName, setCountryName] = useState("");
+  const [geoAreaId, setGeoAreaId] = useState<string | null>(null);
   const [regionId, setRegionId] = useState<string>("");
   const [provinceId, setProvinceId] = useState<string>("");
   const [cityId, setCityId] = useState<string>("");
-  const [regions, setRegions] = useState<LocationOptionString[]>([]);
-  const [provinces, setProvinces] = useState<LocationOptionString[]>([]);
-  const [cities, setCities] = useState<LocationOptionString[]>([]);
+  const [selectedRegionName, setSelectedRegionName] = useState("");
+  const [selectedProvinceName, setSelectedProvinceName] = useState("");
+  const [selectedCityName, setSelectedCityName] = useState("");
   const [duration, setDuration] = useState<DurationId>(30);
   const [exclusive, setExclusive] = useState<boolean>(false);
 
@@ -152,24 +153,12 @@ export default function SponsorPage() {
     return base * geo * d * ex;
   }, [pkg, regionId, provinceId, cityId, duration, exclusive]);
 
-  const selectedRegionName = useMemo(
-    () => regions.find((item) => item.id === regionId)?.name ?? "",
-    [regions, regionId]
-  );
-  const selectedProvinceName = useMemo(
-    () => provinces.find((item) => item.id === provinceId)?.name ?? "",
-    [provinces, provinceId]
-  );
-  const selectedCityName = useMemo(
-    () => cities.find((item) => item.id === cityId)?.name ?? "",
-    [cities, cityId]
-  );
   const targetLabel = useMemo(() => {
     if (cityId) return `${t('sponsor.city')}: ${selectedCityName}`;
     if (provinceId) return `${t('sponsor.province')}: ${selectedProvinceName}`;
     if (regionId) return `${t('sponsor.region')}: ${selectedRegionName}`;
-    return t('sponsor.italy');
-  }, [cityId, provinceId, regionId, selectedCityName, selectedProvinceName, selectedRegionName, t]);
+    return countryName || t('geo.selectCountry');
+  }, [cityId, countryName, provinceId, regionId, selectedCityName, selectedProvinceName, selectedRegionName, t]);
 
   const leadSummary = useMemo(
     () =>
@@ -195,96 +184,26 @@ export default function SponsorPage() {
     ]
   );
 
-  const supabase = useMemo(() => supabaseBrowser(), []);
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      const nextRegions = await fetchLocationChildren(supabase, "region", null);
-      if (active) {
-        setRegions(
-          nextRegions.map((item) => ({
-            id: String(item.id),
-            name: item.name,
-          }))
-        );
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [supabase]);
-
-  useEffect(() => {
-    let active = true;
-
-    if (!regionId) {
-      setProvinces([]);
-      setCities([]);
-      setProvinceId("");
-      setCityId("");
-      return () => {
-        active = false;
-      };
+  async function selectGeoArea(nextId: string | null) {
+    setGeoAreaId(nextId);
+    setRegionId(""); setProvinceId(""); setCityId("");
+    setSelectedRegionName(""); setSelectedProvinceName(""); setSelectedCityName("");
+    if (!nextId) return;
+    const response = await fetch(`/api/geo/areas/${encodeURIComponent(nextId)}/ancestors`, { cache: "no-store" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.data?.area) return;
+    const path = [...(payload.data.ancestors ?? [])].reverse().concat(payload.data.area);
+    const names = path.map((area: { official_name: string }) => area.official_name);
+    setRegionId(path[0]?.id ?? "");
+    setSelectedRegionName(names[0] ?? "");
+    const selected = path[path.length - 1];
+    const isLocalArea = ['COMMUNE', 'MUNICIPALITY', 'GMINA'].includes(selected?.area_type);
+    if (path.length >= 2) {
+      const province = isLocalArea ? path[path.length - 2] : selected;
+      setProvinceId(province?.id ?? ""); setSelectedProvinceName(province?.official_name ?? "");
     }
-
-    (async () => {
-      const nextProvinces = await fetchLocationChildren(
-        supabase,
-        "province",
-        regionId
-      );
-      if (active) {
-        setProvinces(
-          nextProvinces.map((item) => ({
-            id: String(item.id),
-            name: item.name,
-          }))
-        );
-        setProvinceId("");
-        setCityId("");
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [regionId, supabase]);
-
-  useEffect(() => {
-    let active = true;
-
-    if (!provinceId) {
-      setCities([]);
-      setCityId("");
-      return () => {
-        active = false;
-      };
-    }
-
-    (async () => {
-      const nextCities = await fetchLocationChildren(
-        supabase,
-        "municipality",
-        provinceId
-      );
-      if (active) {
-        setCities(
-          nextCities.map((item) => ({
-            id: String(item.id),
-            name: item.name,
-          }))
-        );
-        setCityId("");
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [provinceId, supabase]);
+    if (isLocalArea) { setCityId(selected.id); setSelectedCityName(selected.official_name); }
+  }
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -480,78 +399,19 @@ export default function SponsorPage() {
         <h2 className="text-lg font-semibold">{t('sponsor.configure')}</h2>
         <div className="mt-3 rounded-xl border p-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                {t('sponsor.target')}
-              </label>
-              <div className="mt-1 rounded-lg border px-3 py-2 text-sm">
-                <p className="font-medium">{t('sponsor.italy')}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t('sponsor.targetHelp')}
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                {t('sponsor.regionOptional')}
-              </label>
-              <select
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={regionId}
-                onChange={(e) => {
-                  setRegionId(e.target.value);
+            <div className="sm:col-span-2">
+              <p className="mb-3 text-xs text-muted-foreground">{t('sponsor.targetHelp')}</p>
+              <CanonicalGeographySelector
+                idPrefix="sponsor-target"
+                countryId={countryId}
+                geoAreaId={geoAreaId}
+                onCountryChange={(nextId, country) => {
+                  setCountryId(nextId);
+                  setCountryName(country ? (new Intl.DisplayNames([locale], { type: 'region' }).of(country.iso2) ?? country.officialName) : "");
+                  void selectGeoArea(null);
                 }}
-              >
-                <option value="">{t('sponsor.selectRegion')}</option>
-                {regions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                {t('sponsor.provinceOptional')}
-              </label>
-              <select
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={provinceId}
-                onChange={(e) => {
-                  setProvinceId(e.target.value);
-                }}
-                disabled={!regionId}
-              >
-                <option value="">{t('sponsor.selectProvince')}</option>
-                {provinces.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                {t('sponsor.cityOptional')}
-              </label>
-              <select
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={cityId}
-                onChange={(e) => {
-                  setCityId(e.target.value);
-                }}
-                disabled={!provinceId}
-              >
-                <option value="">{t('sponsor.selectCity')}</option>
-                {cities.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
+                onGeoAreaChange={(nextId) => void selectGeoArea(nextId)}
+              />
             </div>
 
             <div>
