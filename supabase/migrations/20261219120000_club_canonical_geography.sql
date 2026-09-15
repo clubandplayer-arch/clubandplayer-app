@@ -72,6 +72,33 @@ begin
     end if;
   end if;
 
+  -- Country-scoped records cannot silently become incoherent. In particular,
+  -- rejecting the geography write leaves the owner able to deactivate or
+  -- replace the existing records under the Club's current country.
+  if exists (
+    select 1
+    from public.club_sport_registrations r
+    join public.sports_organization_categories c
+      on c.id = r.sports_organization_category_id
+    where r.club_profile_id = v_profile_id
+      and r.is_active = true
+      and c.country_id is distinct from p_residence_country_id
+  ) then
+    raise exception using errcode = '22023', message = 'Club country is incompatible with active registrations';
+  end if;
+
+  if exists (
+    select 1
+    from public.club_honors h
+    join public.sports_organization_categories c
+      on c.id = h.sports_organization_category_id
+    where h.club_profile_id = v_profile_id
+      and h.is_active = true
+      and c.country_id is distinct from p_residence_country_id
+  ) then
+    raise exception using errcode = '22023', message = 'Club country is incompatible with active honors';
+  end if;
+
   if p_residence_geo_area_id is not null then
     select ga.* into v_current
     from public.geo_areas ga

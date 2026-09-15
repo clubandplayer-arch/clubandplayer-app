@@ -22,14 +22,17 @@ begin
     select 1
     from public.sports_organization_categories c
     join public.sports_organizations o on o.id = c.organization_id
-    left join public.profile_preferences pp on pp.profile_id = new.club_profile_id
+    join public.profiles p on p.id = new.club_profile_id
+    left join public.profile_preferences pp on pp.profile_id = p.id
+    left join public.legacy_country_mappings lcm
+      on lcm.normalized_source_value = lower(trim(p.country)) and lcm.is_active
     where c.id = new.sports_organization_category_id
       and c.organization_id = new.sports_organization_id
       and c.sport_id = new.sport_id
       and c.discipline_id is not distinct from new.sport_discipline_id
       and c.variant_id is not distinct from new.sport_variant_id
       and c.is_active and o.is_active
-      and (pp.residence_country_id is null or c.country_id = pp.residence_country_id)
+      and c.country_id = coalesce(pp.residence_country_id, lcm.country_id)
   ) then raise exception 'incompatible_club_honor_country'; end if;
   new.updated_at = now();
   return new;

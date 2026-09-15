@@ -22,7 +22,8 @@ test('honors enforce catalog compatibility, ownership and public active reads', 
   assert.match(migration, /enable row level security/);
   assert.match(migration, /p\.user_id = auth\.uid\(\)/);
   assert.match(migration, /is_active or exists/);
-  assert.match(countryMigration, /c\.country_id = pp\.residence_country_id/);
+  assert.match(countryMigration, /legacy_country_mappings lcm/);
+  assert.match(countryMigration, /c\.country_id = coalesce\(pp\.residence_country_id, lcm\.country_id\)/);
 });
 
 test('honors are directly after registrations in private and public profiles', () => {

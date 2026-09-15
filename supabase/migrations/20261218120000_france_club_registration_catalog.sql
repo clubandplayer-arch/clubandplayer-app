@@ -140,10 +140,12 @@ do $$ begin
  if (select count(*) from public.sports_organization_categories sc join public.countries c on c.id=sc.country_id where c.iso2='FR' and sc.provider='clubandplayer_authorized_catalog' and sc.is_active) <> 98 then raise exception 'France category count mismatch'; end if;
 end $$;
 
--- Country coherence is derived from the Club canonical residence when present.
+-- Prefer canonical geography, but keep pre-canonical Clubs scoped through the
+-- persisted legacy country. A Club with neither a recognized legacy country nor
+-- canonical geography must choose a country before it can register.
 create or replace function public.validate_club_sport_registration() returns trigger language plpgsql set search_path=public as $$ begin
  if not exists(select 1 from public.profiles p where p.id=new.club_profile_id and p.account_type='club') then raise exception 'registration_requires_club_profile'; end if;
- if not exists(select 1 from public.sports_organization_categories c join public.sports_organizations o on o.id=c.organization_id left join public.profile_preferences pp on pp.profile_id=new.club_profile_id where c.id=new.sports_organization_category_id and c.organization_id=new.sports_organization_id and c.sport_id=new.sport_id and c.discipline_id is not distinct from new.sport_discipline_id and c.variant_id is not distinct from new.sport_variant_id and c.is_active and o.is_active and (pp.residence_country_id is null or c.country_id=pp.residence_country_id)) then raise exception 'incompatible_club_sport_registration'; end if;
+ if not exists(select 1 from public.sports_organization_categories c join public.sports_organizations o on o.id=c.organization_id join public.profiles p on p.id=new.club_profile_id left join public.profile_preferences pp on pp.profile_id=p.id left join public.legacy_country_mappings lcm on lcm.normalized_source_value=lower(trim(p.country)) and lcm.is_active where c.id=new.sports_organization_category_id and c.organization_id=new.sports_organization_id and c.sport_id=new.sport_id and c.discipline_id is not distinct from new.sport_discipline_id and c.variant_id is not distinct from new.sport_variant_id and c.is_active and o.is_active and c.country_id=coalesce(pp.residence_country_id,lcm.country_id)) then raise exception 'incompatible_club_sport_registration'; end if;
  if new.is_primary and new.is_active then update public.club_sport_registrations set is_primary=false,updated_at=now() where club_profile_id=new.club_profile_id and id<>new.id and is_primary; end if;
  new.updated_at=now(); return new;
 end $$;

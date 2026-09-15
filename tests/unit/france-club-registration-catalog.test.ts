@@ -58,5 +58,13 @@ test('catalog endpoint filters explicit country while preserving the parameterle
 
 test('registration trigger rejects a category outside the Club canonical country', () => {
   assert.match(migration, /profile_preferences pp/);
-  assert.match(migration, /c\.country_id=pp\.residence_country_id/);
+  assert.match(migration, /legacy_country_mappings lcm/);
+  assert.match(migration, /c\.country_id=coalesce\(pp\.residence_country_id,lcm\.country_id\)/);
+  assert.doesNotMatch(migration, /pp\.residence_country_id is null or/);
+});
+
+test('canonical country writes reject incompatible active Club records', () => {
+  const geographyMigration = readFileSync('supabase/migrations/20261219120000_club_canonical_geography.sql', 'utf8');
+  assert.match(geographyMigration, /from public\.club_sport_registrations r[\s\S]*r\.is_active = true[\s\S]*c\.country_id is distinct from p_residence_country_id/);
+  assert.match(geographyMigration, /from public\.club_honors h[\s\S]*h\.is_active = true[\s\S]*c\.country_id is distinct from p_residence_country_id/);
 });
