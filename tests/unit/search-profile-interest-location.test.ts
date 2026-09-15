@@ -59,3 +59,12 @@ test('the shared Player and Staff public route preserves canonical interest loca
   assert.match(publicProfile, /if \(canonicalInterestLocation\)/);
   assert.match(publicProfile, /accountType !== 'athlete' && accountType !== 'staff'/);
 });
+
+test('public Player and Staff headers show nationality beside the profile name', () => {
+  const publicProfile = readFileSync('app/(dashboard)/players/[id]/page.tsx', 'utf8');
+  const header = readFileSync('components/profiles/ProfileHeader.tsx', 'utf8');
+  assert.match(publicProfile, /const nationality = useMemo/);
+  assert.match(publicProfile, /nameAccessory=\{nationality/);
+  assert.match(publicProfile, /CountryFlag iso2=\{nationality\.iso2\}/);
+  assert.match(header, /\{nameAccessory\}[\s\S]*<FanVoteBadge/);
+});

@@ -14,6 +14,7 @@ type AccountType = 'club' | 'institution' | 'athlete' | 'staff' | 'player';
 type ProfileHeaderProps = {
   profileId: string;
   displayName: string;
+  nameAccessory?: ReactNode;
   accountType: AccountType;
   avatarUrl?: string | null;
   subtitle?: string | null;
@@ -118,6 +119,7 @@ function ProfileSocialLinks({ socialLinks }: { socialLinks?: ProfileLinks }) {
 export default function ProfileHeader({
   profileId,
   displayName,
+  nameAccessory,
   accountType,
   avatarUrl,
   subtitle,
@@ -160,6 +162,7 @@ export default function ProfileHeader({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-logo text-2xl font-normal leading-tight text-neutral-900 md:text-3xl">{name}</h1>
+              {nameAccessory}
               <FanVoteBadge count={fanVoteCount} />
               <span
                 className={`${
