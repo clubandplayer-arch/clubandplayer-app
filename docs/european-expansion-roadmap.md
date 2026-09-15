@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5J — CERTIFICAZIONE FINALE PASS; FASE 5 COMPLETATA** |
-| Current active phase | **FASE 6 — NOT STARTED** |
-| Next safe action | **Definire l'audit per account type della FASE 6; nessun replay delle fasi 5F–5J** |
+| Last completed subphase | **FASE 6A — AUDIT PROFILI PER ACCOUNT TYPE COMPLETATO** |
+| Current active phase | **FASE 6 — IN PROGRESS; 6B NOT STARTED** |
+| Next safe action | **Autorizzare 6B, contratto funzionale e privacy per account type; nessuna migration o modifica runtime** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -912,9 +912,21 @@ Le strutture devono essere country-aware e prevedere federazioni, enti, piramidi
 
 ## FASE 6 — European Profile Model Completion
 
-**Stato: NOT STARTED.**
+**Stato: IN PROGRESS — 6A COMPLETATA; 6B NOT STARTED.**
 
 Obiettivo futuro: completare i modelli Club, Player, Staff, Fan e Institution con campi country-aware, sport, discipline, competizioni, organizzazioni, categorie, geografia, lingue e relocation/interests. Prima di qualsiasi modifica deve essere eseguito un audit per account type.
+
+### 6A — Audit repository-only dei modelli profilo per account type
+
+**Stato: COMPLETATA — AUDIT DOCUMENTALE; NESSUNA MODIFICA RUNTIME O REMOTA.** L'audit censisce onboarding, schema, RLS, API, Profile Edit, completion/visibility, geography, mobility, sport, esperienze e projection pubbliche per Athlete, Staff, Club, Institution e Fan. I gap P0 sono: divergenza fra completion TypeScript e trigger database, PATCH genericamente allowlisted ma non governato campo-per-account-type, assenza di una projection privacy esplicita e confusione fra residence personale, sede organizzativa e interessi legacy. Club resta single-sport e senza relazioni competition/organization; position e staff role restano testuali; Institution non ha ancora un modello funzionale; Fan usa un interesse legacy ma non la mobility canonica Athlete/Staff.
+
+Nessuno smoke UI umano è richiesto perché non è cambiato comportamento. Prima della 6B serve invece review umana delle decisioni su Institution, multi-sport, role/position, organization/competition, venue, completion, privacy, Fan interests e compatibility Mobile/legacy. Dettaglio e istruzioni di review: `docs/european-expansion/phase-6a-profile-models-account-type-audit.md`.
+
+### 6B — Contratto funzionale e privacy per account type
+
+**Stato: NOT STARTED / NON AUTORIZZATA.** Definire per ciascun account type campi applicabili, cardinalità, obbligatorietà, visibility (`owner-only`, `public`, `matching-only`), completion, compatibility e boundary fra Profile, Experience, organization/competition e venue. Questa sottofase deve restare documentale: non autorizza migration, runtime, UI o query remote.
+
+Suddivisione successiva proposta dall'audit, da confermare nella 6B: 6C gap/schema design; 6D schema e RLS locali; 6E contratti server; 6F UI/onboarding per tranche; 6G consumer pubblici; 6H rollout controllato; 6I regressione e certificazione.
 
 ## FASE 7 — International Opportunities & Scouting
 
