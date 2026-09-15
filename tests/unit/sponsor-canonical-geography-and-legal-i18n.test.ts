@@ -29,3 +29,10 @@ test('each legal route renders the shared localized document', () => {
     assert.match(page, /LocalizedLegalDocument/);
   }
 });
+
+test('authenticated legal pages reuse the same role-aware application menu as the dashboard', () => {
+  const layout = readFileSync('app/legal/layout.tsx', 'utf8');
+  assert.match(layout, /if \(user\) \{[\s\S]*return <AppShell>\{children\}<\/AppShell>/);
+  assert.doesNotMatch(layout, /LegalNavbar/);
+  assert.match(layout, /<MarketingNavbar \/>/);
+});
