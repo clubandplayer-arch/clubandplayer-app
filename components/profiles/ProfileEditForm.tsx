@@ -777,9 +777,9 @@ export default function ProfileEditForm() {
         throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
       }
 
-      // A Club's canonical country constrains its active registrations. Write it
-      // first so an incompatible country change is rejected before the legacy
-      // base profile can be updated to the new country.
+      // A Club's canonical country constrains its sporting records. Write it
+      // first so records tied to the previous country are archived before the
+      // legacy base profile is updated to the new country.
       if ((canonicalResidenceUiEnabled || isClub) && residenceDirty && !isInstitution && !isFan) {
         if (!residenceWritable) throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
         const residenceResponse = await fetch('/api/profiles/me/residence', {
@@ -793,6 +793,7 @@ export default function ProfileEditForm() {
           throw new Error(payload?.error ?? 'Salvataggio della residenza canonica non riuscito');
         }
         setResidenceDirty(false);
+        window.dispatchEvent(new Event('club-geography-updated'));
       }
 
       // Club geography is owned by the canonical residence endpoint above. That

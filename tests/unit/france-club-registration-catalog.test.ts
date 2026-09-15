@@ -63,8 +63,9 @@ test('registration trigger rejects a category outside the Club canonical country
   assert.doesNotMatch(migration, /pp\.residence_country_id is null or/);
 });
 
-test('canonical country writes reject incompatible active Club records', () => {
-  const geographyMigration = readFileSync('supabase/migrations/20261219120000_club_canonical_geography.sql', 'utf8');
-  assert.match(geographyMigration, /from public\.club_sport_registrations r[\s\S]*r\.is_active = true[\s\S]*c\.country_id is distinct from p_residence_country_id/);
-  assert.match(geographyMigration, /from public\.club_honors h[\s\S]*h\.is_active = true[\s\S]*c\.country_id is distinct from p_residence_country_id/);
+test('canonical country moves archive incompatible Club records without deleting history', () => {
+  const geographyMigration = readFileSync('supabase/migrations/20261221120000_club_geography_reconcile_country_records.sql', 'utf8');
+  assert.match(geographyMigration, /update public\.club_sport_registrations r[\s\S]*set is_active = false,[\s\S]*is_primary = false[\s\S]*c\.country_id is distinct from p_residence_country_id/);
+  assert.match(geographyMigration, /update public\.club_honors h[\s\S]*set is_active = false[\s\S]*c\.country_id is distinct from p_residence_country_id/);
+  assert.doesNotMatch(geographyMigration, /raise exception[\s\S]*incompatible with active/);
 });
