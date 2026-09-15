@@ -150,15 +150,41 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (error) return jsonError(error.message, 400);
   let isVerified: boolean | null = null;
   if (data?.id && data?.account_type === 'club') {
-    const { data: verification, error: verificationError } = await supabase
-      .from('club_verification_requests_view')
-      .select('is_verified')
-      .eq('club_id', data.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const [verificationResult, primaryRegistrationResult] = await Promise.all([
+      supabase
+        .from('club_verification_requests_view')
+        .select('is_verified')
+        .eq('club_id', data.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('club_sport_registrations')
+        .select('sports:sport_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
+        .eq('club_profile_id', data.id)
+        .eq('is_active', true)
+        .eq('is_primary', true)
+        .maybeSingle(),
+    ]);
+    const { data: verification, error: verificationError } = verificationResult;
     if (verificationError) return jsonError(verificationError.message, 400);
     isVerified = verification?.is_verified ?? null;
+
+    const { data: primaryRegistration, error: primaryRegistrationError } = primaryRegistrationResult;
+    if (primaryRegistrationError) return jsonError(primaryRegistrationError.message, 400);
+    if (primaryRegistration) {
+      const sport = Array.isArray(primaryRegistration.sports)
+        ? primaryRegistration.sports[0]
+        : primaryRegistration.sports;
+      const category = Array.isArray(primaryRegistration.category)
+        ? primaryRegistration.category[0]
+        : primaryRegistration.category;
+
+      // The canonical primary registration is the source of truth for the Club
+      // summary shown in the feed; legacy profile labels may otherwise be stale.
+      data.sport = sport?.code ?? sport?.canonical_name ?? data.sport;
+      data.club_league_category = category?.canonical_name ?? data.club_league_category;
+    }
   }
 
   return NextResponse.json({ data: data ? { ...data, is_verified: isVerified } : null });

@@ -57,3 +57,17 @@ test('Club base profile save preserves the canonical geography dual-write', () =
     assert.match(betweenWrites, new RegExp(`delete basePayload\\.${field}`));
   }
 });
+
+test('Club country changes refresh archived registrations and honors in the editor', () => {
+  const registrations = readFileSync('components/clubs/ClubRegistrationsSection.tsx', 'utf8');
+  const honors = readFileSync('components/clubs/ClubHonorsSection.tsx', 'utf8');
+  assert.match(form, /dispatchEvent\(new Event\('club-geography-updated'\)\)/);
+  assert.match(registrations, /addEventListener\('club-geography-updated', load\)/);
+  assert.match(honors, /addEventListener\('club-geography-updated', load\)/);
+});
+
+test('Club geography errors preserve the Supabase error message', () => {
+  assert.match(route, /typeof reason\.message === 'string'/);
+  assert.match(writer, /category:sports_organization_category_id\(country_id\)/);
+  assert.match(writer, /update\(\{ is_active: false, is_primary: false \}\)/);
+});

@@ -38,7 +38,11 @@ export default function ClubRegistrationsSection({ countryId }: { countryId?: st
     const payload = await response.json();
     if (response.ok) setRows(payload.data ?? []);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    window.addEventListener('club-geography-updated', load);
+    return () => window.removeEventListener('club-geography-updated', load);
+  }, [load]);
 
   const sportName = (row: Row) => localizeSport(row.sports?.code ?? row.sports?.canonical_name, t) ?? row.sports?.canonical_name ?? '—';
   const rowLabel = (row: Row) => `${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${localizeOpportunityCategory(row.category?.canonical_name, t) ?? '—'}`;

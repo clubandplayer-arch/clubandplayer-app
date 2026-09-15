@@ -84,6 +84,11 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       : await writeMyProfileResidence(supabase, patch);
     return NextResponse.json(result);
   } catch (reason) {
-    return jsonError(reason instanceof Error ? reason.message : 'Canonical residence write failed', 400);
+    const message = reason instanceof Error
+      ? reason.message
+      : reason && typeof reason === 'object' && 'message' in reason && typeof reason.message === 'string'
+        ? reason.message
+        : 'Canonical residence write failed';
+    return jsonError(message, 400);
   }
 });

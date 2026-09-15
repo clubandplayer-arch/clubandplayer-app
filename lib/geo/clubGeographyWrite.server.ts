@@ -73,6 +73,35 @@ export async function writeMyClubGeography(
   });
   if (!plan) throw new ResidenceContractError('INVALID_GEOGRAPHY', 'geography is required');
 
+  // Keep the no-RPC preview fallback coherent with the transactional RPC: a
+  // Club move archives country-bound sporting data instead of blocking the
+  // profile save or deleting its history.
+  const [{ data: registrations, error: registrationsError }, { data: honors, error: honorsError }] = await Promise.all([
+    client.from('club_sport_registrations')
+      .select('id,category:sports_organization_category_id(country_id)')
+      .eq('club_profile_id', profileId).eq('is_active', true),
+    client.from('club_honors')
+      .select('id,category:sports_organization_category_id(country_id)')
+      .eq('club_profile_id', profileId).eq('is_active', true),
+  ]);
+  if (registrationsError) throw registrationsError;
+  if (honorsError) throw honorsError;
+  const categoryCountryId = (row: any) => {
+    const category = Array.isArray(row.category) ? row.category[0] : row.category;
+    return category?.country_id ?? null;
+  };
+  const registrationIds = (registrations ?? []).filter((row) => categoryCountryId(row) !== countryId).map((row) => row.id);
+  const honorIds = (honors ?? []).filter((row) => categoryCountryId(row) !== countryId).map((row) => row.id);
+  if (registrationIds.length) {
+    const { error } = await client.from('club_sport_registrations')
+      .update({ is_active: false, is_primary: false }).in('id', registrationIds);
+    if (error) throw error;
+  }
+  if (honorIds.length) {
+    const { error } = await client.from('club_honors').update({ is_active: false }).in('id', honorIds);
+    if (error) throw error;
+  }
+
   const { error: profileError } = await client.from('profiles').update({
     country: country?.iso2 ?? null,
     ...plan.legacyProfile,

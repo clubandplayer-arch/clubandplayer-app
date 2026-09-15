@@ -34,7 +34,11 @@ export default function ClubHonorsSection({ countryId }: { countryId?: string | 
   }, [countryId]);
   const seasonOptions = clubHonorSeasonOptions();
   const load = useCallback(async () => { const response = await fetch('/api/clubs/honors'); const payload = await response.json(); if (response.ok) setRows(payload.data ?? []); }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    window.addEventListener('club-geography-updated', load);
+    return () => window.removeEventListener('club-geography-updated', load);
+  }, [load]);
   const sportName = (row: Honor) => localizeSport(row.sports?.code ?? row.sports?.canonical_name, t) ?? row.sports?.canonical_name ?? '—';
   const placementLabel = (value: 1 | 2 | 3) => value === 1 ? t('club.honors.champion') : t(`club.honors.place${value}`);
   const label = (row: Honor) => `${row.season} · ${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${localizeOpportunityCategory(row.category?.canonical_name, t) ?? '—'} · ${placementLabel(row.placement)}`;
