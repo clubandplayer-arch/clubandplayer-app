@@ -50,3 +50,12 @@ test('athletes_view search projection never requests unavailable interest column
   assert.ok(athleteSelect);
   assert.doesNotMatch(athleteSelect, /interest_/);
 });
+
+test('the shared Player and Staff public route preserves canonical interest location after navigation', () => {
+  const publicProfile = readFileSync('app/(dashboard)/players/[id]/page.tsx', 'utf8');
+  assert.match(publicProfile, /from\('profile_geo_area_interests'\)/);
+  assert.match(publicProfile, /order\('priority', \{ ascending: true \}\)/);
+  assert.match(publicProfile, /canonicalInterestLocation\?\.label/);
+  assert.match(publicProfile, /if \(canonicalInterestLocation\)/);
+  assert.match(publicProfile, /accountType !== 'athlete' && accountType !== 'staff'/);
+});

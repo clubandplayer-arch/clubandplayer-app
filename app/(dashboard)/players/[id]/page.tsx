@@ -106,6 +106,12 @@ type ResolvedLocation = {
   city: string | null;
 };
 
+type CanonicalInterestLocation = {
+  label: string;
+  countryIso2: string | null;
+  countryLabel: string;
+};
+
 type ClubProfileSummary = {
   id: string;
   full_name: string | null;
@@ -142,7 +148,7 @@ function getInitials(name: string) {
 }
 
 export default function PlayerPublicProfilePage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = useMemo(() => supabaseBrowser(), []);
@@ -151,6 +157,7 @@ export default function PlayerPublicProfilePage() {
   const [profile, setProfile] = useState<AthleteProfileRow | null>(null);
   const [clubOfBelonging, setClubOfBelonging] = useState<ClubProfileSummary | null>(null);
   const [resolvedLocation, setResolvedLocation] = useState<ResolvedLocation | null>(null);
+  const [canonicalInterestLocation, setCanonicalInterestLocation] = useState<CanonicalInterestLocation | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [experiences, setExperiences] = useState<AthleteExperience[]>([]);
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
@@ -171,6 +178,8 @@ export default function PlayerPublicProfilePage() {
     const load = async () => {
       setLoading(true);
       setMsg('');
+      setResolvedLocation(null);
+      setCanonicalInterestLocation(null);
       setExperiences([]);
       setFanVoteState({
         voteCount: 0,
@@ -270,6 +279,42 @@ export default function PlayerPublicProfilePage() {
       };
 
       setProfile(normalizedProfile);
+
+      // Player and Staff geographic interests are stored in the canonical
+      // tables and are not projected back into the legacy profile columns.
+      // Read the same first-priority value used by Search/ProfileMiniCard so
+      // opening a result cannot revert from (for example) Carlentini to Roma.
+      try {
+        const { data: interestRow } = await supabase
+          .from('profile_geo_area_interests')
+          .select('geo_area_id,priority')
+          .eq('profile_id', normalizedProfile.id)
+          .order('priority', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (interestRow?.geo_area_id) {
+          const ancestryResponse = await fetch(
+            `/api/geo/areas/${encodeURIComponent(interestRow.geo_area_id)}/ancestors`,
+            { cache: 'no-store' },
+          );
+          const ancestryPayload = await ancestryResponse.json().catch(() => ({}));
+          const geography = ancestryPayload?.data;
+          if (ancestryResponse.ok && geography?.area?.official_name) {
+            const iso2 = geography.area.country?.iso2?.toUpperCase() || null;
+            const countryLabel = iso2
+              ? new Intl.DisplayNames([locale], { type: 'region' }).of(iso2) ?? geography.area.country?.official_name ?? iso2
+              : geography.area.country?.official_name ?? '';
+            setCanonicalInterestLocation({
+              label: [geography.area.official_name, countryLabel].filter(Boolean).join(' · '),
+              countryIso2: iso2,
+              countryLabel,
+            });
+          }
+        }
+      } catch {
+        // Legacy interest/residence resolution below remains the compatibility
+        // fallback for profiles that predate canonical geography.
+      }
 
       try {
         const voteRes = await fetch(`/api/profiles/${normalizedProfile.id}/fan-vote`, {
@@ -458,6 +503,7 @@ export default function PlayerPublicProfilePage() {
 
   const profileLocation = useMemo(() => {
     if (!profile) return '';
+    if (canonicalInterestLocation?.label) return canonicalInterestLocation.label;
     const location = resolvedLocation ?? {
       city: profile.interest_city ?? profile.city,
       province: profile.interest_province ?? profile.province,
@@ -468,10 +514,16 @@ export default function PlayerPublicProfilePage() {
       .map((part) => (part ?? '').trim())
       .filter(Boolean);
     return parts.join(' · ');
-  }, [profile, provinceAbbreviations, resolvedLocation]);
+  }, [canonicalInterestLocation, profile, provinceAbbreviations, resolvedLocation]);
 
   const profileLocationBase = useMemo(() => {
     if (!profile) return '';
+    if (canonicalInterestLocation?.label) {
+      return canonicalInterestLocation.label
+        .split(' · ')
+        .slice(0, -1)
+        .join(' · ');
+    }
     const location = resolvedLocation ?? {
       city: profile.interest_city ?? profile.city,
       province: profile.interest_province ?? profile.province,
@@ -481,7 +533,7 @@ export default function PlayerPublicProfilePage() {
       .map((part) => (part ?? '').trim())
       .filter(Boolean);
     return parts.join(' · ');
-  }, [profile, provinceAbbreviations, resolvedLocation]);
+  }, [canonicalInterestLocation, profile, provinceAbbreviations, resolvedLocation]);
 
   const headerDisplayName = useMemo(() => {
     if (!profile) return 'Player';
@@ -517,13 +569,19 @@ export default function PlayerPublicProfilePage() {
   }, [clubOfBelonging?.country]);
 
   const headerCountry = useMemo(() => {
+    if (canonicalInterestLocation) {
+      return {
+        iso2: canonicalInterestLocation.countryIso2,
+        label: canonicalInterestLocation.countryLabel,
+      };
+    }
     const raw = (resolvedLocation?.country ?? profile?.interest_country ?? profile?.country ?? '').trim();
     if (!raw) return { iso2: null, label: '' };
     const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
     const iso2 = match ? match[1].trim().toUpperCase() : raw.toUpperCase();
     const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
     return { iso2, label };
-  }, [profile?.country, profile?.interest_country, resolvedLocation?.country]);
+  }, [canonicalInterestLocation, profile?.country, profile?.interest_country, resolvedLocation?.country]);
 
   const headerLocationContent = useMemo(() => {
     const rawLocation = profileLocationBase.trim();
