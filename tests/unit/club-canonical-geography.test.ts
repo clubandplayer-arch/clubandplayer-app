@@ -12,6 +12,7 @@ test('Club profile replaces the world/Italy-only controls with the Opportunity c
   assert.match(form, /setCountry\(selectedCountry\?\.iso2 \?\? ''\)/);
   assert.match(form, /setResidenceGeoAreaId\(null\)/);
   assert.match(form, /<ClubRegistrationsSection countryId=\{residenceCountryId\}/);
+  assert.match(form, /club\.geography\.requiredHelp/);
   assert.match(selector, /CanonicalCountryRead/);
 });
 

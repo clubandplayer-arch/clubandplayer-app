@@ -551,7 +551,9 @@ export default function ProfileEditForm() {
     interest_region_id: isOrganization ? clubLocation.regionId : null,
     interest_province_id: isOrganization ? clubLocation.provinceId : null,
     interest_municipality_id: isOrganization ? clubLocation.municipalityId : null,
-  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile]);
+    residence_country_id: isClub ? residenceCountryId : null,
+    residence_geo_area_id: isClub ? residenceGeoAreaId : null,
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile, residenceCountryId, residenceGeoAreaId]);
   const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
@@ -754,7 +756,12 @@ export default function ProfileEditForm() {
         });
       }
 
-      const missingFields = getMissingRequiredProfileFields(isClub ? { ...basePayload, sport: 'registrazioni club' } : basePayload);
+      const missingFields = getMissingRequiredProfileFields(isClub ? {
+        ...basePayload,
+        sport: 'registrazioni club',
+        residence_country_id: residenceCountryId,
+        residence_geo_area_id: residenceGeoAreaId,
+      } : basePayload);
       if (missingFields.length > 0) {
         throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
       }
@@ -995,6 +1002,9 @@ export default function ProfileEditForm() {
                       area: t('map.area'),
                     }}
                   />
+                  <p className="mt-3 text-xs text-slate-600">
+                    {t('club.geography.requiredHelp')}
+                  </p>
                 </div>
               ) : (
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
