@@ -26,7 +26,6 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useRole } from '@/lib/auth/useRole';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
-import { countryLabel } from '@/lib/utils/country';
 
 type AthleteProfileRow = {
   id: string;
@@ -541,13 +540,6 @@ export default function PlayerPublicProfilePage() {
     return buildPlayerDisplayName(profile.full_name, profile.display_name);
   }, [profile]);
 
-  const nationality = useMemo(() => {
-    const resolved = countryLabel(profile?.country);
-    if (!resolved.iso) return null;
-    const label = new Intl.DisplayNames([locale], { type: 'region' }).of(resolved.iso) ?? resolved.label;
-    return { iso2: resolved.iso, label };
-  }, [locale, profile?.country]);
-
   const headerSubtitle = useMemo(() => {
     if (!profile) return '';
     const sportLabel = localizeSport(normalizeSport(profile.sport ?? null) ?? profile.sport, t);
@@ -620,15 +612,6 @@ export default function PlayerPublicProfilePage() {
           <ProfileHeader
             profileId={profile.id}
             displayName={headerDisplayName}
-            nameAccessory={nationality ? (
-              <span
-                className="inline-flex items-center"
-                title={`${t('profile.nationality')}: ${nationality.label}`}
-                aria-label={`${t('profile.nationality')}: ${nationality.label}`}
-              >
-                <CountryFlag iso2={nationality.iso2} className="h-[15px] w-5" />
-              </span>
-            ) : null}
             accountType={String(profile.account_type ?? profile.type ?? '').toLowerCase() === 'staff' ? 'staff' : 'player'}
             avatarUrl={profile.avatar_url}
             subtitle={headerSubtitle}
