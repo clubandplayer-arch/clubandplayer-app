@@ -5,14 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 
 import SearchResultRow, { type SearchResult } from '@/components/search/SearchResultRow';
+import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter from '@/components/sports/CanonicalSportFilter';
-import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type SearchType = 'all' | 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
-type LocationOption = { id: number; name: string };
 
 type SearchResultsByKind = {
   opportunities: SearchResult[];
@@ -45,14 +44,9 @@ const EMPTY_RESULTS: SearchResultsByKind = {
 };
 
 const PAGE_LIMIT = 10;
-const DEFAULT_COUNTRY = 'IT';
-const ITALY_LABEL = getCountryName(DEFAULT_COUNTRY) ?? 'Italia';
-const COUNTRY_OPTIONS = [
-  { code: '', label: 'Tutte le nazioni' },
-  ...COUNTRIES.filter((country) => country.code !== 'OTHER'),
-];
-
 type SearchFilters = {
+  countryId: string;
+  geoAreaId: string;
   country: string;
   region: string;
   province: string;
@@ -65,6 +59,8 @@ type SearchFilters = {
 };
 
 const EMPTY_FILTERS: SearchFilters = {
+  countryId: '',
+  geoAreaId: '',
   country: '',
   region: '',
   province: '',
@@ -110,6 +106,8 @@ function resultsForType(results: SearchResultsByKind, type: SearchType) {
 
 function readFilters(searchParams: URLSearchParams | ReturnType<typeof useSearchParams>): SearchFilters {
   return {
+    countryId: (searchParams.get('countryId') || searchParams.get('country_id') || '').trim(),
+    geoAreaId: (searchParams.get('geoAreaId') || searchParams.get('geo_area_id') || '').trim(),
     country: (searchParams.get('country') || '').trim().toUpperCase(),
     region: (searchParams.get('region') || '').trim(),
     province: (searchParams.get('province') || '').trim(),
@@ -123,7 +121,7 @@ function readFilters(searchParams: URLSearchParams | ReturnType<typeof useSearch
 }
 
 function hasActiveFilters(filters: SearchFilters) {
-  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.sportId || filters.disciplineId || filters.variantId || filters.role);
+  return Boolean(filters.countryId || filters.geoAreaId || filters.country || filters.region || filters.province || filters.city || filters.sport || filters.sportId || filters.disciplineId || filters.variantId || filters.role);
 }
 
 export default function SearchPage() {
@@ -150,9 +148,6 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<SearchFilters>(() => readFilters(searchParams));
-  const [regions, setRegions] = useState<LocationOption[]>([]);
-  const [provinces, setProvinces] = useState<LocationOption[]>([]);
-  const [cities, setCities] = useState<LocationOption[]>([]);
 
   useEffect(() => {
     setInputValue(queryParam);
@@ -162,8 +157,6 @@ export default function SearchPage() {
     setFilters(readFilters(searchParams));
   }, [searchParams]);
 
-  const selectedCountry = filters.country || '';
-  const isItalySelected = !selectedCountry || selectedCountry === DEFAULT_COUNTRY;
   const playerRoles = useMemo(() => {
     const sport = normalizeSport(filters.sport);
     if (!sport) return [];
@@ -172,97 +165,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [queryParam, type, filters.country, filters.region, filters.province, filters.city, filters.sport, filters.sportId, filters.disciplineId, filters.variantId, filters.role]);
-
-  useEffect(() => {
-    if (!isItalySelected) {
-      setRegions([]);
-      setProvinces([]);
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    const loadRegions = async () => {
-      try {
-        const res = await fetch('/api/geo/regions', { cache: 'no-store' });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.message || 'Errore caricamento regioni');
-        if (!cancelled) {
-          setRegions(Array.isArray(payload?.data) ? payload.data : []);
-        }
-      } catch {
-        if (!cancelled) setRegions([]);
-      }
-    };
-
-    loadRegions();
-    return () => {
-      cancelled = true;
-    };
-  }, [isItalySelected]);
-
-  useEffect(() => {
-    if (!isItalySelected || !filters.region) {
-      setProvinces([]);
-      setCities([]);
-      return;
-    }
-
-    const selectedRegion = regions.find((region) => region.name === filters.region);
-    if (!selectedRegion) {
-      setProvinces([]);
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    const loadProvinces = async () => {
-      try {
-        const res = await fetch(`/api/geo/provinces?regionId=${selectedRegion.id}`, { cache: 'no-store' });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.message || 'Errore caricamento province');
-        if (!cancelled) setProvinces(Array.isArray(payload?.data) ? payload.data : []);
-      } catch {
-        if (!cancelled) setProvinces([]);
-      }
-    };
-
-    loadProvinces();
-    return () => {
-      cancelled = true;
-    };
-  }, [filters.region, isItalySelected, regions]);
-
-  useEffect(() => {
-    if (!isItalySelected || !filters.province) {
-      setCities([]);
-      return;
-    }
-
-    const selectedProvince = provinces.find((province) => province.name === filters.province);
-    if (!selectedProvince) {
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    const loadCities = async () => {
-      try {
-        const res = await fetch(`/api/geo/municipalities?provinceId=${selectedProvince.id}`, { cache: 'no-store' });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.message || 'Errore caricamento città');
-        if (!cancelled) setCities(Array.isArray(payload?.data) ? payload.data : []);
-      } catch {
-        if (!cancelled) setCities([]);
-      }
-    };
-
-    loadCities();
-    return () => {
-      cancelled = true;
-    };
-  }, [filters.province, isItalySelected, provinces]);
+  }, [queryParam, type, filters.countryId, filters.geoAreaId, filters.country, filters.region, filters.province, filters.city, filters.sport, filters.sportId, filters.disciplineId, filters.variantId, filters.role]);
 
   useEffect(() => {
     const filteredSearch = hasActiveFilters(filters);
@@ -430,73 +333,33 @@ export default function SearchPage() {
         </form>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-4 lg:grid-cols-4">
-            <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">{t('search.country')}</span>
-              <select
-                value={filters.country}
-                onChange={(event) => updateFilter('country', event.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
-              >
-                {COUNTRY_OPTIONS.map((country) => (
-                  <option key={country.code || 'all'} value={country.code}>
-                    {country.code ? country.label : t('search.allCountries')}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">{t('search.region')}</span>
-              <select
-                value={filters.region}
-                onChange={(event) => updateFilter('region', event.target.value)}
-                disabled={!isItalySelected}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
-              >
-                <option value="">{isItalySelected ? t('search.allRegions') : `Disponibile solo con ${ITALY_LABEL}`}</option>
-                {regions.map((region) => (
-                  <option key={region.id} value={region.name}>
-                    {region.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">{t('search.province')}</span>
-              <select
-                value={filters.province}
-                onChange={(event) => updateFilter('province', event.target.value)}
-                disabled={!isItalySelected || !filters.region}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
-              >
-                <option value="">{t('search.allProvinces')}</option>
-                {provinces.map((province) => (
-                  <option key={province.id} value={province.name}>
-                    {province.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">{t('search.city')}</span>
-              <select
-                value={filters.city}
-                onChange={(event) => updateFilter('city', event.target.value)}
-                disabled={!isItalySelected || !filters.province}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
-              >
-                <option value="">{t('search.allCities')}</option>
-                {cities.map((city) => (
-                  <option key={city.id} value={city.name}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <CanonicalGeographySelector
+            idPrefix="global-search-geography"
+            countryId={filters.countryId || null}
+            geoAreaId={filters.geoAreaId || null}
+            onCountryChange={(countryId) => setFilters((current) => ({
+              ...current,
+              countryId: countryId ?? '',
+              geoAreaId: '',
+              country: '',
+              region: '',
+              province: '',
+              city: '',
+            }))}
+            onGeoAreaChange={(geoAreaId) => setFilters((current) => ({
+              ...current,
+              geoAreaId: geoAreaId ?? '',
+              region: '',
+              province: '',
+              city: '',
+            }))}
+            labels={{
+              country: t('search.country'),
+              selectCountry: t('search.allCountries'),
+              area: t('map.area'),
+              selectArea: t('map.selectArea'),
+            }}
+          />
 
           <div className="mt-4">
             <CanonicalSportFilter

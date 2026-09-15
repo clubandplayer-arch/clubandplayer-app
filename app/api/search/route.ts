@@ -19,6 +19,7 @@ import {
 } from '@/lib/search/canonicalGeographyContract';
 import { SupabaseSearchGeographyCatalog } from '@/lib/search/canonicalGeography.server';
 import { applyCanonicalSportFilters, CanonicalSportFilterError, parseCanonicalSportFilters, type CanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
+import { loadProfileSearchInterestLocations } from '@/lib/search/profileResultLocation.server';
 
 export const runtime = 'nodejs';
 
@@ -78,6 +79,9 @@ const DEFAULT_LIMIT = 10;
 const ALL_PREVIEW_LIMIT = 3;
 
 const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'institutions', 'players', 'staff', 'posts', 'events'];
+// athletes_view intentionally exposes only the public athlete projection. Keep
+// private/optional interest columns out of this select and resolve canonical
+// interests separately after the result page has been loaded.
 const ATHLETES_SELECT = 'id, full_name, avatar_url, city, province, region, country, sport, role';
 
 function clamp(n: number, min: number, max: number) {
@@ -407,7 +411,7 @@ async function fetchProfileResults(params: {
     const { data, count, error } = await buildStaffQuery(
       supabase,
       ilikeQuery,
-      'id, full_name, display_name, avatar_url, city, province, region, country, sport, role, account_type, type',
+      'id, full_name, display_name, avatar_url, city, province, region, country, sport, role, account_type, type, interest_city, interest_province, interest_region, interest_country',
       filters,
       { count: 'exact' },
     )
@@ -415,10 +419,11 @@ async function fetchProfileResults(params: {
       .range(from, to);
     if (error) throw new Error(error.message);
     const rows = Array.isArray(data) ? (data as any[]) : [];
+    const canonicalInterests = await loadProfileSearchInterestLocations(supabase, rows.map((row) => String(row.id)));
     const results: SearchResult[] = rows.map((row) => {
       const title = (row.full_name || row.display_name || '').trim() || 'Staff';
       const details = [row.role, row.sport].filter(Boolean).join(' · ');
-      const location = buildLocation(row, provinceAbbreviations);
+      const location = canonicalInterests.get(String(row.id)) || buildLocation(row, provinceAbbreviations);
       const subtitle = [details, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
@@ -453,11 +458,12 @@ async function fetchProfileResults(params: {
   if (error) throw new Error(error.message);
 
   const rows = Array.isArray(data) ? (data as any[]) : [];
+  const canonicalInterests = await loadProfileSearchInterestLocations(supabase, rows.map((row) => String(row.id)));
 
   const results: SearchResult[] = rows.map((row) => {
     const title = (row.full_name || '').trim() || 'Player';
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
-    const location = buildLocation(row, provinceAbbreviations);
+    const location = canonicalInterests.get(String(row.id)) || buildLocation(row, provinceAbbreviations);
     const subtitle = [details, location].filter(Boolean).join(' · ');
     return {
       id: String(row.id),
