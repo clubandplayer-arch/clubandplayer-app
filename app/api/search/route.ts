@@ -79,7 +79,10 @@ const DEFAULT_LIMIT = 10;
 const ALL_PREVIEW_LIMIT = 3;
 
 const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'institutions', 'players', 'staff', 'posts', 'events'];
-const ATHLETES_SELECT = 'id, full_name, avatar_url, city, province, region, country, sport, role, interest_city, interest_province, interest_region, interest_country';
+// athletes_view intentionally exposes only the public athlete projection. Keep
+// private/optional interest columns out of this select and resolve canonical
+// interests separately after the result page has been loaded.
+const ATHLETES_SELECT = 'id, full_name, avatar_url, city, province, region, country, sport, role';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -100,15 +103,6 @@ function buildLocationFrom(parts: Array<string | null | undefined>) {
 
 function buildLocation(row: Record<string, any>, provinceAbbreviations: Record<string, string>) {
   return buildLocationFrom([row.city, provinceDisplayValue(row.province, provinceAbbreviations), row.region, row.country]);
-}
-
-function buildInterestLocation(row: Record<string, any>, provinceAbbreviations: Record<string, string>) {
-  return buildLocationFrom([
-    row.interest_city,
-    provinceDisplayValue(row.interest_province, provinceAbbreviations),
-    row.interest_region,
-    row.interest_country,
-  ]);
 }
 
 function normalizeType(raw?: string | null): SearchType {
@@ -429,7 +423,7 @@ async function fetchProfileResults(params: {
     const results: SearchResult[] = rows.map((row) => {
       const title = (row.full_name || row.display_name || '').trim() || 'Staff';
       const details = [row.role, row.sport].filter(Boolean).join(' · ');
-      const location = canonicalInterests.get(String(row.id)) || buildInterestLocation(row, provinceAbbreviations) || buildLocation(row, provinceAbbreviations);
+      const location = canonicalInterests.get(String(row.id)) || buildLocation(row, provinceAbbreviations);
       const subtitle = [details, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
@@ -469,7 +463,7 @@ async function fetchProfileResults(params: {
   const results: SearchResult[] = rows.map((row) => {
     const title = (row.full_name || '').trim() || 'Player';
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
-    const location = canonicalInterests.get(String(row.id)) || buildInterestLocation(row, provinceAbbreviations) || buildLocation(row, provinceAbbreviations);
+    const location = canonicalInterests.get(String(row.id)) || buildLocation(row, provinceAbbreviations);
     const subtitle = [details, location].filter(Boolean).join(' · ');
     return {
       id: String(row.id),
