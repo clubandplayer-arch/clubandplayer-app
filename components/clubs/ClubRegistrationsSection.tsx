@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import OrganizationCategoryFields, { type OrganizationCategoryValue } from '@/components/sports/OrganizationCategoryFields';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeSport } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizeSport } from '@/lib/i18n/controlledVocabulary';
 import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 
 type Row = {
@@ -15,7 +15,7 @@ type Row = {
 };
 const EMPTY_SPORT: CanonicalSportFilterValue = { sportId: '', disciplineId: '', variantId: '', legacySport: '' };
 
-export default function ClubRegistrationsSection() {
+export default function ClubRegistrationsSection({ countryId }: { countryId?: string | null }) {
   const { t } = useI18n();
   const [rows, setRows] = useState<Row[]>([]);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -24,6 +24,14 @@ export default function ClubRegistrationsSection() {
   const [membership, setMembership] = useState<OrganizationCategoryValue>({ organizationId: '', categoryId: '' });
   const [primary, setPrimary] = useState(false);
   const [error, setError] = useState('');
+  const previousCountryId = useRef(countryId);
+
+  useEffect(() => {
+    if (previousCountryId.current !== countryId) {
+      setMembership({ organizationId: '', categoryId: '' });
+      previousCountryId.current = countryId;
+    }
+  }, [countryId]);
 
   const load = useCallback(async () => {
     const response = await fetch('/api/clubs/registrations');
@@ -33,7 +41,7 @@ export default function ClubRegistrationsSection() {
   useEffect(() => { void load(); }, [load]);
 
   const sportName = (row: Row) => localizeSport(row.sports?.code ?? row.sports?.canonical_name, t) ?? row.sports?.canonical_name ?? '—';
-  const rowLabel = (row: Row) => `${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${row.category?.canonical_name ?? '—'}`;
+  const rowLabel = (row: Row) => `${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${localizeOpportunityCategory(row.category?.canonical_name, t) ?? '—'}`;
 
   function start(row?: Row) {
     setEditing(row ?? null); setError('');
@@ -79,7 +87,7 @@ export default function ClubRegistrationsSection() {
     <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">{t('club.registrations.title')}</h2>
       <button type="button" onClick={() => start()} className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">{t('club.registrations.add')}</button></div>
     <div className="mt-4 space-y-3">{rows.map((row) => <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div>{rowLabel(row)} {row.is_primary && <span className="ml-2 rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-800">{t('club.registrations.primary')}</span>}</div><div className="flex gap-2"><button type="button" onClick={() => start(row)} className="rounded-lg border border-blue-600 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-50">{t('club.registrations.edit')}</button><button type="button" onClick={() => void deactivate(row)} className="rounded-lg border border-red-500 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-50">{t('club.registrations.deactivate')}</button></div></div>)}</div>
-    {open && <div className="mt-4 grid gap-3 md:grid-cols-3"><CanonicalSportFilter idPrefix="registration-sport" value={sport} onChange={(value, meta) => { setSport(value); if (meta.source === 'user') setMembership({ organizationId: '', categoryId: '' }); }} sportLabel={(item) => localizeSport(item.code, t) ?? item.canonical_name} labels={{ sport: t('club.sport'), allSports: '—', catalogUnavailable: t('sports.catalogUnavailable') }}/><OrganizationCategoryFields sport={sport} value={membership} onChange={setMembership} organizationLabel={t('club.organization')} categoryLabel={t('club.registrations.category')}/><label className="flex items-center gap-2"><input type="checkbox" checked={primary} onChange={(event) => setPrimary(event.target.checked)}/>{t('club.registrations.setPrimary')}</label><button type="button" onClick={() => void save()} className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">{t('club.registrations.save')}</button><button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-slate-400 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">{t('club.registrations.cancel')}</button></div>}
+    {open && <div className="mt-4 grid gap-3 md:grid-cols-3"><CanonicalSportFilter idPrefix="registration-sport" value={sport} onChange={(value, meta) => { setSport(value); if (meta.source === 'user') setMembership({ organizationId: '', categoryId: '' }); }} sportLabel={(item) => localizeSport(item.code, t) ?? item.canonical_name} labels={{ sport: t('club.sport'), allSports: '—', catalogUnavailable: t('sports.catalogUnavailable') }}/><OrganizationCategoryFields countryId={countryId} sport={sport} value={membership} onChange={setMembership} organizationLabel={t('club.organization')} categoryLabel={t('club.registrations.category')}/><label className="flex items-center gap-2"><input type="checkbox" checked={primary} onChange={(event) => setPrimary(event.target.checked)}/>{t('club.registrations.setPrimary')}</label><button type="button" onClick={() => void save()} className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">{t('club.registrations.save')}</button><button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-slate-400 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">{t('club.registrations.cancel')}</button></div>}
     {error && <p className="mt-3 text-sm font-medium text-red-700" role="alert">{error}</p>}
   </section>;
 }

@@ -29,6 +29,8 @@ type SearchResult = {
   id: string;
   title: string;
   subtitle?: string | null;
+  sport?: string | null;
+  role?: string | null;
   image_url?: string | null;
   href: string;
   kind: Exclude<SearchType, 'all'>;
@@ -360,11 +362,11 @@ async function fetchProfileResults(params: {
     const results: SearchResult[] = rows.map((row) => {
       const displayName = (row.display_name || row.full_name || '').trim();
       const location = buildLocation(row, provinceAbbreviations);
-      const subtitle = [row.sport, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
         title: displayName || 'Club',
-        subtitle: subtitle || null,
+        subtitle: location || null,
+        sport: row.sport || null,
         image_url: row.avatar_url || null,
         href: `/clubs/${row.id}`,
         kind,
@@ -422,13 +424,13 @@ async function fetchProfileResults(params: {
     const canonicalInterests = await loadProfileSearchInterestLocations(supabase, rows.map((row) => String(row.id)));
     const results: SearchResult[] = rows.map((row) => {
       const title = (row.full_name || row.display_name || '').trim() || 'Staff';
-      const details = [row.role, row.sport].filter(Boolean).join(' · ');
       const location = canonicalInterests.get(String(row.id)) || buildLocation(row, provinceAbbreviations);
-      const subtitle = [details, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
         title,
-        subtitle: subtitle || null,
+        subtitle: location || null,
+        role: row.role || null,
+        sport: row.sport || null,
         image_url: row.avatar_url || null,
         href: `/players/${row.id}`,
         kind: 'staff',
@@ -462,13 +464,13 @@ async function fetchProfileResults(params: {
 
   const results: SearchResult[] = rows.map((row) => {
     const title = (row.full_name || '').trim() || 'Player';
-    const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = canonicalInterests.get(String(row.id)) || buildLocation(row, provinceAbbreviations);
-    const subtitle = [details, location].filter(Boolean).join(' · ');
     return {
       id: String(row.id),
       title,
-      subtitle: subtitle || null,
+      subtitle: location || null,
+      sport: row.sport || null,
+      role: row.role || null,
       image_url: row.avatar_url || null,
       href: `/players/${row.id}`,
       kind,

@@ -44,7 +44,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data, error } = await supabase
     .from('athlete_experiences')
-    .select('club_name, sport, role, category, start_year, end_year, sport_id, sport_discipline_id, sport_variant_id, sports_organization_id, sports_organization_category_id')
+    .select('club_name, sport, role, category, start_year, end_year, sport_id, sport_discipline_id, sport_variant_id, sports_organization_id, sports_organization_category_id,organization_category:sports_organization_category_id(country_id)')
     .eq('profile_id', profile.id)
     .order('start_year', { ascending: false })
     .order('end_year', { ascending: false });
@@ -66,6 +66,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
         category: item.category || '',
         organizationId: item.sports_organization_id || '',
         categoryId: item.sports_organization_category_id || '',
+        countryId: ((Array.isArray(item.organization_category) ? item.organization_category[0] : item.organization_category) as { country_id?: string } | null)?.country_id || '',
       });
       return { ...experience, primarySport: projectExperiencePrimarySport(item) };
     })
@@ -116,6 +117,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
             sportId: sport.sport_id,
             disciplineId: sport.sport_discipline_id,
             variantId: sport.sport_variant_id,
+            countryId: normalized.countryId,
           });
         } catch (membershipError) {
           const code = membershipError instanceof OrganizationMembershipError ? membershipError.code : 'invalid_registration';

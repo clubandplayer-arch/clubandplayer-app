@@ -34,6 +34,22 @@ test('publishes only a club with a valid name and all mandatory fields', () => {
   assert.equal(isProfileComplete({ ...completeClub, full_name: 'Giacomo', display_name: 'Giacomo' }), false);
 });
 
+test('canonical Club geography replaces the legacy region, province and city requirements', () => {
+  const canonicalClub = {
+    ...completeClub,
+    region: null,
+    province: null,
+    city: null,
+    residence_country_id: '11111111-1111-4111-8111-111111111111',
+    residence_geo_area_id: '22222222-2222-4222-8222-222222222222',
+  };
+  assert.deepEqual(getMissingRequiredProfileFields(canonicalClub), []);
+  assert.deepEqual(
+    getMissingRequiredProfileFields({ ...canonicalClub, residence_geo_area_id: null }),
+    ['area geografica del Club'],
+  );
+});
+
 test('normalizes and explains every publication lifecycle state', () => {
   assert.equal(normalizeProfileVisibilityStatus('published'), 'published');
   assert.equal(normalizeProfileVisibilityStatus('suspended'), 'suspended');

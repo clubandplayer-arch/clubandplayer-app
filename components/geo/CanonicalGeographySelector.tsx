@@ -31,7 +31,7 @@ const DEFAULT_LABELS: CanonicalGeographyLabels = {
 export type CanonicalGeographySelectorProps = {
   countryId: string | null;
   geoAreaId: string | null;
-  onCountryChange: (countryId: string | null) => void;
+  onCountryChange: (countryId: string | null, country?: CanonicalCountryRead) => void;
   onGeoAreaChange: (geoAreaId: string | null) => void;
   disabled?: boolean;
   required?: boolean;
@@ -86,7 +86,7 @@ export default function CanonicalGeographySelector({
   }, [geoAreaId, loader, reloadKey, selectedCountry]);
 
   const changeCountry = (nextId: string) => {
-    onCountryChange(nextId || null);
+    onCountryChange(nextId || null, countries.find((country) => country.id === nextId));
     onGeoAreaChange(null);
     setLevels([]);
   };

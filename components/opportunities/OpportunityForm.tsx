@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeAccountType, localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import { buildCanonicalSportRequestFields } from '@/lib/taxonomy/canonicalSportFormPayload';
@@ -263,7 +263,7 @@ export default function OpportunityForm({
         <div>
           <label className="block text-sm font-medium mb-1">Iscrizione del Club</label>
           <select className="w-full rounded-xl border px-3 py-2" value={registrationId} onChange={e => { const row=registrations.find(r=>r.id===e.target.value); if(row)chooseRegistration(row); }}>
-            <option value="">—</option>{registrations.map(r=><option key={r.id} value={r.id}>{r.sports?.canonical_name} · {r.organization ? sportsOrganizationDisplayName(r.organization.code, r.organization.canonical_name) : ''} · {r.category?.canonical_name}</option>)}
+            <option value="">—</option>{registrations.map(r=><option key={r.id} value={r.id}>{r.sports?.canonical_name} · {r.organization ? sportsOrganizationDisplayName(r.organization.code, r.organization.canonical_name) : ''} · {localizeOpportunityCategory(r.category?.canonical_name, t)}</option>)}
           </select>
         </div>
 

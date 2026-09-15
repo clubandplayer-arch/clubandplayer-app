@@ -21,6 +21,7 @@ import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import CanonicalCountrySelect from '@/components/geo/CanonicalCountrySelect';
 import GeographicInterestsForm from '@/components/profiles/GeographicInterestsForm';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import OrganizationCategoryFields from '@/components/sports/OrganizationCategoryFields';
@@ -58,6 +59,7 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
   category: '',
   organizationId: '',
   categoryId: '',
+  countryId: '',
 };
 
 const PLAYER_BIO_MAX_LENGTH = 300;
@@ -465,7 +467,7 @@ export default function ProfileEditForm() {
     setResidenceGeoAreaId(null);
     setResidenceWritable(false);
     setResidenceDirty(false);
-    if (canonicalResidenceUiEnabled && (p.account_type === 'athlete' || p.account_type === 'staff')) {
+    if ((canonicalResidenceUiEnabled || p.account_type === 'club') && (p.account_type === 'athlete' || p.account_type === 'staff' || p.account_type === 'club')) {
       const residenceResponse = await fetch('/api/profiles/me/residence', { credentials: 'include', cache: 'no-store' });
       if (!residenceResponse.ok) throw new Error('Impossibile leggere la residenza canonica');
       const residencePayload = await residenceResponse.json().catch(() => ({}));
@@ -551,7 +553,9 @@ export default function ProfileEditForm() {
     interest_region_id: isOrganization ? clubLocation.regionId : null,
     interest_province_id: isOrganization ? clubLocation.provinceId : null,
     interest_municipality_id: isOrganization ? clubLocation.municipalityId : null,
-  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile]);
+    residence_country_id: isClub ? residenceCountryId : null,
+    residence_geo_area_id: isClub ? residenceGeoAreaId : null,
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile, residenceCountryId, residenceGeoAreaId]);
   const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
@@ -754,7 +758,12 @@ export default function ProfileEditForm() {
         });
       }
 
-      const missingFields = getMissingRequiredProfileFields(isClub ? { ...basePayload, sport: 'registrazioni club' } : basePayload);
+      const missingFields = getMissingRequiredProfileFields(isClub ? {
+        ...basePayload,
+        sport: 'registrazioni club',
+        residence_country_id: residenceCountryId,
+        residence_geo_area_id: residenceGeoAreaId,
+      } : basePayload);
       if (missingFields.length > 0) {
         throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
       }
@@ -764,23 +773,14 @@ export default function ProfileEditForm() {
         Object.assign(basePayload, buildCanonicalSportRequestFields(primarySport));
       }
 
-      if (canonicalResidenceUiEnabled && residenceDirty && !residenceWritable && !isOrganization && !isFan) {
+      if ((canonicalResidenceUiEnabled || isClub) && residenceDirty && !residenceWritable && !isInstitution && !isFan) {
         throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
       }
 
-      const r = await fetch('/api/profiles/me', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(basePayload),
-      });
-
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
-      }
-
-      if (canonicalResidenceUiEnabled && residenceDirty && !isOrganization && !isFan) {
+      // A Club's canonical country constrains its active registrations. Write it
+      // first so an incompatible country change is rejected before the legacy
+      // base profile can be updated to the new country.
+      if ((canonicalResidenceUiEnabled || isClub) && residenceDirty && !isInstitution && !isFan) {
         if (!residenceWritable) throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
         const residenceResponse = await fetch('/api/profiles/me/residence', {
           method: 'PATCH',
@@ -793,6 +793,36 @@ export default function ProfileEditForm() {
           throw new Error(payload?.error ?? 'Salvataggio della residenza canonica non riuscito');
         }
         setResidenceDirty(false);
+      }
+
+      // Club geography is owned by the canonical residence endpoint above. That
+      // endpoint also dual-writes the legacy names and Italian IDs, so the base
+      // profile update must not replace its result with stale hidden-form state.
+      if (isClub) {
+        delete basePayload.region;
+        delete basePayload.province;
+        delete basePayload.city;
+        delete basePayload.residence_region_id;
+        delete basePayload.residence_province_id;
+        delete basePayload.residence_municipality_id;
+        delete basePayload.interest_region;
+        delete basePayload.interest_province;
+        delete basePayload.interest_city;
+        delete basePayload.interest_region_id;
+        delete basePayload.interest_province_id;
+        delete basePayload.interest_municipality_id;
+      }
+
+      const r = await fetch('/api/profiles/me', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(basePayload),
+      });
+
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
       if (!isOrganization && !isFan) {
@@ -972,6 +1002,34 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
+              {isClub ? (
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <CanonicalGeographySelector
+                    idPrefix="club-geography"
+                    countryId={residenceCountryId}
+                    geoAreaId={residenceGeoAreaId}
+                    onCountryChange={(nextCountryId, selectedCountry) => {
+                      setResidenceCountryId(nextCountryId);
+                      setResidenceGeoAreaId(null);
+                      setCountry(selectedCountry?.iso2 ?? '');
+                      setResidenceDirty(true);
+                    }}
+                    onGeoAreaChange={(nextGeoAreaId) => {
+                      setResidenceGeoAreaId(nextGeoAreaId);
+                      setResidenceDirty(true);
+                    }}
+                    disabled={saving}
+                    required
+                    labels={{
+                      country: t('profile.organizationCountry', { organization: organizationLabel }),
+                      area: t('map.area'),
+                    }}
+                  />
+                  <p className="mt-3 text-xs text-slate-600">
+                    {t('club.geography.requiredHelp')}
+                  </p>
+                </div>
+              ) : (
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">{t('profile.organizationCountry', { organization: organizationLabel })}<RequiredMark /></label>
@@ -1006,6 +1064,7 @@ export default function ProfileEditForm() {
                   required
                 />
               </div>
+              )}
 
               <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">{t('profile.motto', { organization: organizationLabel })}</label>
@@ -1307,6 +1366,17 @@ export default function ProfileEditForm() {
                 return (
                   <div key={`past-experience-${index}`} className="rounded-xl border border-gray-200 p-3">
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+                      <CanonicalCountrySelect
+                        value={experience.countryId}
+                        onChange={(countryId) => updatePastExperience(index, {
+                          countryId,
+                          organizationId: '',
+                          categoryId: '',
+                          category: '',
+                        })}
+                        label={t('map.country')}
+                        required={Boolean(experience.organizationId || experience.categoryId)}
+                      />
                       <div className="flex min-w-0 flex-col gap-1">
                         <label className="text-sm text-gray-600">{t('profile.season')}</label>
                         <select
@@ -1366,6 +1436,7 @@ export default function ProfileEditForm() {
                       </div>
 
                       <OrganizationCategoryFields
+                        countryId={experience.countryId}
                         sport={{
                           sportId: experience.primarySport?.sportId ?? '',
                           disciplineId: experience.primarySport?.disciplineId ?? '',
@@ -1435,8 +1506,8 @@ export default function ProfileEditForm() {
           <GeographicInterestsForm title={t('profile.interestArea')} />
         )}
 
-        {isClub && <ClubRegistrationsSection />}
-        {isClub && <ClubHonorsSection />}
+        {isClub && <ClubRegistrationsSection countryId={residenceCountryId} />}
+        {isClub && <ClubHonorsSection countryId={residenceCountryId} />}
 
         {/* Social */}
         {!isFan && (

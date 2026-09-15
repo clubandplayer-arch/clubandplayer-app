@@ -10,13 +10,14 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const id = new URL(req.url).pathname.split('/').at(-1);
   const { data: club } = await supabase.from('profiles').select('id').eq('user_id', user.id).eq('account_type', 'club').single();
   if (!club) return errorJson('club_only', 403);
+  const { data: preferences } = await supabase.from('profile_preferences').select('residence_country_id').eq('profile_id', club.id).maybeSingle();
   const { data: old } = await supabase.from('club_honors').select('*').eq('id', id).eq('club_profile_id', club.id).single();
   if (!old) return errorJson('not_found', 404);
   const body = await req.json();
   const next = { ...old, ...body };
   if (!isClubHonorSeasonAvailable(next.season) || !validPlacement(next.placement)) return errorJson('invalid_honor', 400);
   try {
-    await validateOrganizationMembership(supabase, { organizationId: next.sports_organization_id, categoryId: next.sports_organization_category_id, sportId: next.sport_id, disciplineId: next.sport_discipline_id, variantId: next.sport_variant_id });
+    await validateOrganizationMembership(supabase, { organizationId: next.sports_organization_id, categoryId: next.sports_organization_category_id, sportId: next.sport_id, disciplineId: next.sport_discipline_id, variantId: next.sport_variant_id, countryId: preferences?.residence_country_id ?? null });
   } catch (error) {
     return errorJson(error instanceof OrganizationMembershipError ? error.code : 'invalid_honor', 400);
   }

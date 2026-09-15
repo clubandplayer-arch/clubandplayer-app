@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type SearchKind = 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
 
@@ -9,20 +11,22 @@ export type SearchResult = {
   id: string;
   title: string;
   subtitle?: string | null;
+  sport?: string | null;
+  role?: string | null;
   image_url?: string | null;
   href: string;
   kind: SearchKind;
 };
 
-const KIND_LABELS: Record<SearchKind, string> = {
-  opportunities: 'Opportunità',
-  clubs: 'Club',
-  institutions: 'Ente',
-  players: 'Player',
-  staff: 'Staff',
-  posts: 'Post',
-  events: 'Eventi',
-};
+const KIND_KEYS = {
+  opportunities: 'opportunities.title',
+  clubs: 'search.clubs',
+  institutions: 'search.institutions',
+  players: 'search.players',
+  staff: 'search.staff',
+  posts: 'search.posts',
+  events: 'search.events',
+} as const;
 
 const KIND_STYLES: Record<SearchKind, string> = {
   opportunities: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -57,6 +61,8 @@ function Avatar({ result }: { result: SearchResult }) {
 }
 
 export default function SearchResultRow({ result }: { result: SearchResult }) {
+  const { t } = useI18n();
+  const details = [localizeSportRole(result.role, t), localizeSport(result.sport, t), result.subtitle].filter(Boolean).join(' · ');
   return (
     <Link
       href={result.href}
@@ -71,10 +77,10 @@ export default function SearchResultRow({ result }: { result: SearchResult }) {
               KIND_STYLES[result.kind]
             }`}
           >
-            {KIND_LABELS[result.kind]}
+            {t(KIND_KEYS[result.kind])}
           </span>
         </div>
-        {result.subtitle ? <div className="text-sm text-slate-600">{result.subtitle}</div> : null}
+        {details ? <div className="text-sm text-slate-600">{details}</div> : null}
       </div>
     </Link>
   );

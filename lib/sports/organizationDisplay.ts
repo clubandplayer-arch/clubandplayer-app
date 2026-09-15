@@ -11,6 +11,17 @@ export const SPORTS_ORGANIZATION_DISPLAY_NAMES: Readonly<Record<string, string>>
   endas: 'ENDAS',
   pgs: 'PGS',
   us_acli: 'US ACLI',
+  fff: 'FFF',
+  ffvolley: 'FFvolley',
+  ffbb: 'FFBB',
+  ffhandball: 'FFHandball',
+  ffr: 'FFR',
+  ffhg: 'FFHG',
+  ffn: 'FFN',
+  ffh: 'FFH',
+  ffbs: 'FFBS',
+  fffa: 'FFFA',
+  france_lacrosse: 'France Lacrosse',
 };
 
 export function sportsOrganizationDisplayName(code: string | null | undefined, canonicalName: string): string {
