@@ -46,7 +46,9 @@ begin
 
   get diagnostics updated_users = row_count;
 
-  if updated_profiles <> 1 or updated_users <> 1 then
-    raise exception 'Davide Modica role migration expected 1 profile and 1 auth user, updated profiles %, users %', updated_profiles, updated_users;
+  -- A fresh Preview has no Production identities. Treat the coherent 0/0 case
+  -- as a valid no-op, while retaining the fail-closed guard for partial matches.
+  if (updated_profiles, updated_users) not in ((0, 0), (1, 1)) then
+    raise exception 'Davide Modica role migration expected coherent 0/0 or 1/1 rows, updated profiles %, users %', updated_profiles, updated_users;
   end if;
 end $$;

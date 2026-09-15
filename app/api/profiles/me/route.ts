@@ -58,6 +58,37 @@ function toJsonOrNull(v: unknown) {
   return null;
 }
 
+function safeDatabaseMessage(error: unknown): string | null {
+  const raw = error instanceof Error
+    ? error.message
+    : error && typeof error === 'object' && typeof (error as Record<string, unknown>).message === 'string'
+      ? String((error as Record<string, unknown>).message)
+      : null;
+  return raw
+    ?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, '[uuid]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+    .slice(0, 300) ?? null;
+}
+
+function primarySportFailure(error: unknown, stage: 'plan' | 'update' | 'upsert') {
+  const mapped = mapProfilePrimarySportContractError(error);
+  const traceId = crypto.randomUUID();
+  const dbError = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+  const diagnosticCode = typeof dbError.code === 'string' ? dbError.code : null;
+  const diagnosticMessage = safeDatabaseMessage(error);
+  console.error('[profiles/me] primary sport write failed', {
+    traceId,
+    stage,
+    code: diagnosticCode,
+    message: diagnosticMessage,
+  });
+  return jsonError(mapped.code, mapped.status, {
+    code: mapped.code,
+    traceId,
+    ...(process.env.VERCEL_ENV === 'preview' ? { stage, diagnosticCode, diagnosticMessage } : {}),
+  });
+}
+
 /** campi ammessi in PATCH */
 const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   // anagrafica comune
@@ -203,8 +234,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       );
       if (sportUpdate) Object.assign(updates, sportUpdate);
     } catch (error) {
-      const mapped = mapProfilePrimarySportContractError(error);
-      return jsonError(mapped.code, mapped.status, { code: mapped.code });
+      return primarySportFailure(error, 'plan');
     }
   }
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
@@ -336,8 +366,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
     if (up.error) {
       if (hasPrimarySportInput) {
-        const mapped = mapProfilePrimarySportContractError(up.error);
-        return jsonError(mapped.code, mapped.status, { code: mapped.code });
+        return primarySportFailure(up.error, 'upsert');
       }
       return jsonError(up.error.message, 400);
     }
@@ -346,8 +375,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (error) {
     if (hasPrimarySportInput) {
-      const mapped = mapProfilePrimarySportContractError(error);
-      return jsonError(mapped.code, mapped.status, { code: mapped.code });
+      return primarySportFailure(error, 'update');
     }
     return jsonError(error.message, 400);
   }

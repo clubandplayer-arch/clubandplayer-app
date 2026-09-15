@@ -110,4 +110,12 @@ export const CANONICAL_SPORT_VARIANTS = [
     isActive: true,
     displayOrder: 20,
   },
+  {
+    disciplineCode: 'association_football',
+    code: 'seven_a_side',
+    canonicalName: '7-a-side',
+    teamSize: 7,
+    isActive: true,
+    displayOrder: 30,
+  },
 ] as const satisfies readonly CanonicalSportVariant[];

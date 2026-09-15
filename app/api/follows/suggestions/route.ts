@@ -58,7 +58,9 @@ export async function GET(req: NextRequest) {
     return validationError('Parametri non validi', parsed.error.flatten());
   }
   const { limit, kind, geoScope = 'province', sportScope = 'mine' }: FollowSuggestionsQueryInput = parsed.data;
-  const debugMode = url.searchParams.get('debug') === '1';
+  // Database diagnostics are available only on Preview and never include row
+  // identifiers or raw database messages in the response.
+  const debugMode = process.env.VERCEL_ENV === 'preview' && url.searchParams.get('debug') === '1';
   let step = 'init';
   const debugInfo = {
     meProfileId: null as string | null,
@@ -84,27 +86,10 @@ export async function GET(req: NextRequest) {
       });
     }
     const details = debugMode
-      ? {
-          endpointVersion: ENDPOINT_VERSION,
-          step,
-          errorName: error instanceof Error ? error.name : null,
-          errorMessage: error instanceof Error ? error.message : (error as any)?.message ?? null,
-          errorCode: (error as any)?.code ?? null,
-          errorHint: (error as any)?.hint ?? null,
-          errorDetails: (error as any)?.details ?? null,
-          ...debugInfo,
-        }
-      : undefined;
-    const errorDebug = debugMode
-      ? {
-          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
-          details: (error as any)?.details ?? null,
-          hint: (error as any)?.hint ?? null,
-          code: (error as any)?.code ?? null,
-        }
+      ? { endpointVersion: ENDPOINT_VERSION, step, errorCode: (error as any)?.code ?? null }
       : undefined;
     return NextResponse.json(
-      { ok: false, code, message, ...(details ? { details } : {}), ...(errorDebug ? { error: errorDebug } : {}) },
+      { ok: false, code, message, ...(details ? { details } : {}) },
       { status },
     );
   }
@@ -308,7 +293,7 @@ export async function GET(req: NextRequest) {
       return added;
     };
 
-    step = 'candidates';
+    step = 'candidateProfiles';
     const escapeLike = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
 
     const buildFilters = () => {
@@ -415,6 +400,7 @@ export async function GET(req: NextRequest) {
       .filter(Boolean);
     let fanVoteCountMap = new Map<string, number>();
     if (athleteIds.length) {
+      step = 'fanVoteCounts';
       const { data: voteRows, error: voteError } = await supabase
         .from('current_player_fan_vote_counts')
         .select('player_profile_id, vote_count')
@@ -425,6 +411,7 @@ export async function GET(req: NextRequest) {
 
     let athleteMap = new Map<string, { full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>();
     if (athleteIds.length) {
+      step = 'athleteDisplay';
       const { data: athletes, error: athletesError } = await supabase
         .from('athletes_view')
         .select('id, full_name, display_name, avatar_url')
@@ -450,6 +437,7 @@ export async function GET(req: NextRequest) {
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
+      step = 'clubVerification';
       try {
         const adminClient = getSupabaseAdminClientOrNull();
         const verificationClient = adminClient ?? supabase;
@@ -488,6 +476,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    step = 'complete';
     return successResponse({
       items,
       nextCursor: null,

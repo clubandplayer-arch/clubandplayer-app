@@ -64,10 +64,11 @@ test('country resolver follows canonical, legacy, unknown and empty precedence',
   assert.equal(resolveCountryTaxonomy(null).status, 'empty');
 });
 
-test('all 14 currently supported legacy labels resolve', () => {
+test('all 15 currently supported legacy labels resolve', () => {
   const labels = [
     'Calcio',
     'Calcio a 8',
+    'Calcio a 7',
     'Futsal',
     'Volley',
     'Basket',
@@ -94,6 +95,11 @@ test('football ecosystem resolves disciplines and variants', () => {
   assert.equal(football8.sport?.code, 'football');
   assert.equal(football8.discipline?.code, 'association_football');
   assert.equal(football8.variant?.code, 'eight_a_side');
+
+  const football7 = resolveSportTaxonomy('Calcio a 7');
+  assert.equal(football7.sport?.code, 'football');
+  assert.equal(football7.discipline?.code, 'association_football');
+  assert.equal(football7.variant?.code, 'seven_a_side');
 
   const futsal = resolveSportTaxonomy('Futsal');
   assert.equal(futsal.sport?.code, 'football');
@@ -143,7 +149,7 @@ test('application normalization exactly matches sport mapping keys seeded in SQL
   }
 });
 
-test('cricket is resolvable but is not active or part of the 14 UI sports', () => {
+test('cricket is resolvable but is not active or part of the 15 UI sports', () => {
   const cricket = resolveSportTaxonomy('cricket');
   assert.equal(cricket.sport?.code, 'cricket');
   assert.equal(cricket.sport?.isActive, false);

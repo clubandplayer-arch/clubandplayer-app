@@ -27,6 +27,7 @@ const MIN_FUZZY_SEARCH_CHARS = 2;
 const ALLOWED_SPORTS = [
   "Calcio",
   "Calcio a 8",
+  "Calcio a 7",
   "Futsal",
   "Volley",
   "Basket",

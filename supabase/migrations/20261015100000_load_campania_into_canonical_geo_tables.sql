@@ -48,8 +48,11 @@ begin
     raise exception 'Missing canonical geo tables. regions=% provinces=% municipalities=%', has_regions, has_provinces, has_municipalities;
   end if;
 
+  -- The staging table is an operator-supplied import source, not part of the
+  -- application schema. A clean branch must remain reconstructible without it.
   if not has_stage then
-    raise exception 'Missing source table public.it_locations_stage';
+    raise notice 'Skipping optional Campania data import: public.it_locations_stage is absent';
+    return;
   end if;
 
   if not exists (

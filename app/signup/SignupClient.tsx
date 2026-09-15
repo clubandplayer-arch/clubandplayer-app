@@ -54,8 +54,9 @@ export default function SignupPage() {
 
     setBusy(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
-      const emailRedirectTo = `${baseUrl}/auth/callback`;
+      // Auth callbacks must return to the deployment that initiated signup.
+      // A shared NEXT_PUBLIC_BASE_URL can point Preview users at Production.
+      const emailRedirectTo = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signUp({
         email,

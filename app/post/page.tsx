@@ -11,6 +11,7 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 const sportRoles: Record<string, string[]> = {
   calcio: ['portiere', 'difensore', 'centrocampista', 'attaccante'],
   'Calcio a 8': ['Portiere', 'Difensore Centrale', 'Esterno Basso', 'Regista', 'Esterno Alto', 'Punta Centrale'],
+  'Calcio a 7': ['Portiere', 'Difensore Centrale', 'Esterno Basso', 'Regista', 'Esterno Alto', 'Punta Centrale'],
   futsal: ['portiere', 'difensore', 'pivot', 'laterale'],
   basket: ['playmaker', 'guardia', 'ala', 'centro'],
   volley: ['palleggiatore', 'schiacciatore', 'centrale', 'libero']

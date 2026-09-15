@@ -1,0 +1,17 @@
+# Phase 6 Preview configuration. GitHub Integration applies this to Preview
+# branches; "Deploy to production" must remain disabled until explicitly approved.
+project_id = "clubandplayer-app"
+
+[auth]
+minimum_password_length = 12
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.email]
+otp_expiry = 900
+
+[auth.external.apple]
+enabled = true
+client_id = "com.clubandplayer.app.service"
+secret = ""
+url = ""
+redirect_uri = ""
