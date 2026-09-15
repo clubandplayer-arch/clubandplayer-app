@@ -37,6 +37,7 @@ test('past experience editor prefilters by country before Sport, organization, c
   const role = section.indexOf("t('profile.role')");
   assert.ok(country >= 0 && country < sport && sport < membership && membership < role);
   assert.match(section, /countryId=\{experience\.countryId\}/);
+  assert.match(section, /required=\{Boolean\(experience\.organizationId \|\| experience\.categoryId\)\}/);
   assert.doesNotMatch(section, /getPastExperienceCategoriesBySport/);
 });
 

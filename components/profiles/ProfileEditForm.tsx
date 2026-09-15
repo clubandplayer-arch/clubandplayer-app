@@ -777,18 +777,9 @@ export default function ProfileEditForm() {
         throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
       }
 
-      const r = await fetch('/api/profiles/me', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(basePayload),
-      });
-
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
-      }
-
+      // A Club's canonical country constrains its active registrations. Write it
+      // first so an incompatible country change is rejected before the legacy
+      // base profile can be updated to the new country.
       if ((canonicalResidenceUiEnabled || isClub) && residenceDirty && !isInstitution && !isFan) {
         if (!residenceWritable) throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
         const residenceResponse = await fetch('/api/profiles/me/residence', {
@@ -802,6 +793,18 @@ export default function ProfileEditForm() {
           throw new Error(payload?.error ?? 'Salvataggio della residenza canonica non riuscito');
         }
         setResidenceDirty(false);
+      }
+
+      const r = await fetch('/api/profiles/me', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(basePayload),
+      });
+
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
       if (!isOrganization && !isFan) {
@@ -1354,7 +1357,7 @@ export default function ProfileEditForm() {
                           category: '',
                         })}
                         label={t('map.country')}
-                        required
+                        required={Boolean(experience.organizationId || experience.categoryId)}
                       />
                       <div className="flex min-w-0 flex-col gap-1">
                         <label className="text-sm text-gray-600">{t('profile.season')}</label>

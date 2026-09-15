@@ -26,3 +26,10 @@ test('Club canonical geography uses existing owner RLS and the supported country
   assert.match(writer, /from\('profile_preferences'\)\.upsert/);
   assert.doesNotMatch(writer, /service_role/);
 });
+
+test('Club canonical geography is validated before the legacy base profile is saved', () => {
+  const submit = form.slice(form.indexOf('async function onSubmit'), form.indexOf('const handlePastExperienceClubChange'));
+  const canonicalWrite = submit.indexOf("fetch('/api/profiles/me/residence'");
+  const baseWrite = submit.indexOf("fetch('/api/profiles/me',");
+  assert.ok(canonicalWrite >= 0 && canonicalWrite < baseWrite);
+});
