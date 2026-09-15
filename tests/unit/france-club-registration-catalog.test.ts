@@ -6,6 +6,7 @@ const migration = readFileSync('supabase/migrations/20261218120000_france_club_r
 const selector = readFileSync('app/api/sports/organization-memberships/route.ts', 'utf8');
 const fields = readFileSync('components/sports/OrganizationCategoryFields.tsx', 'utf8');
 const display = readFileSync('lib/sports/organizationDisplay.ts', 'utf8');
+const categoryFields = readFileSync('components/sports/OrganizationCategoryFields.tsx', 'utf8');
 
 const expectedCounts: Record<string, number> = {
   calcio:11, calcio_a_8:1, futsal:5, volleyball:12, basketball:15, handball:13,
@@ -37,6 +38,15 @@ test('youth consolidation and Ligue 3 historical alias are explicit', () => {
   assert.equal((migration.match(/,'giovanili','Giovanili',[0-9]+\)/g) ?? []).length, 2);
   assert.doesNotMatch(migration, /National U19|National U17|U20 \(|U18 \(|'U15'/);
   assert.match(migration, /historicalAlias'.*'National'/);
+});
+
+test('the shared category UI localizes Giovanili instead of exposing the stored Italian label', () => {
+  assert.match(categoryFields, /localizeOpportunityCategory\(c\.canonical_name, t\)/);
+  const expected = { it: 'Giovanili', fr: 'Jeunes', en: 'Youth', es: 'Categorías juveniles' };
+  for (const [locale, label] of Object.entries(expected)) {
+    const messages = readFileSync(`lib/i18n/messages/vocabulary/${locale}.ts`, 'utf8');
+    assert.match(messages, new RegExp(`vocabulary\\.category\\.youth['"]?: ?['"]${label}`));
+  }
 });
 
 test('catalog endpoint filters explicit country while preserving the parameterless legacy fallback', () => {

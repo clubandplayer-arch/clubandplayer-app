@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeOpportunityCategory } from '@/lib/i18n/controlledVocabulary';
 
 export type OrganizationCategoryValue = { organizationId: string; categoryId: string };
 type Organization = { id:string; code:string; canonical_name:string; display_name:string; display_order:number };
@@ -14,6 +16,7 @@ export default function OrganizationCategoryFields({ sport, countryId, value, on
   organizationLabel?: string;
   categoryLabel?: string;
 }) {
+  const { t } = useI18n();
   const [catalog, setCatalog] = useState<{organizations:Organization[]; organizationCategories:Category[]}>({ organizations:[], organizationCategories:[] });
   useEffect(() => { let active=true; if (countryId !== undefined && !countryId) { setCatalog({ organizations:[], organizationCategories:[] }); return () => { active=false; }; } const params=countryId ? `?countryId=${encodeURIComponent(countryId)}` : ''; fetch(`/api/sports/organization-memberships${params}`, { cache:'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(raw => {
     if (active) setCatalog(raw?.data ?? raw);
@@ -35,6 +38,6 @@ export default function OrganizationCategoryFields({ sport, countryId, value, on
     </select></div>
     <div><label className="mb-2 block text-sm font-medium text-slate-700">{categoryLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.categoryId} disabled={!value.organizationId} required={Boolean(value.organizationId)} onChange={e => {
       const selected=selectedCategories.find(c => c.id===e.target.value); onChange({ ...value, categoryId:e.target.value }, selected?.canonical_name ?? '');
-    }}><option value="">—</option>{selectedCategories.map(c => <option key={c.id} value={c.id}>{c.canonical_name}</option>)}</select></div>
+    }}><option value="">—</option>{selectedCategories.map(c => <option key={c.id} value={c.id}>{localizeOpportunityCategory(c.canonical_name, t) ?? c.canonical_name}</option>)}</select></div>
   </>;
 }

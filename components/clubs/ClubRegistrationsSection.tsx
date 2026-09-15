@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import OrganizationCategoryFields, { type OrganizationCategoryValue } from '@/components/sports/OrganizationCategoryFields';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeSport } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizeSport } from '@/lib/i18n/controlledVocabulary';
 import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 
 type Row = {
@@ -41,7 +41,7 @@ export default function ClubRegistrationsSection({ countryId }: { countryId?: st
   useEffect(() => { void load(); }, [load]);
 
   const sportName = (row: Row) => localizeSport(row.sports?.code ?? row.sports?.canonical_name, t) ?? row.sports?.canonical_name ?? '—';
-  const rowLabel = (row: Row) => `${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${row.category?.canonical_name ?? '—'}`;
+  const rowLabel = (row: Row) => `${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${localizeOpportunityCategory(row.category?.canonical_name, t) ?? '—'}`;
 
   function start(row?: Row) {
     setEditing(row ?? null); setError('');

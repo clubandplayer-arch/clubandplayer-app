@@ -225,7 +225,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
     .order('season', { ascending: false }).order('placement').order('created_at').order('id');
   const primarySportLabel = primaryRegistration?.sports ? (localizeSport(primaryRegistration.sports.code, t) ?? primaryRegistration.sports.canonical_name) : sportLabel;
   const organizationLabel = primaryRegistration?.organization ? sportsOrganizationDisplayName(primaryRegistration.organization.code, primaryRegistration.organization.canonical_name) : null;
-  const canonicalCategoryLabel = primaryRegistration?.category?.canonical_name ?? categoryLabel;
+  const canonicalCategoryLabel = localizeOpportunityCategory(primaryRegistration?.category?.canonical_name, t) ?? categoryLabel;
   const subtitle =
     [primarySportLabel, organizationLabel, canonicalCategoryLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profileWithVerification, provinceAbbreviations, locale, t('vocabulary.category.other')) || undefined;
@@ -315,9 +315,9 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           </div>
         </div>
 
-        {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.registrations.title')}</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports ? (localizeSport(r.sports.code, t) ?? r.sports.canonical_name) : '—'} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {r.category?.canonical_name} {r.is_primary&&<b className="ml-2">{t('club.registrations.primary')}</b>}</div>)}</div></section> : null}
+        {registrations?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.registrations.title')}</h2><div className="mt-3 space-y-2">{registrations.map((r:any)=><div key={r.id} className="rounded-xl border p-3">{r.sports ? (localizeSport(r.sports.code, t) ?? r.sports.canonical_name) : '—'} · {r.organization ? sportsOrganizationDisplayName(r.organization.code,r.organization.canonical_name) : '—'} · {localizeOpportunityCategory(r.category?.canonical_name, t)} {r.is_primary&&<b className="ml-2">{t('club.registrations.primary')}</b>}</div>)}</div></section> : null}
 
-        {honors?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.honors.title')}</h2><div className="mt-3 space-y-2">{honors.map((honor:any)=><div key={honor.id} className="rounded-xl border p-3">{honor.season} · {honor.sports ? (localizeSport(honor.sports.code, t) ?? honor.sports.canonical_name) : '—'} · {honor.organization ? sportsOrganizationDisplayName(honor.organization.code,honor.organization.canonical_name) : '—'} · {honor.category?.canonical_name ?? '—'} · <b>{honor.placement===1?t('club.honors.champion'):honor.placement===2?t('club.honors.place2'):t('club.honors.place3')}</b></div>)}</div></section> : null}
+        {honors?.length ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="heading-h2 text-xl">{t('club.honors.title')}</h2><div className="mt-3 space-y-2">{honors.map((honor:any)=><div key={honor.id} className="rounded-xl border p-3">{honor.season} · {honor.sports ? (localizeSport(honor.sports.code, t) ?? honor.sports.canonical_name) : '—'} · {honor.organization ? sportsOrganizationDisplayName(honor.organization.code,honor.organization.canonical_name) : '—'} · {localizeOpportunityCategory(honor.category?.canonical_name, t) ?? '—'} · <b>{honor.placement===1?t('club.honors.champion'):honor.placement===2?t('club.honors.place2'):t('club.honors.place3')}</b></div>)}</div></section> : null}
 
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="heading-h2 text-xl">{t('club.biography')}</h2>

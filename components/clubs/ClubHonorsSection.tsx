@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import OrganizationCategoryFields, { type OrganizationCategoryValue } from '@/components/sports/OrganizationCategoryFields';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeSport } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizeSport } from '@/lib/i18n/controlledVocabulary';
 import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 import { clubHonorSeasonOptions } from '@/lib/clubs/honorSeasons';
 
@@ -37,7 +37,7 @@ export default function ClubHonorsSection({ countryId }: { countryId?: string | 
   useEffect(() => { void load(); }, [load]);
   const sportName = (row: Honor) => localizeSport(row.sports?.code ?? row.sports?.canonical_name, t) ?? row.sports?.canonical_name ?? '—';
   const placementLabel = (value: 1 | 2 | 3) => value === 1 ? t('club.honors.champion') : t(`club.honors.place${value}`);
-  const label = (row: Honor) => `${row.season} · ${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${row.category?.canonical_name ?? '—'} · ${placementLabel(row.placement)}`;
+  const label = (row: Honor) => `${row.season} · ${sportName(row)} · ${row.organization ? sportsOrganizationDisplayName(row.organization.code, row.organization.canonical_name) : '—'} · ${localizeOpportunityCategory(row.category?.canonical_name, t) ?? '—'} · ${placementLabel(row.placement)}`;
   function start(row?: Honor) { setEditing(row ?? null); setSport(row ? { sportId: row.sport_id, disciplineId: row.sport_discipline_id ?? '', variantId: row.sport_variant_id ?? '', legacySport: row.sports?.canonical_name ?? '' } : EMPTY_SPORT); setMembership(row ? { organizationId: row.sports_organization_id, categoryId: row.sports_organization_category_id } : { organizationId: '', categoryId: '' }); setSeason(row?.season ?? seasonOptions[0] ?? ''); setPlacement(row?.placement ?? 1); setError(''); setOpen(true); }
   async function request(url: string, body: object) { const response = await fetch(url, { method: editing ? 'PATCH' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error ?? t('club.honors.saveError')); }
   async function save() { if (!sport.sportId || !membership.organizationId || !membership.categoryId || !/^\d{4}\/\d{4}$/.test(season)) { setError(t('club.honors.required')); return; } try { await request(editing ? `/api/clubs/honors/${editing.id}` : '/api/clubs/honors', { season, placement, sport_id: sport.sportId, sport_discipline_id: sport.disciplineId || null, sport_variant_id: sport.variantId || null, sports_organization_id: membership.organizationId, sports_organization_category_id: membership.categoryId, is_active: true }); setOpen(false); await load(); } catch (cause) { setError(cause instanceof Error ? cause.message : t('club.honors.saveError')); } }
