@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizePreferredSide, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
@@ -344,7 +344,7 @@ export default function ProfileMiniCard() {
             {p?.club_league_category && (
               <div className="flex flex-col gap-0.5">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('club.category')}</dt>
-                <dd className="font-medium text-gray-900">{p.club_league_category}</dd>
+                <dd className="font-medium text-gray-900">{localizeOpportunityCategory(p.club_league_category, t)}</dd>
               </div>
             )}
             {p?.club_stadium && (
