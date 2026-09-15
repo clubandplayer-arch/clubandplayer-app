@@ -805,6 +805,12 @@ export default function ProfileEditForm() {
         delete basePayload.residence_region_id;
         delete basePayload.residence_province_id;
         delete basePayload.residence_municipality_id;
+        delete basePayload.interest_region;
+        delete basePayload.interest_province;
+        delete basePayload.interest_city;
+        delete basePayload.interest_region_id;
+        delete basePayload.interest_province_id;
+        delete basePayload.interest_municipality_id;
       }
 
       const r = await fetch('/api/profiles/me', {

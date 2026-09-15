@@ -47,6 +47,12 @@ test('Club base profile save preserves the canonical geography dual-write', () =
     'residence_region_id',
     'residence_province_id',
     'residence_municipality_id',
+    'interest_region',
+    'interest_province',
+    'interest_city',
+    'interest_region_id',
+    'interest_province_id',
+    'interest_municipality_id',
   ]) {
     assert.match(betweenWrites, new RegExp(`delete basePayload\\.${field}`));
   }
