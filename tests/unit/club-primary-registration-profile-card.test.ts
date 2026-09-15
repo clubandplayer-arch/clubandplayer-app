@@ -19,3 +19,10 @@ test('the feed Club card localizes the canonical primary category', () => {
     /localizeOpportunityCategory\(p\.club_league_category, t\)/,
   );
 });
+
+test('the feed Club card localizes the canonical primary sport', () => {
+  assert.match(
+    profileMiniCard,
+    /localizeSport\(normalizeSport\(p\?\.sport \?\? null\), t\)/,
+  );
+});

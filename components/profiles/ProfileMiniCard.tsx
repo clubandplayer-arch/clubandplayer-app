@@ -197,7 +197,7 @@ export default function ProfileMiniCard() {
   const name = isInstitution && isEmailName ? t('profile.institution') : rawName || (isClub ? 'Club' : isInstitution ? t('profile.institution') : t('profile.welcome'));
   const interestLabel = [interest.city, interest.province, interest.country].filter(Boolean).join(', ');
   const playerInterestLabel = canonicalInterestLabel || interestLabel;
-  const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
+  const sportLabel = localizeSport(normalizeSport(p?.sport ?? null), t) ?? p?.sport ?? null;
   const clubGeoLabel = isClub ? interestLabel : '';
 
   // nazionalità con bandiera
