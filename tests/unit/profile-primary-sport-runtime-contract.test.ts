@@ -100,7 +100,7 @@ test('request adapter rejects mixed legacy/canonical and malformed additive inpu
 });
 
 test('current web client supports mutually exclusive canonical and legacy payloads', () => {
-  assert.match(form, /<ClubRegistrationsSection \/>/);
+  assert.match(form, /<ClubRegistrationsSection countryId={residenceCountryId} \/>/);
   assert.match(form, /sport: \(athleteSport \|\| ''\)\.trim\(\) \|\| null/);
   assert.match(form, /delete basePayload\.sport;\s*Object\.assign\(basePayload, buildCanonicalSportRequestFields\(primarySport\)\)/s);
   assert.match(form, /normalizedPastExperiences\.map\(buildExperienceFormPayload\)/);

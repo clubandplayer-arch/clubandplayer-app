@@ -24,7 +24,7 @@ test('honors enforce catalog compatibility, ownership and public active reads', 
 });
 
 test('honors are directly after registrations in private and public profiles', () => {
-  assert.ok(profile.indexOf('<ClubRegistrationsSection />') < profile.indexOf('<ClubHonorsSection />'));
+  assert.ok(profile.indexOf('<ClubRegistrationsSection countryId={residenceCountryId} />') < profile.indexOf('<ClubHonorsSection />'));
   assert.ok(profile.indexOf('<ClubHonorsSection />') < profile.indexOf('{/* Social */}'));
   const registrations = publicPage.indexOf("t('club.registrations.title')", publicPage.indexOf("t('club.data')"));
   const honors = publicPage.indexOf("t('club.honors.title')", registrations);

@@ -1435,7 +1435,7 @@ export default function ProfileEditForm() {
           <GeographicInterestsForm title={t('profile.interestArea')} />
         )}
 
-        {isClub && <ClubRegistrationsSection />}
+        {isClub && <ClubRegistrationsSection countryId={residenceCountryId} />}
         {isClub && <ClubHonorsSection />}
 
         {/* Social */}
