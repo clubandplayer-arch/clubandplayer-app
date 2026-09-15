@@ -24,16 +24,19 @@ test('past experiences allow the explicit no-membership fallback', () => {
     ...experience,
     organizationId: 'organization-id',
     categoryId: 'category-id',
+    countryId: 'country-id',
   }), true);
 });
 
-test('past experience editor follows Sport, organization, category, role order', () => {
+test('past experience editor prefilters by country before Sport, organization, category and role', () => {
   const form = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8');
   const section = form.slice(form.indexOf("t('profile.pastExperiences')"), form.indexOf('{/* Zona di interesse'));
   const sport = section.indexOf('<CanonicalSportFilter');
+  const country = section.indexOf('<CanonicalCountrySelect');
   const membership = section.indexOf('<OrganizationCategoryFields');
   const role = section.indexOf("t('profile.role')");
-  assert.ok(sport >= 0 && sport < membership && membership < role);
+  assert.ok(country >= 0 && country < sport && sport < membership && membership < role);
+  assert.match(section, /countryId=\{experience\.countryId\}/);
   assert.doesNotMatch(section, /getPastExperienceCategoriesBySport/);
 });
 

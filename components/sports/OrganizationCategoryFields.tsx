@@ -15,7 +15,7 @@ export default function OrganizationCategoryFields({ sport, countryId, value, on
   categoryLabel?: string;
 }) {
   const [catalog, setCatalog] = useState<{organizations:Organization[]; organizationCategories:Category[]}>({ organizations:[], organizationCategories:[] });
-  useEffect(() => { let active=true; const params=countryId ? `?countryId=${encodeURIComponent(countryId)}` : ''; fetch(`/api/sports/organization-memberships${params}`, { cache:'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(raw => {
+  useEffect(() => { let active=true; if (countryId !== undefined && !countryId) { setCatalog({ organizations:[], organizationCategories:[] }); return () => { active=false; }; } const params=countryId ? `?countryId=${encodeURIComponent(countryId)}` : ''; fetch(`/api/sports/organization-memberships${params}`, { cache:'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(raw => {
     if (active) setCatalog(raw?.data ?? raw);
   }).catch(() => {}); return () => { active=false; }; }, [countryId]);
   const categories = useMemo(() => catalog.organizationCategories.filter(c => c.sport_id===sport.sportId

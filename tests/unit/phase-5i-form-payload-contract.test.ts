@@ -102,7 +102,7 @@ test('the superseded client payload shapes fail exactly as diagnosed', async () 
 
 test('Profile validates required legacy fields before replacing sport with canonical request fields', () => {
   const source = readFileSync('components/profiles/ProfileEditForm.tsx', 'utf8');
-  const validation = source.indexOf("getMissingRequiredProfileFields(isClub ? { ...basePayload, sport: 'registrazioni club' } : basePayload)");
+  const validation = source.indexOf('const missingFields = getMissingRequiredProfileFields(isClub ? {');
   const canonicalSerialization = source.indexOf('delete basePayload.sport');
   assert.ok(validation >= 0 && canonicalSerialization > validation);
 });

@@ -21,6 +21,7 @@ import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import CanonicalCountrySelect from '@/components/geo/CanonicalCountrySelect';
 import GeographicInterestsForm from '@/components/profiles/GeographicInterestsForm';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import OrganizationCategoryFields from '@/components/sports/OrganizationCategoryFields';
@@ -58,6 +59,7 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
   category: '',
   organizationId: '',
   categoryId: '',
+  countryId: '',
 };
 
 const PLAYER_BIO_MAX_LENGTH = 300;
@@ -1343,6 +1345,17 @@ export default function ProfileEditForm() {
                 return (
                   <div key={`past-experience-${index}`} className="rounded-xl border border-gray-200 p-3">
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+                      <CanonicalCountrySelect
+                        value={experience.countryId}
+                        onChange={(countryId) => updatePastExperience(index, {
+                          countryId,
+                          organizationId: '',
+                          categoryId: '',
+                          category: '',
+                        })}
+                        label={t('map.country')}
+                        required
+                      />
                       <div className="flex min-w-0 flex-col gap-1">
                         <label className="text-sm text-gray-600">{t('profile.season')}</label>
                         <select
@@ -1402,6 +1415,7 @@ export default function ProfileEditForm() {
                       </div>
 
                       <OrganizationCategoryFields
+                        countryId={experience.countryId}
                         sport={{
                           sportId: experience.primarySport?.sportId ?? '',
                           disciplineId: experience.primarySport?.disciplineId ?? '',
@@ -1472,7 +1486,7 @@ export default function ProfileEditForm() {
         )}
 
         {isClub && <ClubRegistrationsSection countryId={residenceCountryId} />}
-        {isClub && <ClubHonorsSection />}
+        {isClub && <ClubHonorsSection countryId={residenceCountryId} />}
 
         {/* Social */}
         {!isFan && (

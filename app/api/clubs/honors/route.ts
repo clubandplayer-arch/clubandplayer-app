@@ -6,7 +6,10 @@ import { isClubHonorSeasonAvailable } from '@/lib/clubs/honorSeasons';
 const errorJson = (error: string, status: number) => NextResponse.json({ error }, { status });
 const validPlacement = (value: unknown) => value === 1 || value === 2 || value === 3;
 async function clubProfile(supabase: any, userId: string) {
-  return (await supabase.from('profiles').select('id').eq('user_id', userId).eq('account_type', 'club').single()).data;
+  const club = (await supabase.from('profiles').select('id').eq('user_id', userId).eq('account_type', 'club').single()).data;
+  if (!club) return null;
+  const preferences = (await supabase.from('profile_preferences').select('residence_country_id').eq('profile_id', club.id).maybeSingle()).data;
+  return { ...club, countryId: preferences?.residence_country_id ?? null };
 }
 const select = '*,sports:sport_id(code,canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)';
 
@@ -23,7 +26,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const body = await req.json();
   if (!isClubHonorSeasonAvailable(body.season) || !validPlacement(body.placement)) return errorJson('invalid_honor', 400);
   try {
-    await validateOrganizationMembership(supabase, { organizationId: body.sports_organization_id, categoryId: body.sports_organization_category_id, sportId: body.sport_id, disciplineId: body.sport_discipline_id ?? null, variantId: body.sport_variant_id ?? null });
+    await validateOrganizationMembership(supabase, { organizationId: body.sports_organization_id, categoryId: body.sports_organization_category_id, sportId: body.sport_id, disciplineId: body.sport_discipline_id ?? null, variantId: body.sport_variant_id ?? null, countryId: club.countryId });
   } catch (error) {
     return errorJson(error instanceof OrganizationMembershipError ? error.code : 'invalid_honor', 400);
   }
