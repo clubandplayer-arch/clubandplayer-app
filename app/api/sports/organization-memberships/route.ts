@@ -5,15 +5,33 @@ import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay'
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await getSupabaseServerClient();
+  let countryId = new URL(request.url).searchParams.get('countryId');
+  if (!countryId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('id,country').eq('user_id', user.id).maybeSingle();
+      if (profile) {
+        const { data: preference } = await supabase.from('profile_preferences').select('residence_country_id').eq('profile_id', profile.id).maybeSingle();
+        countryId = preference?.residence_country_id ?? null;
+        if (!countryId && profile.country) {
+          const { data: mapping } = await supabase.from('legacy_country_mappings').select('country_id')
+            .eq('normalized_source_value', profile.country.trim().toLowerCase()).eq('is_active', true).maybeSingle();
+          countryId = mapping?.country_id ?? null;
+        }
+      }
+    }
+  }
+  let categoryQuery = supabase.from('sports_organization_categories')
+    .select('id,organization_id,country_id,sport_id,discipline_id,variant_id,code,canonical_name,display_order')
+    .eq('is_active', true);
+  if (countryId) categoryQuery = categoryQuery.eq('country_id', countryId);
   const [organizations, organizationCategories] = await Promise.all([
     supabase.from('sports_organizations')
       .select('id,code,canonical_name,organization_type,display_order')
       .eq('is_active', true).order('display_order').order('canonical_name'),
-    supabase.from('sports_organization_categories')
-      .select('id,organization_id,sport_id,discipline_id,variant_id,code,canonical_name,display_order')
-      .eq('is_active', true).order('display_order').order('canonical_name'),
+    categoryQuery.order('display_order').order('canonical_name'),
   ]);
   const error = organizations.error ?? organizationCategories.error;
   if (error) return dbError('Impossibile caricare enti e categorie.');
