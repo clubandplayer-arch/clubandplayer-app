@@ -39,16 +39,17 @@ test('temporary residence canary allowlist accepts only explicitly configured va
   if (previous === undefined) delete process.env.CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS; else process.env.CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS = previous;
 });
 
-test('owner-only GET/PATCH contract has a pre-query write kill switch and eligible roles only', () => {
+test('owner-only GET/PATCH keeps Player/Staff gates and uses the owner-derived Club RPC', () => {
   assert.match(route, /export const GET = withAuth/);
   assert.match(route, /export const PATCH = withAuth/);
   const patch = route.slice(route.indexOf('export const PATCH'));
-  assert.ok(patch.indexOf('isCanonicalProfileResidenceWriteEnabled') < patch.indexOf(".from('profiles')"));
-  assert.ok(patch.indexOf('isCanonicalProfileResidenceWriteUserAllowed(user.id)') < patch.indexOf(".from('profiles')"));
+  assert.match(patch, /profile\.account_type !== 'club' && !isCanonicalProfileResidenceWriteEnabled\(\)/);
+  assert.match(patch, /profile\.account_type !== 'club' && !isCanonicalProfileResidenceWriteUserAllowed\(user\.id\)/);
   assert.match(patch, /writes are not enabled for this account', 403/);
-  assert.match(route, /accountType === 'athlete' \|\| accountType === 'staff'/);
+  assert.match(route, /accountType === 'athlete' \|\| accountType === 'staff' \|\| accountType === 'club'/);
   assert.match(route, /parseResidencePatch\(body\)/);
   assert.match(route, /writeMyProfileResidence\(supabase, patch\)/);
+  assert.match(route, /rpc\('update_my_club_geography'/);
   assert.doesNotMatch(route, /profile_id|profileId/);
 });
 

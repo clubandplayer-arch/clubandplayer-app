@@ -465,7 +465,7 @@ export default function ProfileEditForm() {
     setResidenceGeoAreaId(null);
     setResidenceWritable(false);
     setResidenceDirty(false);
-    if (canonicalResidenceUiEnabled && (p.account_type === 'athlete' || p.account_type === 'staff')) {
+    if ((canonicalResidenceUiEnabled || p.account_type === 'club') && (p.account_type === 'athlete' || p.account_type === 'staff' || p.account_type === 'club')) {
       const residenceResponse = await fetch('/api/profiles/me/residence', { credentials: 'include', cache: 'no-store' });
       if (!residenceResponse.ok) throw new Error('Impossibile leggere la residenza canonica');
       const residencePayload = await residenceResponse.json().catch(() => ({}));
@@ -764,7 +764,7 @@ export default function ProfileEditForm() {
         Object.assign(basePayload, buildCanonicalSportRequestFields(primarySport));
       }
 
-      if (canonicalResidenceUiEnabled && residenceDirty && !residenceWritable && !isOrganization && !isFan) {
+      if ((canonicalResidenceUiEnabled || isClub) && residenceDirty && !residenceWritable && !isInstitution && !isFan) {
         throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
       }
 
@@ -780,7 +780,7 @@ export default function ProfileEditForm() {
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
-      if (canonicalResidenceUiEnabled && residenceDirty && !isOrganization && !isFan) {
+      if ((canonicalResidenceUiEnabled || isClub) && residenceDirty && !isInstitution && !isFan) {
         if (!residenceWritable) throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
         const residenceResponse = await fetch('/api/profiles/me/residence', {
           method: 'PATCH',
@@ -972,6 +972,31 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
+              {isClub ? (
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <CanonicalGeographySelector
+                    idPrefix="club-geography"
+                    countryId={residenceCountryId}
+                    geoAreaId={residenceGeoAreaId}
+                    onCountryChange={(nextCountryId, selectedCountry) => {
+                      setResidenceCountryId(nextCountryId);
+                      setResidenceGeoAreaId(null);
+                      setCountry(selectedCountry?.iso2 ?? '');
+                      setResidenceDirty(true);
+                    }}
+                    onGeoAreaChange={(nextGeoAreaId) => {
+                      setResidenceGeoAreaId(nextGeoAreaId);
+                      setResidenceDirty(true);
+                    }}
+                    disabled={saving}
+                    required
+                    labels={{
+                      country: t('profile.organizationCountry', { organization: organizationLabel }),
+                      area: t('map.area'),
+                    }}
+                  />
+                </div>
+              ) : (
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">{t('profile.organizationCountry', { organization: organizationLabel })}<RequiredMark /></label>
@@ -1006,6 +1031,7 @@ export default function ProfileEditForm() {
                   required
                 />
               </div>
+              )}
 
               <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">{t('profile.motto', { organization: organizationLabel })}</label>
