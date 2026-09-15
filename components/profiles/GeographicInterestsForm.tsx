@@ -9,7 +9,7 @@ type AreaInterest = { geo_area_id: string; area?: { official_name?: string; area
 
 const relation = <T,>(value: T | T[] | null | undefined) => Array.isArray(value) ? value[0] : value;
 
-export default function GeographicInterestsForm() {
+export default function GeographicInterestsForm({ title }: { title?: string } = {}) {
   const { t } = useI18n();
   const [countryId, setCountryId] = useState<string | null>(null);
   const [geoAreaId, setGeoAreaId] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function GeographicInterestsForm() {
 
   return (
     <section className="rounded-xl border border-slate-200 p-4">
-      <h2 className="mt-0 text-xl font-semibold">{t('geoInterests.title')}</h2>
+      <h2 className="mt-0 text-xl font-semibold">{title ?? t('geoInterests.title')}</h2>
       <p className="mb-4 text-sm text-slate-600">{t('geoInterests.help')}</p>
 
       {message ? <p role="status" className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">{message}</p> : null}

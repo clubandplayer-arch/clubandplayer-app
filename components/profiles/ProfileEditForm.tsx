@@ -21,6 +21,7 @@ import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import GeographicInterestsForm from '@/components/profiles/GeographicInterestsForm';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import OrganizationCategoryFields from '@/components/sports/OrganizationCategoryFields';
 import ClubRegistrationsSection from '@/components/clubs/ClubRegistrationsSection';
@@ -1429,36 +1430,9 @@ export default function ProfileEditForm() {
           </section>
         )}
 
-        {/* Zona di interesse (atleta) */}
-        {!isOrganization && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">{t('profile.interestArea')}</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">{t('profile.country')}</label>
-                <select
-                  className="w-full min-w-0 rounded-lg border p-2"
-                  value={interestCountry}
-                  onChange={(e) => setInterestCountry(e.target.value)}
-                >
-                  <option value="">— {t('profile.select')} —</option>
-                  {WORLD_COUNTRY_OPTIONS.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {localizeCountryOption(c.code, c.name, locale, t('vocabulary.category.other'))}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <LocationFields
-                supabase={supabase}
-                country={interestCountry}
-                value={interestLocation}
-                fallback={interestFallback}
-                onChange={setInterestLocation}
-                labels={{ region: t('opportunities.region'), province: t('opportunities.province'), city: t('opportunities.city') }}
-              />
-            </div>
-          </section>
+        {/* Zona di interesse personale: usa lo stesso catalogo geografico canonico delle opportunità. */}
+        {!isOrganization && !isFan && (
+          <GeographicInterestsForm title={t('profile.interestArea')} />
         )}
 
         {isClub && <ClubRegistrationsSection />}

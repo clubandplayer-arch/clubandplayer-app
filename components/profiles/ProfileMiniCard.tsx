@@ -93,10 +93,11 @@ type InterestGeo = {
 /* ---------- helpers bandiera/nome paese ---------- */
 
 export default function ProfileMiniCard() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [p, setP] = useState<P | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', province: '', region: '', country: '' });
+  const [canonicalInterestLabel, setCanonicalInterestLabel] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -105,6 +106,36 @@ export default function ProfileMiniCard() {
         const raw = await r.json().catch(() => ({}));
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
+
+        if (j?.account_type === 'athlete' || j?.account_type === 'staff') {
+          const interestsResponse = await fetch('/api/profile-geography/interests', { credentials: 'include', cache: 'no-store' });
+          const interestsPayload = await interestsResponse.json().catch(() => ({}));
+          if (interestsResponse.ok) {
+            const areaInterest = interestsPayload?.data?.geoAreaInterests?.[0];
+            const countryInterest = interestsPayload?.data?.countryInterests?.[0];
+            if (areaInterest?.geo_area_id) {
+              const ancestryResponse = await fetch(`/api/geo/areas/${encodeURIComponent(areaInterest.geo_area_id)}/ancestors`, { cache: 'no-store' });
+              const ancestryPayload = await ancestryResponse.json().catch(() => ({}));
+              const geography = ancestryPayload?.data;
+              if (ancestryResponse.ok && geography?.area) {
+                const iso2 = geography.area.country?.iso2;
+                const country = iso2
+                  ? new Intl.DisplayNames([locale], { type: 'region' }).of(iso2) ?? iso2
+                  : '';
+                const hierarchy = [
+                  geography.area.official_name,
+                  ...(Array.isArray(geography.ancestors) ? [...geography.ancestors].reverse().map((area: { official_name?: string }) => area.official_name) : []),
+                  country,
+                ].filter(Boolean);
+                setCanonicalInterestLabel(Array.from(new Set(hierarchy)).join(', '));
+              }
+            } else if (countryInterest) {
+              const country = Array.isArray(countryInterest.country) ? countryInterest.country[0] : countryInterest.country;
+              const iso2 = country?.iso2;
+              setCanonicalInterestLabel(iso2 ? new Intl.DisplayNames([locale], { type: 'region' }).of(iso2) ?? country?.official_name ?? iso2 : country?.official_name ?? '');
+            }
+          }
+        }
 
         const countryCode = (j?.interest_country || j?.country || '').trim() || null;
         const countryName = resolveCountryName(countryCode) || getCountryDisplay(countryCode).label || '';
@@ -149,7 +180,7 @@ export default function ProfileMiniCard() {
         setLoaded(true);
       }
     })();
-  }, []);
+  }, [locale]);
 
   const accountType = p?.account_type ?? null;
   const isClub = accountType === 'club';
@@ -165,6 +196,7 @@ export default function ProfileMiniCard() {
   const isEmailName = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawName.trim());
   const name = isInstitution && isEmailName ? t('profile.institution') : rawName || (isClub ? 'Club' : isInstitution ? t('profile.institution') : t('profile.welcome'));
   const interestLabel = [interest.city, interest.province, interest.country].filter(Boolean).join(', ');
+  const playerInterestLabel = canonicalInterestLabel || interestLabel;
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
   const clubGeoLabel = isClub ? interestLabel : '';
 
@@ -266,7 +298,7 @@ export default function ProfileMiniCard() {
           {!isClub && (
             <div className="text-xs text-gray-600">
               <div className="text-[11px] uppercase tracking-wide text-gray-500">{t('profile.interestArea')}</div>
-              <div className="text-sm font-semibold text-gray-800">{interestLabel || '—'}</div>
+              <div className="text-sm font-semibold text-gray-800">{playerInterestLabel || '—'}</div>
             </div>
           )}
 
@@ -398,7 +430,7 @@ export default function ProfileMiniCard() {
             </div>
             <div className="flex flex-col gap-0.5 col-span-2">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.cityCountry')}</dt>
-              <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
+              <dd className="font-medium text-gray-900">{playerInterestLabel || '—'}</dd>
             </div>
           </dl>
 
