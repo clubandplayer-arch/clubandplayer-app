@@ -22,6 +22,7 @@ import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/li
 import { projectOpportunityCanonicalContext, resolveOpportunityRoleColumns } from '@/lib/opportunities/canonicalSportsContext.server';
 import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 import { OrganizationMembershipError, validateOrganizationMembership } from '@/lib/sports/organizationMembership.server';
+import { assertClubOpportunityEligibility, ClubOpportunityEligibilityError } from '@/lib/opportunities/clubOpportunityEligibility.server';
 
 export const runtime = 'nodejs';
 
@@ -425,13 +426,27 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     throw error;
   }
 
-  if (geographyCommand.kind !== 'absent' && geographyCommand.kind !== 'legacy') {
+  if (geographyCommand.kind === 'absent' || geographyCommand.kind === 'legacy') {
+    return invalidPayload('canonical_opportunity_geography_required');
+  } else {
     try {
       Object.assign(basePayload, await buildOpportunityGeographyWritePlan(supabase, geographyCommand));
     } catch (error) {
       if (error instanceof OpportunityGeographyError) return invalidPayload(error.code);
       throw error;
     }
+  }
+
+  try {
+    await assertClubOpportunityEligibility(supabase, {
+      clubProfileId: clubId,
+      registrationId,
+      countryId: (basePayload.country_id as string | null) ?? null,
+      geoAreaId: (basePayload.geo_area_id as string | null) ?? null,
+    });
+  } catch (error) {
+    if (error instanceof ClubOpportunityEligibilityError) return invalidPayload(error.code);
+    throw error;
   }
 
   const runInsert = (payload: Record<string, unknown>) =>
