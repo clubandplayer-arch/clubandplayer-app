@@ -41,6 +41,18 @@ test('Club search filters and result countries use canonical profile preferences
   assert.match(route, /filters\.canonical \? \{ \.\.\.filters, canonical: null \} : filters/);
 });
 
+test('Player, Staff and Post geography filters use interest areas rather than nationality or residence', () => {
+  assert.match(route, /loadProfileIdsForInterestScope/);
+  assert.match(route, /profile_country_interests/);
+  assert.match(route, /profile_geo_area_interests/);
+  assert.match(route, /!scope\.geoAreaId && row\.country_id === scope\.countryId/);
+  assert.match(route, /scope\.areaIds\.includes\(String\(row\.geo_area_id\)\)/);
+  assert.match(route, /interest_country\.ilike/);
+  assert.match(route, /interest_\$\{canonicalAreaLegacyField\(scope\.geoAreaType\)\}/);
+  assert.match(route, /query = query\.in\('id', interestProfileIds\)/);
+  assert.match(route, /Legacy fallback is interest-only/);
+});
+
 test('catalog adapter is read-only, country-scoped and bounded for descendants', () => {
   assert.match(adapter, /\.from\('countries'\)[\s\S]*\.select\('id,iso2,official_name,is_active,is_supported'\)/);
   assert.match(adapter, /\.from\('geo_areas'\)/);

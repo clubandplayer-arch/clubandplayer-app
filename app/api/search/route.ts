@@ -321,6 +321,54 @@ async function loadCanonicalClubCountries(profileIds: string[]): Promise<Map<str
   return result;
 }
 
+async function loadProfileIdsForInterestScope(scope: CanonicalSearchGeographyScope): Promise<string[]> {
+  const admin = getSupabaseAdminClientOrNull();
+  if (!admin) throw new Error('canonical profile interest search requires the server database client');
+  const [countriesResult, areasResult] = await Promise.all([
+    admin.from('profile_country_interests').select('profile_id,country_id'),
+    admin.from('profile_geo_area_interests').select('profile_id,geo_area_id,area:geo_areas!inner(country_id)'),
+  ]);
+  if (countriesResult.error) throw new Error(countriesResult.error.message);
+  if (areasResult.error) throw new Error(areasResult.error.message);
+
+  const canonicalInterestProfileIds = new Set([
+    ...(countriesResult.data ?? []).map((row) => String(row.profile_id)),
+    ...(areasResult.data ?? []).map((row) => String(row.profile_id)),
+  ]);
+  const matchingCountryIds = (countriesResult.data ?? [])
+    .filter((row) => !scope.geoAreaId && row.country_id === scope.countryId)
+    .map((row) => String(row.profile_id));
+  const matchingAreaIds = (areasResult.data ?? [])
+    .filter((row: any) => {
+      const area = Array.isArray(row.area) ? row.area[0] : row.area;
+      return scope.geoAreaId
+        ? scope.areaIds.includes(String(row.geo_area_id))
+        : area?.country_id === scope.countryId;
+    })
+    .map((row) => String(row.profile_id));
+
+  // Legacy fallback is interest-only. Nationality/residence must never make a
+  // Player or Staff result match an interest-area search.
+  const countryValues = Array.from(new Set([
+    scope.countryIso2,
+    scope.countryName,
+    getCountryName(scope.countryIso2),
+  ].filter((value): value is string => Boolean(value?.trim()))));
+  let legacyQuery = admin.from('profiles').select('id')
+    .or('account_type.in.(athlete,staff),type.in.(athlete,player,staff)')
+    .or(countryValues.map((value) => `interest_country.ilike.${toIlikeExact(value)}`).join(','));
+  if (scope.geoAreaName && scope.geoAreaType) {
+    const field = `interest_${canonicalAreaLegacyField(scope.geoAreaType)}`;
+    legacyQuery = legacyQuery.ilike(field, scope.geoAreaName);
+  }
+  const { data: legacyProfiles, error: legacyError } = await legacyQuery;
+  if (legacyError) throw new Error(legacyError.message);
+  const matchingLegacyOnlyIds = (legacyProfiles ?? [])
+    .map((row) => String(row.id))
+    .filter((id) => !canonicalInterestProfileIds.has(id));
+  return Array.from(new Set([...matchingCountryIds, ...matchingAreaIds, ...matchingLegacyOnlyIds]));
+}
+
 
 function buildInstitutionQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
@@ -480,15 +528,20 @@ async function fetchProfileResults(params: {
   }
 
   if (kind === 'staff') {
-    const { data, count, error } = await buildStaffQuery(
+    const profileFilters = filters.canonical ? { ...filters, canonical: null } : filters;
+    let query = buildStaffQuery(
       supabase,
       ilikeQuery,
       'id, full_name, display_name, avatar_url, city, province, region, country, sport, role, account_type, type, interest_city, interest_province, interest_region, interest_country',
-      filters,
+      profileFilters,
       { count: 'exact' },
-    )
-      .order('created_at', { ascending: false })
-      .range(from, to);
+    );
+    if (filters.canonical) {
+      const interestProfileIds = await loadProfileIdsForInterestScope(filters.canonical);
+      if (!interestProfileIds.length) return { results: [], count: 0 };
+      query = query.in('id', interestProfileIds);
+    }
+    const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to);
     if (error) throw new Error(error.message);
     const rows = Array.isArray(data) ? (data as any[]) : [];
     const canonicalInterests = await loadProfileSearchInterestLocations(supabase, rows.map((row) => String(row.id)));
@@ -509,11 +562,18 @@ async function fetchProfileResults(params: {
     return { results, count: count ?? 0 };
   }
 
+  const profileFilters = filters.canonical ? { ...filters, canonical: null } : filters;
   let query = (kind === 'players'
-    ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' }).not('role', 'ilike', 'staff')
-    : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' }).ilike('role', 'staff'))
+    ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, profileFilters, { count: 'exact' }).not('role', 'ilike', 'staff')
+    : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, profileFilters, { count: 'exact' }).ilike('role', 'staff'))
     .order('created_at', { ascending: false })
     .range(from, to);
+
+  if (filters.canonical) {
+    const interestProfileIds = await loadProfileIdsForInterestScope(filters.canonical);
+    if (!interestProfileIds.length) return { results: [], count: 0 };
+    query = query.in('id', interestProfileIds);
+  }
 
   if (kind === 'players' && filters.canonicalSport) {
     let idsQuery = applyPublicProfileVisibilityFilters(supabase.from('profiles').select('id'))
@@ -576,19 +636,32 @@ async function fetchProfileCount(params: {
     return count ?? 0;
   }
   if (kind === 'staff') {
-    const { count, error } = await buildStaffQuery(
+    const profileFilters = filters.canonical ? { ...filters, canonical: null } : filters;
+    let query = buildStaffQuery(
       supabase,
       ilikeQuery,
       'id',
-      filters,
+      profileFilters,
       { count: 'exact', head: true },
     );
+    if (filters.canonical) {
+      const interestProfileIds = await loadProfileIdsForInterestScope(filters.canonical);
+      if (!interestProfileIds.length) return 0;
+      query = query.in('id', interestProfileIds);
+    }
+    const { count, error } = await query;
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
+  const profileFilters = filters.canonical ? { ...filters, canonical: null } : filters;
   let query = kind === 'players'
-    ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true }).not('role', 'ilike', 'staff')
-    : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true }).ilike('role', 'staff');
+    ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', profileFilters, { count: 'exact', head: true }).not('role', 'ilike', 'staff')
+    : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', profileFilters, { count: 'exact', head: true }).ilike('role', 'staff');
+  if (filters.canonical) {
+    const interestProfileIds = await loadProfileIdsForInterestScope(filters.canonical);
+    if (!interestProfileIds.length) return 0;
+    query = query.in('id', interestProfileIds);
+  }
   if (kind === 'players' && filters.canonicalSport) {
     let idsQuery = applyPublicProfileVisibilityFilters(supabase.from('profiles').select('id'))
       .or('account_type.eq.athlete,type.eq.athlete,account_type.eq.player,type.eq.player');
@@ -752,7 +825,13 @@ async function fetchFilteredAuthorIds(params: {
     supabase.from('profiles').select('id, user_id'),
   );
 
-  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true, canonicalSportColumns: true });
+  const profileFilters = filters.canonical ? { ...filters, canonical: null } : filters;
+  query = applyCommonFilters(query, profileFilters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true, canonicalSportColumns: true });
+  if (filters.canonical) {
+    const interestProfileIds = await loadProfileIdsForInterestScope(filters.canonical);
+    if (!interestProfileIds.length) return [];
+    query = query.in('id', interestProfileIds);
+  }
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
