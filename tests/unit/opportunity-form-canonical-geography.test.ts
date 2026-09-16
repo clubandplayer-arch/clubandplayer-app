@@ -21,6 +21,15 @@ test('new and untouched legacy Opportunities omit geography while explicit chang
   assert.doesNotMatch(form, /payload[\s\S]{0,200}country:\s*effectiveCountry|region:\s*region|province:\s*countryCode|city:\s*\(city/);
 });
 
+test('Club opportunity creation is locked to canonical Club geography and an active registration', () => {
+  assert.match(form, /fetch\('\/api\/profiles\/me\/residence'/);
+  assert.match(form, /setCountryId\(residence\.residenceCountryId\)/);
+  assert.match(form, /setGeoAreaId\(residence\.residenceGeoAreaId\)/);
+  assert.match(form, /if \(!clubGeographyReady\)/);
+  assert.match(form, /if \(!registrationId \|\| registrations\.length === 0\)/);
+  assert.match(form, /La località dell’opportunità coincide con la zona canonica del Club/);
+});
+
 test('legacy edit is preserved until replacement and exposes an explicit reset', () => {
   assert.match(form, /const hasLegacyOnlyLocation = !initialCountryId && Boolean\(legacyLocation\)/);
   assert.match(form, /hasLegacyOnlyLocation && !geographyTouched/);

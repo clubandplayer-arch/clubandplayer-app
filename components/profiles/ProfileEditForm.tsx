@@ -253,6 +253,7 @@ export default function ProfileEditForm() {
   const [residenceGeoAreaId, setResidenceGeoAreaId] = useState<string | null>(null);
   const [residenceDirty, setResidenceDirty] = useState(false);
   const [residenceWritable, setResidenceWritable] = useState(false);
+  const [clubGeographyRevision, setClubGeographyRevision] = useState(0);
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
@@ -467,7 +468,7 @@ export default function ProfileEditForm() {
     setResidenceGeoAreaId(null);
     setResidenceWritable(false);
     setResidenceDirty(false);
-    if (canonicalResidenceUiEnabled && (p.account_type === 'athlete' || p.account_type === 'staff')) {
+    if (p.account_type === 'club' || (canonicalResidenceUiEnabled && (p.account_type === 'athlete' || p.account_type === 'staff'))) {
       const residenceResponse = await fetch('/api/profiles/me/residence', { credentials: 'include', cache: 'no-store' });
       if (!residenceResponse.ok) throw new Error('Impossibile leggere la residenza canonica');
       const residencePayload = await residenceResponse.json().catch(() => ({}));
@@ -553,7 +554,9 @@ export default function ProfileEditForm() {
     interest_region_id: isOrganization ? clubLocation.regionId : null,
     interest_province_id: isOrganization ? clubLocation.provinceId : null,
     interest_municipality_id: isOrganization ? clubLocation.municipalityId : null,
-  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile]);
+    residence_country_id: isClub ? residenceCountryId : null,
+    residence_geo_area_id: isClub ? residenceGeoAreaId : null,
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile, residenceCountryId, residenceGeoAreaId]);
   const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
@@ -756,9 +759,26 @@ export default function ProfileEditForm() {
         });
       }
 
-      const missingFields = getMissingRequiredProfileFields(isClub ? { ...basePayload, sport: 'registrazioni club' } : basePayload);
+      const missingFields = getMissingRequiredProfileFields(isClub ? {
+        ...basePayload,
+        sport: 'registrazioni club',
+        residence_country_id: residenceCountryId,
+        residence_geo_area_id: residenceGeoAreaId,
+      } : basePayload);
       if (missingFields.length > 0) {
         throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
+      }
+
+      // Club geography is written only by update_my_club_geography. Sending any
+      // geography through the generic profile endpoint would create a partial,
+      // non-transactional fallback if the RPC subsequently failed.
+      if (isClub) {
+        for (const field of [
+          'country', 'region', 'province', 'city',
+          'interest_country', 'interest_region', 'interest_province', 'interest_city',
+          'interest_region_id', 'interest_province_id', 'interest_municipality_id',
+          'residence_region_id', 'residence_province_id', 'residence_municipality_id',
+        ]) delete basePayload[field];
       }
 
       if (!isFan) {
@@ -782,7 +802,7 @@ export default function ProfileEditForm() {
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
-      if (canonicalResidenceUiEnabled && residenceDirty && !isOrganization && !isFan) {
+      if ((isClub || canonicalResidenceUiEnabled) && residenceDirty && (isClub || (!isOrganization && !isFan))) {
         if (!residenceWritable) throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
         const residenceResponse = await fetch('/api/profiles/me/residence', {
           method: 'PATCH',
@@ -795,6 +815,7 @@ export default function ProfileEditForm() {
           throw new Error(payload?.error ?? 'Salvataggio della residenza canonica non riuscito');
         }
         setResidenceDirty(false);
+        if (isClub) setClubGeographyRevision((revision) => revision + 1);
       }
 
       if (!isOrganization && !isFan) {
@@ -974,7 +995,7 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
-              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
+              {!isClub && <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">{t('profile.organizationCountry', { organization: organizationLabel })}<RequiredMark /></label>
                   <select
@@ -1007,7 +1028,7 @@ export default function ProfileEditForm() {
                   }}
                   required
                 />
-              </div>
+              </div>}
 
               <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">{t('profile.motto', { organization: organizationLabel })}</label>
@@ -1277,11 +1298,11 @@ export default function ProfileEditForm() {
           )}
         </section>
 
-        {canonicalResidenceUiEnabled && residenceWritable && !isOrganization && !isFan && (
+        {residenceWritable && (isClub || (canonicalResidenceUiEnabled && !isOrganization && !isFan)) && (
           <section className="rounded-2xl border border-sky-200 bg-sky-50/40 p-4 md:p-5">
             <h2 className="text-lg font-semibold text-slate-950">Residenza canonica</h2>
             <p className="mb-4 mt-1 text-sm text-slate-600">
-              Seleziona il Paese e, facoltativamente, l’area di residenza. Interessi geografici e nazionalità restano separati.
+              Seleziona il Paese e, facoltativamente, l’area geografica. Il salvataggio è atomico.
             </p>
             <CanonicalGeographySelector
               countryId={residenceCountryId}
@@ -1452,7 +1473,7 @@ export default function ProfileEditForm() {
           <GeographicInterestsForm title={t('profile.interestArea')} />
         )}
 
-        {isClub && <ClubRegistrationsSection />}
+        {isClub && <ClubRegistrationsSection geographyDirty={residenceDirty} geographyRevision={clubGeographyRevision} />}
         {isClub && <ClubHonorsSection />}
 
         {/* Social */}

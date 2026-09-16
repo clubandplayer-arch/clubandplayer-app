@@ -39,21 +39,22 @@ test('temporary residence canary allowlist accepts only explicitly configured va
   if (previous === undefined) delete process.env.CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS; else process.env.CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS = previous;
 });
 
-test('owner-only GET/PATCH contract has a pre-query write kill switch and eligible roles only', () => {
+test('owner-only GET/PATCH contract keeps Player/Staff gates after Club role resolution', () => {
   assert.match(route, /export const GET = withAuth/);
   assert.match(route, /export const PATCH = withAuth/);
   const patch = route.slice(route.indexOf('export const PATCH'));
-  assert.ok(patch.indexOf('isCanonicalProfileResidenceWriteEnabled') < patch.indexOf(".from('profiles')"));
-  assert.ok(patch.indexOf('isCanonicalProfileResidenceWriteUserAllowed(user.id)') < patch.indexOf(".from('profiles')"));
+  assert.ok(patch.indexOf('isCanonicalProfileResidenceWriteEnabled') > patch.indexOf(".from('profiles')"));
+  assert.ok(patch.indexOf('isCanonicalProfileResidenceWriteUserAllowed(user.id)') > patch.indexOf(".from('profiles')"));
   assert.match(patch, /writes are not enabled for this account', 403/);
   assert.match(route, /accountType === 'athlete' \|\| accountType === 'staff'/);
+  assert.match(route, /accountType === 'club'/);
   assert.match(route, /parseResidencePatch\(body\)/);
   assert.match(route, /writeMyProfileResidence\(supabase, patch\)/);
   assert.doesNotMatch(route, /profile_id|profileId/);
 });
 
-test('ProfileEditForm shows the canonical selector only to writable Player/Staff canaries and sends no legacy residence payload', () => {
-  assert.match(form, /canonicalResidenceUiEnabled && residenceWritable && !isOrganization && !isFan/);
+test('ProfileEditForm shows the canonical selector to writable Club or Player/Staff canaries and sends no legacy residence payload', () => {
+  assert.match(form, /residenceWritable && \(isClub \|\| \(canonicalResidenceUiEnabled && !isOrganization && !isFan\)\)/);
   assert.match(form, /<CanonicalGeographySelector/);
   assert.doesNotMatch(form, /disabled=\{!residenceWritable\}/);
   assert.doesNotMatch(form, /Modifica disabilitata fino alla certificazione Supabase/);

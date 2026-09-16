@@ -17,6 +17,7 @@ import { planProfilePrimarySportRequest } from '@/lib/taxonomy/profilePrimarySpo
 import { SportsTaxonomyRepository, SupabaseSportsTaxonomyDataSource } from '@/lib/taxonomy/sportsTaxonomyRepository.server';
 import { projectOpportunityCanonicalContext, resolveOpportunityRoleColumns } from '@/lib/opportunities/canonicalSportsContext.server';
 import { OrganizationMembershipError, validateOrganizationMembership } from '@/lib/sports/organizationMembership.server';
+import { assertClubOpportunityEligibility, ClubOpportunityEligibilityError } from '@/lib/opportunities/clubOpportunityEligibility.server';
 
 export const runtime = 'nodejs';
 
@@ -413,6 +414,31 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       && registration.sports_organization_id === resultingValue('sports_organization_id')
       && registration.sports_organization_category_id === resultingValue('sports_organization_category_id');
     if (registrationError || !tupleMatches) return jsonError('invalid_club_registration', 400);
+  }
+
+  const { data: ownerProfile } = await supabase.from('profiles').select('id').eq('user_id', user.id).eq('account_type', 'club').maybeSingle();
+  const effectiveClubId = (opp.club_id as string | null) ?? ownerProfile?.id ?? null;
+  if (!effectiveClubId) return jsonError('club_profile_not_found', 400);
+  try {
+    const registration = await assertClubOpportunityEligibility(supabase, {
+      clubProfileId: effectiveClubId,
+      registrationId: effectiveRegistrationId ?? null,
+      countryId: (Object.prototype.hasOwnProperty.call(update, 'country_id') ? update.country_id : opp.country_id) as string | null,
+      geoAreaId: (Object.prototype.hasOwnProperty.call(update, 'geo_area_id') ? update.geo_area_id : opp.geo_area_id) as string | null,
+    });
+    const resultingValue = (column: string) => Object.prototype.hasOwnProperty.call(update, column)
+      ? update[column] ?? null
+      : (opp as Record<string, unknown>)[column] ?? null;
+    if (registration.sport_id !== resultingValue('sport_id')
+      || (registration.sport_discipline_id ?? null) !== resultingValue('sport_discipline_id')
+      || (registration.sport_variant_id ?? null) !== resultingValue('sport_variant_id')
+      || registration.sports_organization_id !== resultingValue('sports_organization_id')
+      || registration.sports_organization_category_id !== resultingValue('sports_organization_category_id')) {
+      return jsonError('invalid_club_registration', 400);
+    }
+  } catch (error) {
+    if (error instanceof ClubOpportunityEligibilityError) return jsonError(error.code, 400);
+    throw error;
   }
 
   // Migrazione soft: se manca l’owner, impostalo ora

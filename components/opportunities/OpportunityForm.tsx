@@ -129,9 +129,26 @@ export default function OpportunityForm({
   });
   const [registrationId, setRegistrationId] = useState(initial?.club_sport_registration_id ?? '');
   const [registrations, setRegistrations] = useState<any[]>([]);
+  const [clubGeographyReady, setClubGeographyReady] = useState(false);
   // Initial registration selection intentionally runs once; later edits are user-driven.
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/clubs/registrations', { credentials: 'include', cache: 'no-store' }).then(r => r.json()),
+      fetch('/api/profiles/me/residence', { credentials: 'include', cache: 'no-store' }).then(r => r.json()),
+    ]).then(([registrationsPayload, geographyPayload]) => {
+      const rows = registrationsPayload.data ?? [];
+      setRegistrations(rows);
+      if (!initial && rows.length) chooseRegistration(rows.find((x:any) => x.is_primary) ?? rows[0]);
+      const residence = geographyPayload?.residence;
+      if (residence?.residenceCountryId && residence?.residenceGeoAreaId) {
+        setCountryId(residence.residenceCountryId);
+        setGeoAreaId(residence.residenceGeoAreaId);
+        setGeographyTouched(true);
+        setClubGeographyReady(true);
+      }
+    }).catch(() => setClubGeographyReady(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetch('/api/clubs/registrations').then(r => r.json()).then(j => { const rows=j.data??[]; setRegistrations(rows); if (!initial && rows.length) { const primary=rows.find((x:any)=>x.is_primary)??rows[0]; chooseRegistration(primary); } }).catch(()=>{}); }, []);
+  }, []);
   function chooseRegistration(r:any) { const legacySport=r.legacy_sport??r.sports?.canonical_name??''; setRegistrationId(r.id); setPrimarySport({sportId:r.sport_id,disciplineId:r.sport_discipline_id??'',variantId:r.sport_variant_id??'',legacySport}); setSport(legacySport); setMembership({organizationId:r.sports_organization_id,categoryId:r.sports_organization_category_id}); setCategory(r.category?.canonical_name??''); }
   const normalizedSport = normalizeSport(sport) ?? sport;
   const roleOptions = useMemo(() => SPORTS_ROLES[normalizedSport] ?? [], [normalizedSport]);
@@ -160,6 +177,8 @@ export default function OpportunityForm({
     if (playerRoleRequired && roleGroup === 'player' && !role) return setErr(t('opportunity.invalidRole', { sport }));
     const normalizedGender = normalizeOpportunityGender(gender);
     if (!normalizedGender) return setErr(t('opportunity.selectGender'));
+    if (!clubGeographyReady) return setErr('Imposta prima la geografia canonica completa del Club.');
+    if (!registrationId || registrations.length === 0) return setErr('È richiesta almeno un’iscrizione attiva del Club.');
 
     const { age_min, age_max } = rangeFromBracket(ageBracket);
 
@@ -254,8 +273,9 @@ export default function OpportunityForm({
             setGeoAreaId(nextGeoAreaId);
             setGeographyTouched(true);
           }}
-          disabled={saving}
+          disabled
         />
+        <p className="mt-2 text-xs text-slate-600">La località dell’opportunità coincide con la zona canonica del Club.</p>
       </section>
 
       <fieldset className="space-y-3">
@@ -265,6 +285,7 @@ export default function OpportunityForm({
           <select className="w-full rounded-xl border px-3 py-2" value={registrationId} onChange={e => { const row=registrations.find(r=>r.id===e.target.value); if(row)chooseRegistration(row); }}>
             <option value="">—</option>{registrations.map(r=><option key={r.id} value={r.id}>{r.sports?.canonical_name} · {r.organization ? sportsOrganizationDisplayName(r.organization.code, r.organization.canonical_name) : ''} · {r.category?.canonical_name}</option>)}
           </select>
+          {!registrations.length && <p className="mt-2 text-sm font-medium text-red-700">Aggiungi prima un’iscrizione attiva al Club.</p>}
         </div>
 
         <CanonicalSportFilter
