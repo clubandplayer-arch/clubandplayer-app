@@ -61,3 +61,16 @@ test('the Web profile payload excludes Club geography before the RPC', () => {
   assert.match(form, /if \(isClub\) \{[\s\S]*delete basePayload\[field\]/);
   assert.match(form, /update_my_club_geography/);
 });
+
+test('saving Club geography closes stale registration editors and reloads the reconciled country catalog', () => {
+  const registrations = readFileSync('components/clubs/ClubRegistrationsSection.tsx', 'utf8');
+  assert.match(form, /setClubGeographyRevision\(\(revision\) => revision \+ 1\)/);
+  assert.match(form, /geographyDirty=\{residenceDirty\} geographyRevision=\{clubGeographyRevision\}/);
+  assert.match(registrations, /\[load, geographyRevision\]/);
+  assert.match(registrations, /setOpen\(false\)/);
+  assert.match(registrations, /disabled=\{geographyDirty\}/);
+  assert.match(registrations, /club\.registrations\.geographyPending/);
+  for (const locale of ['it', 'en', 'es', 'fr']) {
+    assert.match(readFileSync(`lib/i18n/messages/operations/${locale}.ts`, 'utf8'), /club\.registrations\.geographyPending/);
+  }
+});

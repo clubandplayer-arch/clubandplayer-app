@@ -253,6 +253,7 @@ export default function ProfileEditForm() {
   const [residenceGeoAreaId, setResidenceGeoAreaId] = useState<string | null>(null);
   const [residenceDirty, setResidenceDirty] = useState(false);
   const [residenceWritable, setResidenceWritable] = useState(false);
+  const [clubGeographyRevision, setClubGeographyRevision] = useState(0);
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
@@ -807,6 +808,7 @@ export default function ProfileEditForm() {
           throw new Error(payload?.error ?? 'Salvataggio della residenza canonica non riuscito');
         }
         setResidenceDirty(false);
+        if (isClub) setClubGeographyRevision((revision) => revision + 1);
       }
 
       if (!isOrganization && !isFan) {
@@ -1464,7 +1466,7 @@ export default function ProfileEditForm() {
           <GeographicInterestsForm title={t('profile.interestArea')} />
         )}
 
-        {isClub && <ClubRegistrationsSection />}
+        {isClub && <ClubRegistrationsSection geographyDirty={residenceDirty} geographyRevision={clubGeographyRevision} />}
         {isClub && <ClubHonorsSection />}
 
         {/* Social */}
