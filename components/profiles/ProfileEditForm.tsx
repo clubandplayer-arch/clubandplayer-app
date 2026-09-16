@@ -21,6 +21,7 @@ import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
+import CanonicalCountrySelect from '@/components/geo/CanonicalCountrySelect';
 import GeographicInterestsForm from '@/components/profiles/GeographicInterestsForm';
 import CanonicalSportFilter, { type CanonicalSportFilterValue } from '@/components/sports/CanonicalSportFilter';
 import OrganizationCategoryFields from '@/components/sports/OrganizationCategoryFields';
@@ -56,6 +57,7 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
   sport: '',
   role: '',
   category: '',
+  countryId: '',
   organizationId: '',
   categoryId: '',
 };
@@ -1347,6 +1349,7 @@ export default function ProfileEditForm() {
                           onChange={(next, meta) => updatePastExperience(index, {
                             sport: next.legacySport,
                             role: meta.source === 'user' ? '' : experience.role,
+                            countryId: meta.source === 'user' ? '' : experience.countryId,
                             organizationId: meta.source === 'user' ? '' : experience.organizationId,
                             categoryId: meta.source === 'user' ? '' : experience.categoryId,
                             category: meta.source === 'user' ? '' : experience.category,
@@ -1365,7 +1368,21 @@ export default function ProfileEditForm() {
                         />
                       </div>
 
+                      <CanonicalCountrySelect
+                        value={experience.countryId}
+                        disabled={!experience.sport}
+                        required
+                        label={t('profile.country')}
+                        onChange={(countryId) => updatePastExperience(index, {
+                          countryId,
+                          organizationId: '',
+                          categoryId: '',
+                          category: '',
+                        })}
+                      />
+
                       <OrganizationCategoryFields
+                        countryId={experience.countryId}
                         sport={{
                           sportId: experience.primarySport?.sportId ?? '',
                           disciplineId: experience.primarySport?.disciplineId ?? '',

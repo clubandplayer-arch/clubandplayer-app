@@ -15,7 +15,8 @@ export default function OrganizationCategoryFields({ countryId, sport, value, on
   categoryLabel?: string;
 }) {
   const [catalog, setCatalog] = useState<{organizations:Organization[]; organizationCategories:Category[]}>({ organizations:[], organizationCategories:[] });
-  useEffect(() => { let active=true; const query = countryId ? `?countryId=${encodeURIComponent(countryId)}` : ''; fetch(`/api/sports/organization-memberships${query}`, { cache:'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(raw => {
+  const waitingForCountry = countryId !== undefined && !countryId;
+  useEffect(() => { let active=true; if (countryId === '') { setCatalog({ organizations:[], organizationCategories:[] }); return () => { active=false; }; } const query = countryId ? `?countryId=${encodeURIComponent(countryId)}` : ''; fetch(`/api/sports/organization-memberships${query}`, { cache:'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(raw => {
     if (active) setCatalog(raw?.data ?? raw);
   }).catch(() => {}); return () => { active=false; }; }, [countryId]);
   const categories = useMemo(() => catalog.organizationCategories.filter(c => c.sport_id===sport.sportId
@@ -30,10 +31,10 @@ export default function OrganizationCategoryFields({ countryId, sport, value, on
   });
 
   return <>
-    <div><label className="mb-2 block text-sm font-medium text-slate-700">{organizationLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.organizationId} disabled={!sport.sportId} onChange={e => onChange({ organizationId:e.target.value, categoryId:'' }, '')}>
+    <div><label className="mb-2 block text-sm font-medium text-slate-700">{organizationLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.organizationId} disabled={!sport.sportId || waitingForCountry} onChange={e => onChange({ organizationId:e.target.value, categoryId:'' }, '')}>
       <option value="">—</option>{organizations.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}
     </select></div>
-    <div><label className="mb-2 block text-sm font-medium text-slate-700">{categoryLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.categoryId} disabled={!value.organizationId} required={Boolean(value.organizationId)} onChange={e => {
+    <div><label className="mb-2 block text-sm font-medium text-slate-700">{categoryLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.categoryId} disabled={!value.organizationId || waitingForCountry} required={Boolean(value.organizationId)} onChange={e => {
       const selected=selectedCategories.find(c => c.id===e.target.value); onChange({ ...value, categoryId:e.target.value }, selected?.canonical_name ?? '');
     }}><option value="">—</option>{selectedCategories.map(c => <option key={c.id} value={c.id}>{c.canonical_name}</option>)}</select></div>
   </>;
