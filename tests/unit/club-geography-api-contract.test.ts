@@ -85,3 +85,15 @@ test('public Club profile renders canonical headquarters and never revives a sta
   assert.match(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? null/);
   assert.doesNotMatch(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? categoryLabel/);
 });
+
+test('Player Club-of-belonging card consumes the same active canonical registration identity', () => {
+  const playerProfile = readFileSync('app/(dashboard)/players/[id]/page.tsx', 'utf8');
+  const publicRegistrations = readFileSync('app/api/clubs/[id]/registrations/route.ts', 'utf8');
+  assert.match(playerProfile, /\/api\/clubs\/\$\{encodeURIComponent\(visibleClubProfile\.id\)\}\/registrations/);
+  assert.match(playerProfile, /registration\.sports/);
+  assert.match(playerProfile, /sportsOrganizationDisplayName/);
+  assert.match(playerProfile, /registration\.category\?\.canonical_name/);
+  assert.match(playerProfile, /primaryRegistration\?\.category\?\.country/);
+  assert.doesNotMatch(playerProfile, /\[clubOfBelonging\.club_league_category, normalizedClubSport\]/);
+  assert.match(publicRegistrations, /category:sports_organization_category_id\(canonical_name,country:countries\(iso2\)\)/);
+});

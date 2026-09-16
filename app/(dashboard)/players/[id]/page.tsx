@@ -26,6 +26,7 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useRole } from '@/lib/auth/useRole';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
+import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 
 type AthleteProfileRow = {
   id: string;
@@ -123,6 +124,14 @@ type ClubProfileSummary = {
   account_type: string | null;
   type: string | null;
   status: string | null;
+  primaryRegistration?: {
+    sports?: { code?: string | null; canonical_name?: string | null } | null;
+    organization?: { code?: string | null; canonical_name?: string | null } | null;
+    category?: {
+      canonical_name?: string | null;
+      country?: { iso2?: string | null } | Array<{ iso2?: string | null }> | null;
+    } | null;
+  } | null;
 };
 
 type FanVoteState = {
@@ -433,7 +442,19 @@ export default function PlayerPublicProfilePage() {
                 if (accountType !== 'club') {
                   setClubOfBelonging(null);
                 } else {
-                  setClubOfBelonging(clubProfile);
+                  const visibleClubProfile: ClubProfileSummary = clubProfile;
+                  const registrationsResponse = await fetch(
+                    `/api/clubs/${encodeURIComponent(visibleClubProfile.id)}/registrations`,
+                    { credentials: 'include', cache: 'no-store' },
+                  );
+                  const registrationsPayload = await registrationsResponse.json().catch(() => ({}));
+                  const registration = registrationsResponse.ok && Array.isArray(registrationsPayload?.data)
+                    ? registrationsPayload.data[0] ?? null
+                    : null;
+                  setClubOfBelonging({
+                    ...visibleClubProfile,
+                    primaryRegistration: (registration as ClubProfileSummary['primaryRegistration']) ?? null,
+                  });
                 }
               }
             } else {
@@ -554,19 +575,38 @@ export default function PlayerPublicProfilePage() {
 
   const clubSubtitle = useMemo(() => {
     if (!clubOfBelonging) return null;
+    const registration = clubOfBelonging.primaryRegistration;
+    if (registration) {
+      const registrationSport = registration.sports
+        ? localizeSport(registration.sports.code ?? registration.sports.canonical_name ?? null, t)
+          ?? registration.sports.canonical_name
+        : null;
+      const organization = registration.organization
+        ? sportsOrganizationDisplayName(
+            registration.organization.code ?? '',
+            registration.organization.canonical_name ?? '',
+          )
+        : null;
+      return [registrationSport, organization, registration.category?.canonical_name]
+        .filter(Boolean)
+        .join(' · ') || null;
+    }
     const normalizedClubSport =
       normalizeSport(clubOfBelonging.sport ?? null) ?? clubOfBelonging.sport ?? null;
-    return [clubOfBelonging.club_league_category, normalizedClubSport].filter(Boolean).join(' · ') || null;
-  }, [clubOfBelonging]);
+    return normalizedClubSport ? localizeSport(normalizedClubSport, t) ?? normalizedClubSport : null;
+  }, [clubOfBelonging, t]);
 
   const clubCountry = useMemo(() => {
+    const registrationCountry = clubOfBelonging?.primaryRegistration?.category?.country;
+    const canonicalIso2 = (Array.isArray(registrationCountry) ? registrationCountry[0]?.iso2 : registrationCountry?.iso2)?.toUpperCase() ?? null;
+    if (canonicalIso2) return { iso2: canonicalIso2, label: canonicalIso2 };
     if (!clubOfBelonging?.country) return { iso2: null, label: '' };
     const raw = clubOfBelonging.country.trim();
     const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
     const iso2 = match ? match[1].trim().toUpperCase() : null;
     const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
     return { iso2, label };
-  }, [clubOfBelonging?.country]);
+  }, [clubOfBelonging]);
 
   const headerCountry = useMemo(() => {
     if (canonicalInterestLocation) {
