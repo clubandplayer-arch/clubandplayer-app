@@ -260,16 +260,43 @@ function buildClubQuery(
   return query;
 }
 
-async function loadCanonicalClubIds(
+async function loadClubIdsForCanonicalScope(
   scope: CanonicalSearchGeographyScope,
 ): Promise<string[]> {
   const admin = getSupabaseAdminClientOrNull();
   if (!admin) throw new Error('canonical Club search requires the server database client');
-  let query = admin.from('profile_preferences').select('profile_id').eq('residence_country_id', scope.countryId);
-  if (scope.geoAreaId) query = query.in('residence_geo_area_id', scope.areaIds);
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => String(row.profile_id)).filter(Boolean);
+  const { data: canonicalPreferences, error: preferencesError } = await admin
+    .from('profile_preferences')
+    .select('profile_id,residence_country_id,residence_geo_area_id')
+    .not('residence_country_id', 'is', null);
+  if (preferencesError) throw new Error(preferencesError.message);
+
+  const canonicalProfileIds = new Set((canonicalPreferences ?? []).map((row) => String(row.profile_id)));
+  const matchingCanonicalIds = (canonicalPreferences ?? [])
+    .filter((row) => row.residence_country_id === scope.countryId
+      && (!scope.geoAreaId || scope.areaIds.includes(String(row.residence_geo_area_id))))
+    .map((row) => String(row.profile_id));
+
+  // Preserve discoverability for not-yet-migrated Clubs only. Once a Club has
+  // canonical geography, stale legacy fields can neither include nor exclude it.
+  const countryValues = Array.from(new Set([
+    scope.countryIso2,
+    scope.countryName,
+    getCountryName(scope.countryIso2),
+  ].filter((value): value is string => Boolean(value?.trim()))));
+  let legacyQuery = admin.from('profiles').select('id')
+    .or('account_type.eq.club,type.eq.club')
+    .or(countryValues.map((value) => `country.ilike.${toIlikeExact(value)}`).join(','));
+  if (scope.geoAreaName && scope.geoAreaType) {
+    legacyQuery = legacyQuery.ilike(canonicalAreaLegacyField(scope.geoAreaType), scope.geoAreaName);
+  }
+  const { data: legacyClubs, error: legacyError } = await legacyQuery;
+  if (legacyError) throw new Error(legacyError.message);
+  const matchingLegacyOnlyIds = (legacyClubs ?? [])
+    .map((row) => String(row.id))
+    .filter((id) => !canonicalProfileIds.has(id));
+
+  return Array.from(new Set([...matchingCanonicalIds, ...matchingLegacyOnlyIds]));
 }
 
 async function loadCanonicalClubCountries(profileIds: string[]): Promise<Map<string, string>> {
@@ -391,7 +418,7 @@ async function fetchProfileResults(params: {
       { count: 'exact' },
     );
     if (filters.canonical) {
-      const canonicalClubIds = await loadCanonicalClubIds(filters.canonical);
+      const canonicalClubIds = await loadClubIdsForCanonicalScope(filters.canonical);
       if (!canonicalClubIds.length) return { results: [], count: 0 };
       query = query.in('id', canonicalClubIds);
     }
@@ -533,7 +560,7 @@ async function fetchProfileCount(params: {
   if (kind === 'clubs') {
     let query = buildClubQuery(supabase, ilikeQuery, 'id', filters, { count: 'exact', head: true });
     if (filters.canonical) {
-      const canonicalClubIds = await loadCanonicalClubIds(filters.canonical);
+      const canonicalClubIds = await loadClubIdsForCanonicalScope(filters.canonical);
       if (!canonicalClubIds.length) return 0;
       query = query.in('id', canonicalClubIds);
     }

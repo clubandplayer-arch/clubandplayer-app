@@ -30,8 +30,11 @@ test('profile and post-author queries use canonical labels projected onto legacy
 });
 
 test('Club search filters and result countries use canonical profile preferences instead of stale legacy fields', () => {
-  assert.match(route, /loadCanonicalClubIds/);
-  assert.match(route, /\.from\('profile_preferences'\)\.select\('profile_id'\)\.eq\('residence_country_id', scope\.countryId\)/);
+  assert.match(route, /loadClubIdsForCanonicalScope/);
+  assert.match(route, /\.from\('profile_preferences'\)[\s\S]*\.not\('residence_country_id', 'is', null\)/);
+  assert.match(route, /row\.residence_country_id === scope\.countryId/);
+  assert.match(route, /matchingLegacyOnlyIds/);
+  assert.match(route, /!canonicalProfileIds\.has\(id\)/);
   assert.match(route, /query = query\.in\('id', canonicalClubIds\)/);
   assert.match(route, /loadCanonicalClubCountries/);
   assert.match(route, /country: canonicalCountry/);
