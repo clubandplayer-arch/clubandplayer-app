@@ -14,18 +14,18 @@ const categoryRows = [...categorySeed.matchAll(/\('([A-Z]{2})','([^']+)','([^']+
   .map((match) => ({ country: match[1], sport: match[2], organization: match[3], code: match[4], name: match[5] }));
 
 test('imports exactly the five closed section-5 catalogues', () => {
-  const expected = { FR: 71, ES: 60, CH: 56, SI: 30, PL: 49 };
+  const expected = { FR: 71, ES: 60, CH: 48, SI: 30, PL: 49 };
   for (const [country, count] of Object.entries(expected)) {
     assert.equal(categoryRows.filter((row) => row.country === country).length, count, country);
   }
-  assert.equal(categoryRows.length, 266);
-  assert.equal(new Set(categoryRows.map((row) => `${row.country}:${row.sport}:${row.organization}:${row.code}`)).size, 266);
+  assert.equal(categoryRows.length, 258);
+  assert.equal(new Set(categoryRows.map((row) => `${row.country}:${row.sport}:${row.organization}:${row.code}`)).size, 258);
 });
 
 test('preserves country isolation, youth scopes and reduced-football variants', () => {
   const expectations = {
     FR: { sports: 14, organizations: 11, youth: 2 }, ES: { sports: 13, organizations: 11, youth: 3 },
-    CH: { sports: 12, organizations: 10, youth: 3 }, SI: { sports: 14, organizations: 12, youth: 2 },
+    CH: { sports: 9, organizations: 8, youth: 1 }, SI: { sports: 14, organizations: 12, youth: 2 },
     PL: { sports: 14, organizations: 12, youth: 2 },
   };
   for (const [country, expected] of Object.entries(expectations)) {
@@ -38,6 +38,10 @@ test('preserves country isolation, youth scopes and reduced-football variants', 
   assert.match(migration, /'seven_a_side','7-a-side',7/);
   assert.ok(categoryRows.some((row) => row.country === 'FR' && row.sport === 'calcio_a_8'));
   assert.ok(categoryRows.some((row) => row.country === 'PL' && row.sport === 'calcio_a_6'));
+  assert.ok(categoryRows.some((row) => row.country === 'CH' && row.sport === 'calcio_a_7'));
+  assert.ok(categoryRows.some((row) => row.country === 'SI' && row.sport === 'calcio_a_7'));
+  assert.ok(categoryRows.some((row) => row.country === 'CH' && row.sport === 'floorball'));
+  assert.ok(!categoryRows.some((row) => ['sci', 'biathlon', 'tennis'].includes(row.sport)));
 });
 
 test('new choices are country scoped on reads and both server validation layers', () => {

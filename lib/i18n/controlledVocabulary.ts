@@ -13,12 +13,15 @@ const accountKeys: Record<string, VocabularyMessageKey> = {
 const sportKeys: Record<string, VocabularyMessageKey> = {
   calcio: 'vocabulary.sport.football', football: 'vocabulary.sport.football', soccer: 'vocabulary.sport.football', futbol: 'vocabulary.sport.football',
   'calcio a 8': 'vocabulary.sport.eightAsideFootball', 'eight aside football': 'vocabulary.sport.eightAsideFootball',
+  'calcio a 7': 'vocabulary.sport.sevenAsideFootball', 'seven aside football': 'vocabulary.sport.sevenAsideFootball',
+  'calcio a 6': 'vocabulary.sport.sixAsideFootball', 'six aside football': 'vocabulary.sport.sixAsideFootball',
   futsal: 'vocabulary.sport.futsal', volley: 'vocabulary.sport.volleyball', volleyball: 'vocabulary.sport.volleyball', pallavolo: 'vocabulary.sport.volleyball',
   basket: 'vocabulary.sport.basketball', basketball: 'vocabulary.sport.basketball', pallacanestro: 'vocabulary.sport.basketball',
   pallanuoto: 'vocabulary.sport.waterPolo', 'water polo': 'vocabulary.sport.waterPolo', pallamano: 'vocabulary.sport.handball', handball: 'vocabulary.sport.handball',
   rugby: 'vocabulary.sport.rugby', 'hockey su prato': 'vocabulary.sport.fieldHockey', 'field hockey': 'vocabulary.sport.fieldHockey',
   'hockey su ghiaccio': 'vocabulary.sport.iceHockey', 'ice hockey': 'vocabulary.sport.iceHockey', baseball: 'vocabulary.sport.baseball', softball: 'vocabulary.sport.softball',
   lacrosse: 'vocabulary.sport.lacrosse', 'football americano': 'vocabulary.sport.americanFootball', 'american football': 'vocabulary.sport.americanFootball',
+  floorball: 'vocabulary.sport.floorball', unihockey: 'vocabulary.sport.floorball',
 };
 
 const genderKeys: Record<string, VocabularyMessageKey> = {

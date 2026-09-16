@@ -5,8 +5,7 @@ begin;
 
 -- Minimal canonical vocabulary required by the selected combinations.
 insert into public.sports(code,canonical_name,is_active,display_order) values
-  ('floorball','Floorball',true,130), ('skiing','Skiing',true,140),
-  ('biathlon','Biathlon',true,150), ('tennis','Tennis',true,160)
+  ('floorball','Floorball',true,130)
 on conflict(code) do update set canonical_name=excluded.canonical_name,is_active=true,display_order=excluded.display_order,updated_at=now();
 
 insert into public.sport_variants(discipline_id,code,canonical_name,team_size,is_active,display_order)
@@ -20,9 +19,7 @@ with mappings(source_value,normalized_source_value,sport_code,discipline_code,va
  ('Calcio a 6','calcio_a_6','football','association_football','six_a_side','Calcio a 6'),
  ('Calcio a 7','calcio_a_7','football','association_football','seven_a_side','Calcio a 7'),
  ('Floorball','floorball','floorball',null,null,'Floorball'),
- ('Unihockey','unihockey','floorball',null,null,'Floorball'),
- ('Sci','sci','skiing',null,null,'Sci'), ('Biathlon','biathlon','biathlon',null,null,'Biathlon'),
- ('Tennis','tennis','tennis',null,null,'Tennis')
+ ('Unihockey','unihockey','floorball',null,null,'Floorball')
 ), resolved as (select m.*,s.id sport_id,d.id discipline_id,v.id variant_id from mappings m join public.sports s on s.code=m.sport_code left join public.sport_disciplines d on d.sport_id=s.id and d.code=m.discipline_code left join public.sport_variants v on v.discipline_id=d.id and v.code=m.variant_code)
 insert into public.legacy_sport_mappings(source_value,normalized_source_value,sport_id,discipline_id,variant_id,legacy_display_label,is_active,notes)
 select source_value,normalized_source_value,sport_id,discipline_id,variant_id,label,true,'Five-country authorized catalogue' from resolved
@@ -57,8 +54,6 @@ with seed(iso2,code,name,ord) as (values
  ,('CH','ch_swiss_basketball','Swiss Basketball',26)
  ,('CH','ch_shv_fsh','SHV-FSH',27)
  ,('CH','ch_swiss_volley','Swiss Volley',28)
- ,('CH','ch_swiss_ski','Swiss-Ski',29)
- ,('CH','ch_swiss_tennis','Swiss Tennis',30)
  ,('CH','ch_fsr','FSR',31)
  ,('CH','ch_sffs','SFFS',32)
  ,('SI','si_nzs','NZS',33)
@@ -267,14 +262,6 @@ with seed(iso2,sport_key,org_code,code,name,ord) as (values
  ,('CH','pallavolo','ch_swiss_volley','3_liga','3. Liga',4)
  ,('CH','pallavolo','ch_swiss_volley','4_liga','4. Liga',5)
  ,('CH','pallavolo','ch_swiss_volley','5_liga','5. Liga',6)
- ,('CH','sci','ch_swiss_ski','kantonalcup','Kantonalcup',1)
- ,('CH','sci','ch_swiss_ski','regionalrennen','Regionalrennen',2)
- ,('CH','sci','ch_swiss_ski','giovanili','Giovanili',3)
- ,('CH','biathlon','ch_swiss_ski','giovanili','Giovanili',1)
- ,('CH','tennis','ch_swiss_tennis','nlb_interclub','NLB Interclub',1)
- ,('CH','tennis','ch_swiss_tennis','1_liga_interclub','1. Liga Interclub',2)
- ,('CH','tennis','ch_swiss_tennis','2_liga_interclub','2. Liga Interclub',3)
- ,('CH','tennis','ch_swiss_tennis','3_liga_interclub','3. Liga Interclub',4)
  ,('CH','rugby','ch_fsr','lna','LNA',1)
  ,('CH','rugby','ch_fsr','lnb','LNB',2)
  ,('CH','rugby','ch_fsr','lnc','LNC',3)
@@ -371,7 +358,7 @@ with seed(iso2,sport_key,org_code,code,name,ord) as (values
   when sport_key='pallavolo' then 'volleyball' when sport_key='pallacanestro' then 'basketball'
   when sport_key='pallanuoto' then 'water_polo' when sport_key='pallamano' then 'handball'
   when sport_key='hockey_su_prato' then 'field_hockey' when sport_key='hockey_su_ghiaccio' then 'ice_hockey'
-  when sport_key='football_americano' then 'american_football' when sport_key='sci' then 'skiing' else sport_key end
+  when sport_key='football_americano' then 'american_football' else sport_key end
  left join public.sport_disciplines d on d.sport_id=s.id and d.code=case when sport_key like 'calcio%' then 'association_football' when sport_key='futsal' then 'futsal' end
  left join public.sport_variants v on v.discipline_id=d.id and v.code=case sport_key when 'calcio' then 'eleven_a_side' when 'calcio_a_6' then 'six_a_side' when 'calcio_a_7' then 'seven_a_side' when 'calcio_a_8' then 'eight_a_side' end
 )
