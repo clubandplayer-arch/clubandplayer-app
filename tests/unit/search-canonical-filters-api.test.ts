@@ -29,6 +29,15 @@ test('profile and post-author queries use canonical labels projected onto legacy
   assert.match(route, /hasProfileFilters[\s\S]*filters\.canonical/);
 });
 
+test('Club search filters and result countries use canonical profile preferences instead of stale legacy fields', () => {
+  assert.match(route, /loadCanonicalClubIds/);
+  assert.match(route, /\.from\('profile_preferences'\)\.select\('profile_id'\)\.eq\('residence_country_id', scope\.countryId\)/);
+  assert.match(route, /query = query\.in\('id', canonicalClubIds\)/);
+  assert.match(route, /loadCanonicalClubCountries/);
+  assert.match(route, /country: canonicalCountry/);
+  assert.match(route, /filters\.canonical \? \{ \.\.\.filters, canonical: null \} : filters/);
+});
+
 test('catalog adapter is read-only, country-scoped and bounded for descendants', () => {
   assert.match(adapter, /\.from\('countries'\)[\s\S]*\.select\('id,iso2,official_name,is_active,is_supported'\)/);
   assert.match(adapter, /\.from\('geo_areas'\)/);
