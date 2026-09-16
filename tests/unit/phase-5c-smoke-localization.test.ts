@@ -57,7 +57,7 @@ test('Phase 5C smoke localizes Institution edit and public Player details', () =
 test('Phase 5C smoke localizes public Club controlled values and country only', () => {
   const club = read('app/(dashboard)/clubs/[id]/page.tsx');
   assert.match(club, /localizeSport\(normalizeSport/);
-  assert.match(club, /localizeOpportunityCategory\(profileWithVerification\.club_league_category, t\)/);
+  assert.doesNotMatch(club, /localizeOpportunityCategory\(profileWithVerification\.club_league_category, t\)/);
   assert.match(club, /localizeCountryOption\(rawCountry/);
   assert.match(club, /row\.city, provinceDisplayValue\(row\.province/);
 });

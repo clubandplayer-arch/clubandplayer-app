@@ -21,9 +21,11 @@ import { isProfileComplete } from '@/lib/profiles/completion';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { resolveRequestLocale } from '@/lib/i18n/server';
 import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
-import { localizeOpportunityCategory, localizeSport } from '@/lib/i18n/controlledVocabulary';
+import { localizeSport } from '@/lib/i18n/controlledVocabulary';
 import { sportsOrganizationDisplayName } from '@/lib/sports/organizationDisplay';
 import { localizeCountryOption } from '@/lib/i18n/countryDisplayName';
+import { getProfileGeography, type ResidenceGeographyResolution } from '@/lib/geo/profileGeography';
+import { SupabaseProfileGeographyRepository } from '@/lib/geo/profileGeography.server';
 
 type ClubProfileRow = {
   id: string;
@@ -178,6 +180,34 @@ function locationLabel(row: ClubProfileRow, provinceAbbreviations: Record<string
     .join(' · ');
 }
 
+function canonicalLocationLabel(
+  residence: ResidenceGeographyResolution | null,
+  locale: string,
+  otherLabel: string,
+): string | null {
+  if (!residence?.countryIso2) return null;
+  const countryLabel = localizeCountryOption(
+    residence.countryIso2,
+    getCountryName(residence.countryIso2) ?? residence.countryIso2,
+    locale,
+    otherLabel,
+  );
+  const areas = residence.area
+    ? [residence.area, ...[...residence.ancestors].reverse()].map((area) => area.officialName)
+    : [];
+  return [...areas, countryLabel].filter(Boolean).join(' · ');
+}
+
+async function loadPublicClubResidence(profileId: string): Promise<ResidenceGeographyResolution | null> {
+  const client = getSupabaseAdminClientOrNull() ?? (await getSupabaseServerClient());
+  try {
+    return (await getProfileGeography(new SupabaseProfileGeographyRepository(client), profileId)).residence;
+  } catch (error) {
+    console.error('[club-profile] canonical residence lookup failed', error);
+    return null;
+  }
+}
+
 export default async function ClubPublicProfilePage({ params }: { params: { id: string } }) {
   const locale = await resolveRequestLocale();
   const messages = await loadMessages(locale);
@@ -191,6 +221,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const isMe = !!meId && (meId === profile.id || meId === profile.user_id);
   const isVerified = await loadClubVerificationStatus(profile.id);
   const registryClub = await loadRegistryClubClaim(profile.id);
+  const canonicalResidence = await loadPublicClubResidence(profile.id);
   const profileWithVerification = { ...profile, is_verified: isVerified };
 
   const aboutText = profile.bio || t('club.noDescription');
@@ -213,7 +244,6 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
 
   const displayName = buildClubDisplayName(profileWithVerification.full_name, profileWithVerification.display_name, 'Club');
   const sportLabel = localizeSport(normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport, t);
-  const categoryLabel = localizeOpportunityCategory(profileWithVerification.club_league_category, t);
   const { data: registrations } = await supabase.from('club_sport_registrations')
     .select('id,is_primary,created_at,sports:sport_id(code,canonical_name),organization:sports_organization_id(code,canonical_name),category:sports_organization_category_id(canonical_name)')
     .eq('club_profile_id', profileWithVerification.id).eq('is_active', true)
@@ -225,10 +255,12 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
     .order('season', { ascending: false }).order('placement').order('created_at').order('id');
   const primarySportLabel = primaryRegistration?.sports ? (localizeSport(primaryRegistration.sports.code, t) ?? primaryRegistration.sports.canonical_name) : sportLabel;
   const organizationLabel = primaryRegistration?.organization ? sportsOrganizationDisplayName(primaryRegistration.organization.code, primaryRegistration.organization.canonical_name) : null;
-  const canonicalCategoryLabel = primaryRegistration?.category?.canonical_name ?? categoryLabel;
+  const canonicalCategoryLabel = primaryRegistration?.category?.canonical_name ?? null;
   const subtitle =
     [primarySportLabel, organizationLabel, canonicalCategoryLabel].filter(Boolean).join(' · ') || '—';
-  const location = locationLabel(profileWithVerification, provinceAbbreviations, locale, t('vocabulary.category.other')) || undefined;
+  const location = canonicalLocationLabel(canonicalResidence, locale, t('vocabulary.category.other'))
+    || locationLabel(profileWithVerification, provinceAbbreviations, locale, t('vocabulary.category.other'))
+    || undefined;
   const headerLocationContent = (
     <div className="space-y-1">
       {location ? <p>{location}</p> : <p className="text-neutral-400">{t('profile.locationMissing')}</p>}
@@ -291,7 +323,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.headquarters')}</div>
-              <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile, provinceAbbreviations, locale, t('vocabulary.category.other')) || '—'}</div>
+              <div className="mt-1 font-medium text-neutral-900">{location || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.sport')}</div>

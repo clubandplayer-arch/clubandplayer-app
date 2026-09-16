@@ -74,3 +74,14 @@ test('saving Club geography closes stale registration editors and reloads the re
     assert.match(readFileSync(`lib/i18n/messages/operations/${locale}.ts`, 'utf8'), /club\.registrations\.geographyPending/);
   }
 });
+
+test('public Club profile renders canonical headquarters and never revives a stale legacy category', () => {
+  const publicProfile = readFileSync('app/(dashboard)/clubs/[id]/page.tsx', 'utf8');
+  assert.match(publicProfile, /loadPublicClubResidence\(profile\.id\)/);
+  assert.match(publicProfile, /canonicalLocationLabel\(canonicalResidence/);
+  assert.match(publicProfile, /\[residence\.area, \.\.\.\[\.\.\.residence\.ancestors\]\.reverse\(\)\]/);
+  assert.match(publicProfile, /profile\.club_stadium \|\| '—'/);
+  assert.match(publicProfile, /profile\.club_stadium_address/);
+  assert.match(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? null/);
+  assert.doesNotMatch(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? categoryLabel/);
+});
