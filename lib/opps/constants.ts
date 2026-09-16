@@ -4,12 +4,16 @@ export type AgeBracket = typeof AGE_BRACKETS[number];
 
 const FOOTBALL_ROLES = ['Portiere','Difensore centrale','Terzino/Esterno difensivo','Mediano','Centrocampista centrale','Trequartista','Esterno offensivo/Ala','Seconda punta','Punta centrale'];
 const CALCIO_A_8_ROLES = ['Portiere','Difensore Centrale','Esterno Basso','Regista','Esterno Alto','Punta Centrale'];
+const SMALL_SIDED_FOOTBALL_ROLES = ['Portiere','Difensore','Centrocampista','Esterno offensivo/Ala','Attaccante'];
+const FLOORBALL_ROLES = ['Portiere','Difensore','Centro','Ala','Attaccante'];
 
-const SPORTS_REQUIRING_PLAYER_ROLE = new Set(['Calcio', 'Calcio a 8']);
+const SPORTS_REQUIRING_PLAYER_ROLE = new Set(['Calcio', 'Calcio a 8', 'Calcio a 7', 'Calcio a 6', 'Floorball']);
 
 export const SPORTS_ROLES: Record<string, string[]> = {
   Calcio: FOOTBALL_ROLES,
   'Calcio a 8': CALCIO_A_8_ROLES,
+  'Calcio a 7': SMALL_SIDED_FOOTBALL_ROLES,
+  'Calcio a 6': SMALL_SIDED_FOOTBALL_ROLES,
   Futsal: ['Portiere','Fixo','Ala','Pivot','Universale'],
   Volley: ['Palleggiatore','Opposto','Schiacciatore','Centrale','Libero'],
   Basket: ['Playmaker (PG)','Guardia (SG)','Ala piccola (SF)','Ala grande (PF)','Centro (C)'],
@@ -22,6 +26,7 @@ export const SPORTS_ROLES: Record<string, string[]> = {
   Softball: ['Pitcher','Catcher','Prima base','Seconda base','Terza base','Interbase','Esterno sinistro','Esterno centro','Esterno destro'],
   Lacrosse: ['Portiere','Difensore','Centrocampista','Attaccante','LSM','Faceoff specialist'],
   'Football americano': ['Quarterback','Running back','Wide receiver','Tight end','Offensive lineman','Defensive lineman','Linebacker','Cornerback','Safety','Kicker/Punter'],
+  Floorball: FLOORBALL_ROLES,
 };
 
 export const SPORTS = Object.keys(SPORTS_ROLES);

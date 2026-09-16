@@ -4,6 +4,7 @@ type MembershipScope = {
   sportId: string | null;
   disciplineId: string | null;
   variantId: string | null;
+  countryId?: string | null;
 };
 
 export class OrganizationMembershipError extends Error {
@@ -20,6 +21,7 @@ export async function validateOrganizationMembership(supabase: any, scope: Membe
   let categoryQuery=supabase.from('sports_organization_categories')
     .select('id,organization_id').eq('id',scope.categoryId).eq('organization_id',scope.organizationId)
     .eq('sport_id',scope.sportId).eq('is_active',true);
+  if (scope.countryId) categoryQuery=categoryQuery.eq('country_id',scope.countryId);
   categoryQuery=scope.disciplineId ? categoryQuery.eq('discipline_id',scope.disciplineId) : categoryQuery.is('discipline_id',null);
   categoryQuery=scope.variantId ? categoryQuery.eq('variant_id',scope.variantId) : categoryQuery.is('variant_id',null);
   const { data:category, error:categoryError }=await categoryQuery.maybeSingle();

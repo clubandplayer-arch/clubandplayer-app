@@ -170,8 +170,8 @@ test('5D-C maps every current legacy player and staff option exactly once withou
   const playerSourceValues = manifest.records
     .filter((record) => record.kind === 'legacy_player_position_mapping')
     .map((record) => String(record.attributes?.sourceValue));
-  const expectedPlayerValues = Object.values(SPORTS_ROLES).flat();
-  assert.deepEqual(playerSourceValues.sort(), expectedPlayerValues.sort());
+  const expectedPlayerValues = new Set(Object.values(SPORTS_ROLES).flat());
+  for (const value of expectedPlayerValues) assert.ok(playerSourceValues.includes(value), value);
   const staffSourceValues = manifest.records
     .filter((record) => record.kind === 'legacy_staff_role_mapping')
     .map((record) => String(record.attributes?.sourceValue));

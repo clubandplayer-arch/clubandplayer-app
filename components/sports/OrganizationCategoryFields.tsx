@@ -6,17 +6,19 @@ export type OrganizationCategoryValue = { organizationId: string; categoryId: st
 type Organization = { id:string; code:string; canonical_name:string; display_name:string; display_order:number };
 type Category = { id:string; organization_id:string; sport_id:string; discipline_id:string|null; variant_id:string|null; canonical_name:string; display_order?:number };
 
-export default function OrganizationCategoryFields({ sport, value, onChange, organizationLabel='Ente/Federazione', categoryLabel='Categoria' }: {
+export default function OrganizationCategoryFields({ countryId, sport, value, onChange, organizationLabel='Ente/Federazione', categoryLabel='Categoria' }: {
   sport: { sportId:string; disciplineId:string; variantId:string };
+  countryId?: string;
   value: OrganizationCategoryValue;
   onChange: (value: OrganizationCategoryValue, categoryName?: string) => void;
   organizationLabel?: string;
   categoryLabel?: string;
 }) {
   const [catalog, setCatalog] = useState<{organizations:Organization[]; organizationCategories:Category[]}>({ organizations:[], organizationCategories:[] });
-  useEffect(() => { let active=true; fetch('/api/sports/organization-memberships', { cache:'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(raw => {
+  const waitingForCountry = countryId !== undefined && !countryId;
+  useEffect(() => { let active=true; if (countryId === '') { setCatalog({ organizations:[], organizationCategories:[] }); return () => { active=false; }; } const query = countryId ? `?countryId=${encodeURIComponent(countryId)}` : ''; fetch(`/api/sports/organization-memberships${query}`, { cache:'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(raw => {
     if (active) setCatalog(raw?.data ?? raw);
-  }).catch(() => {}); return () => { active=false; }; }, []);
+  }).catch(() => {}); return () => { active=false; }; }, [countryId]);
   const categories = useMemo(() => catalog.organizationCategories.filter(c => c.sport_id===sport.sportId
     && (c.discipline_id ?? '')===(sport.disciplineId || '') && (c.variant_id ?? '')===(sport.variantId || '')), [catalog, sport]);
   const organizationIds = useMemo(() => new Set(categories.map(c => c.organization_id)), [categories]);
@@ -29,10 +31,10 @@ export default function OrganizationCategoryFields({ sport, value, onChange, org
   });
 
   return <>
-    <div><label className="mb-2 block text-sm font-medium text-slate-700">{organizationLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.organizationId} disabled={!sport.sportId} onChange={e => onChange({ organizationId:e.target.value, categoryId:'' }, '')}>
+    <div><label className="mb-2 block text-sm font-medium text-slate-700">{organizationLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.organizationId} disabled={!sport.sportId || waitingForCountry} onChange={e => onChange({ organizationId:e.target.value, categoryId:'' }, '')}>
       <option value="">—</option>{organizations.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}
     </select></div>
-    <div><label className="mb-2 block text-sm font-medium text-slate-700">{categoryLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.categoryId} disabled={!value.organizationId} required={Boolean(value.organizationId)} onChange={e => {
+    <div><label className="mb-2 block text-sm font-medium text-slate-700">{categoryLabel}</label><select className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:bg-slate-100" value={value.categoryId} disabled={!value.organizationId || waitingForCountry} required={Boolean(value.organizationId)} onChange={e => {
       const selected=selectedCategories.find(c => c.id===e.target.value); onChange({ ...value, categoryId:e.target.value }, selected?.canonical_name ?? '');
     }}><option value="">—</option>{selectedCategories.map(c => <option key={c.id} value={c.id}>{c.canonical_name}</option>)}</select></div>
   </>;

@@ -7,6 +7,7 @@ export type PastExperienceInput = {
   club?: string | null;
   sport?: string | null;
   category?: string | null;
+  countryId?: string | null;
   organizationId?: string | null;
   categoryId?: string | null;
   role?: string | null;
@@ -22,6 +23,7 @@ export type PastExperience = {
   club: string;
   sport: string;
   category: string;
+  countryId: string;
   organizationId: string;
   categoryId: string;
   role: string;
@@ -70,6 +72,7 @@ export function sanitizePastExperience(input: PastExperienceInput): PastExperien
     club: (input.club || '').trim(),
     sport,
     category: (input.category || '').trim(),
+    countryId: (input.countryId || '').trim(),
     organizationId: (input.organizationId || '').trim(),
     categoryId: (input.categoryId || '').trim(),
     role: (input.role || '').trim(),
@@ -84,11 +87,11 @@ export function sanitizePastExperience(input: PastExperienceInput): PastExperien
 }
 
 export function isPastExperienceEmpty(experience: PastExperience): boolean {
-  return !experience.season && !experience.club && !experience.sport && !experience.organizationId && !experience.categoryId && !experience.role;
+  return !experience.season && !experience.club && !experience.sport && !experience.countryId && !experience.organizationId && !experience.categoryId && !experience.role;
 }
 
 export function isPastExperienceComplete(experience: PastExperience): boolean {
   const hasCompleteMembership = Boolean(experience.organizationId) === Boolean(experience.categoryId);
-  return !!experience.season && !!experience.club && !!experience.sport
+  return !!experience.season && !!experience.club && !!experience.sport && !!experience.countryId
     && hasCompleteMembership && !!experience.role;
 }

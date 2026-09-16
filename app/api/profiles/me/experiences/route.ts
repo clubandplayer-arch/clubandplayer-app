@@ -44,7 +44,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data, error } = await supabase
     .from('athlete_experiences')
-    .select('club_name, sport, role, category, start_year, end_year, sport_id, sport_discipline_id, sport_variant_id, sports_organization_id, sports_organization_category_id')
+    .select('club_name, sport, role, category, country_id, start_year, end_year, sport_id, sport_discipline_id, sport_variant_id, sports_organization_id, sports_organization_category_id')
     .eq('profile_id', profile.id)
     .order('start_year', { ascending: false })
     .order('end_year', { ascending: false });
@@ -64,6 +64,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
         sport: item.sport || '',
         role: item.role || '',
         category: item.category || '',
+        countryId: item.country_id || '',
         organizationId: item.sports_organization_id || '',
         categoryId: item.sports_organization_category_id || '',
       });
@@ -108,6 +109,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       if (!parsedSeason) {
         return jsonError(`Seleziona una stagione valida per l'esperienza #${index + 1}.`, 400);
       }
+      const { data: country } = await supabase.from('countries').select('id')
+        .eq('id', normalized.countryId).eq('is_active', true).eq('is_supported', true).maybeSingle();
+      if (!country) return jsonError('invalid_experience_country', 400, { code: 'invalid_experience_country' });
       if (normalized.organizationId && normalized.categoryId) {
         try {
           await validateOrganizationMembership(supabase, {
@@ -116,6 +120,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
             sportId: sport.sport_id,
             disciplineId: sport.sport_discipline_id,
             variantId: sport.sport_variant_id,
+            countryId: normalized.countryId,
           });
         } catch (membershipError) {
           const code = membershipError instanceof OrganizationMembershipError ? membershipError.code : 'invalid_registration';
@@ -133,6 +138,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
         sport: canonicalExperience.sport,
         role: canonicalExperience.role,
         category: canonicalExperience.category,
+        country_id: canonicalExperience.countryId,
         sports_organization_id: canonicalExperience.organizationId || null,
         sports_organization_category_id: canonicalExperience.categoryId || null,
         start_year: parsedSeason.startYear,
