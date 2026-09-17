@@ -9,9 +9,9 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  // Gli standard di sicurezza devono essere pubblici anche con un profilo
+  // I documenti legali devono essere pubblici anche con un profilo
   // incompleto o un ente in attesa di verifica, senza dipendere dall'auth API.
-  if (pathname === '/legal/child-safety' || pathname === '/legal/child-safety/') {
+  if (/^\/legal\/(?:child-safety|privacy|terms|beta)\/?$/.test(pathname)) {
     return NextResponse.next();
   }
 

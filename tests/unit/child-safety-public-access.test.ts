@@ -3,13 +3,13 @@ import test from 'node:test';
 import { NextRequest } from 'next/server';
 import { middleware } from '../../middleware';
 
-test('child safety remains public on both hosts when the auth service fails', async (t) => {
+test('legal documents remain public on both hosts when the auth service fails', async (t) => {
   const auth = t.mock.method(globalThis, 'fetch', async () => {
     throw new Error('Auth service unavailable');
   });
 
   for (const host of ['clubandplayer.com', 'www.clubandplayer.com']) {
-    for (const path of ['/legal/child-safety', '/legal/child-safety/']) {
+    for (const path of ['child-safety', 'privacy', 'terms', 'beta'].flatMap((page) => [`/legal/${page}`, `/legal/${page}/`])) {
       for (const cookie of ['', 'session=existing-session']) {
         const response = await middleware(new NextRequest(`https://${host}${path}`, { headers: { cookie } }));
         assert.equal(response.headers.get('x-middleware-next'), '1');

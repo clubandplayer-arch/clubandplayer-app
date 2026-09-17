@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-8">
+    <main lang="it" className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 text-3xl font-semibold">Termini e condizioni d’uso</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-300">
         L’accesso o l’utilizzo della piattaforma Club and Player implica l’accettazione integrale dei presenti Termini. Ti
@@ -19,8 +19,8 @@ export default function TermsPage() {
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 className="text-lg font-semibold">Oggetto del servizio</h2>
         <p>
-          Club and Player fornisce strumenti di matching tra società sportive e atleti, funzioni di messaggistica e gestione di opportunità.
-          Le funzionalità possono essere aggiornate, sospese o ampliate senza preavviso per ragioni tecniche o di sicurezza.
+          Club and Player mette in contatto club, atleti, staff, enti e appassionati attraverso profili sportivi, contenuti, messaggistica e opportunità.
+          Le funzionalità possono essere aggiornate per ragioni tecniche o di sicurezza. Le opportunità pubblicate non costituiscono una garanzia di selezione, tesseramento o assunzione.
         </p>
       </section>
 
@@ -45,30 +45,36 @@ export default function TermsPage() {
         <h2 className="text-lg font-semibold">Tolleranza zero per contenuti offensivi o utenti abusivi</h2>
         <ul className="list-disc space-y-2 pl-6">
           <li>Non sono tollerati contenuti offensivi, abusivi, discriminatori, minacciosi, spam o illegali.</li>
-          <li>Gli utenti possono segnalare contenuti e profili tramite le funzioni di segnalazione disponibili nella piattaforma.</li>
+          <li>Gli utenti possono segnalare i post tramite il relativo pulsante. Per profili, messaggi o altri problemi possono scrivere a support@clubandplayer.com.</li>
           <li>Gli utenti possono bloccare altri utenti per non visualizzarne più i contenuti nel proprio feed.</li>
           <li>Club and Player può rimuovere contenuti e/o sospendere account che violano queste regole o i presenti Termini.</li>
         </ul>
       </section>
 
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
+        <h2 className="text-lg font-semibold">Sicurezza dei minori</h2>
+        <p>Club and Player vieta espressamente abuso e sfruttamento sessuale dei minori (CSAE) e materiale di abuso sessuale su minori (CSAM), inclusi adescamento, estorsione sessuale e condivisione di tale materiale. Questi divieti si applicano a tutte le funzioni del servizio.</p>
+        <p>Le regole e le modalità di segnalazione sono descritte negli <a className="underline" href="/legal/child-safety">Standard di sicurezza dei minori</a>.</p>
+      </section>
+
+      <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 className="text-lg font-semibold">Limitazione di responsabilità</h2>
         <p>
           Il servizio è fornito “così com’è”. Nei limiti consentiti, escludiamo garanzie implicite e non siamo responsabili per danni indiretti o
-          perdita di opportunità derivanti dall’utilizzo della piattaforma. In ogni caso, l’eventuale responsabilità complessiva è limitata alle
+          perdita di opportunità derivanti dall’utilizzo della piattaforma. Nei soli casi in cui la legge lo consente, l’eventuale responsabilità complessiva è limitata alle
           somme corrisposte per servizi a pagamento negli ultimi 12 mesi. Durante la Beta privata possono verificarsi interruzioni programmate o
-          regressioni funzionali: informeremo gli utenti invitati via email e nel changelog dedicato.
+          regressioni funzionali. Restano impregiudicati i diritti inderogabili dell’utente e le responsabilità che non possono essere escluse o limitate per legge.
         </p>
       </section>
 
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 className="text-lg font-semibold">Privacy e comunicazioni Beta</h2>
         <p>
-          L’utilizzo della piattaforma è subordinato al rispetto della nostra{' '}
+          Il trattamento dei dati personali è descritto nella nostra{' '}
           <a className="underline" href="/legal/privacy">
             Informativa Privacy
           </a>
-          . Gli utenti invitati al programma Beta ricevono comunicazioni dedicate e possono uscire dal programma in qualsiasi momento seguendo le
+          . Se partecipi al programma Beta, puoi richiedere di uscirne seguendo le
           istruzioni riportate in{' '}
           <a className="underline" href="/legal/beta">
             questa informativa
@@ -86,8 +92,14 @@ export default function TermsPage() {
         </ul>
       </section>
 
+      <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
+        <h2 className="text-lg font-semibold">Assistenza ed eliminazione dell’account</h2>
+        <p>Per assistenza o contestazioni relative al servizio scrivi a <a className="underline" href="mailto:support@clubandplayer.com">support@clubandplayer.com</a>.</p>
+        <p>Puoi richiedere la cancellazione dell’account seguendo le <a className="underline" href="/legal/privacy#eliminazione-account">istruzioni per l’eliminazione dell’account e dei dati associati</a>.</p>
+      </section>
+
       <p className="mt-10 text-xs uppercase tracking-wide text-neutral-500">
-        Ultimo aggiornamento: {new Date().toLocaleDateString('it-IT')}
+        Ultimo aggiornamento: <time dateTime="2026-09-17">17/09/2026</time>
       </p>
     </main>
   );

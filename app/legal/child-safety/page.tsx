@@ -37,7 +37,7 @@ export default function ChildSafetyPage() {
 
       <section aria-labelledby="segnalazioni" className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 id="segnalazioni" className="text-lg font-semibold">Come segnalare un problema</h2>
-        <p>Usa le funzioni di segnalazione disponibili nella piattaforma sui contenuti e sui profili, oppure scrivi al contatto per la sicurezza dei minori indicato sotto.</p>
+        <p>Usa il pulsante “Segnala questo post” disponibile sui post. Per segnalare un profilo, un messaggio o un altro problema, oppure se non riesci a usare il pulsante, scrivi al contatto per la sicurezza dei minori indicato sotto.</p>
         <p>Indica il profilo o il link al contenuto, la data e una breve descrizione del problema. Non scaricare, allegare o inoltrare materiale di abuso sessuale su minori per effettuare la segnalazione.</p>
       </section>
 

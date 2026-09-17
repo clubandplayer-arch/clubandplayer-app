@@ -11,29 +11,28 @@ const CONTACT = 'beta@clubandplayer.com';
 const sections = [
   {
     title: 'Chi può partecipare',
-    body: `L’accesso alla Beta privata è riservato a club, procuratori e atleti invitati direttamente dal team Club and Player. Gli account sono personali, non trasferibili e possono essere revocati in caso di uso improprio.`,
+    body: `Le condizioni di questa pagina si applicano soltanto a chi partecipa a un programma Beta di Club and Player e alle funzionalità sperimentali indicate per quel programma. Gli account sono personali, non trasferibili e possono essere revocati in caso di uso improprio.`,
   },
   {
     title: 'Cosa monitoriamo',
-    body: `Durante la Beta raccogliamo feedback inviati via email/in-app e log di utilizzo strettamente necessari a diagnosticare errori su feed, candidature e onboarding. I dati vengono trattati secondo l’Informativa Privacy e cancellati quando non più necessari al debugging.`,
+    body: `Durante la Beta possiamo utilizzare i feedback e le richieste di assistenza che invii, insieme ai dati diagnostici disponibili, per analizzare errori e migliorare il servizio. Evita di includere password, codici di accesso o dati personali non necessari. Finalità e gestione dei dati sono descritte nell’Informativa Privacy.`,
   },
   {
     title: 'Come inviare feedback o lasciare la Beta',
-    body: `Puoi contattarci in qualsiasi momento scrivendo a ${CONTACT}. Gestiamo le richieste di uscita entro 48 ore e, se lo desideri, eliminiamo i contenuti creati durante il periodo Beta (post, candidature, profilo).`,
+    body: `Puoi contattarci in qualsiasi momento scrivendo a ${CONTACT}. Indica se vuoi inviare un feedback o richiedere l’uscita dal programma. Uscire dalla Beta non elimina automaticamente l’account, i post o le candidature: per cancellare l’account o richiedere la cancellazione dei dati usa il percorso dedicato nell’Informativa Privacy.`,
   },
   {
     title: 'Aggiornamenti e changelog',
-    body: 'Ogni nuova build Beta viene annunciata via email con il riepilogo delle modifiche, eventuali regressioni note e link al changelog pubblico. Gli alert critici sono comunicati anche tramite la casella di supporto.',
+    body: 'Le versioni Beta possono contenere errori, interruzioni o funzionalità soggette a modifica. Le informazioni disponibili sulle versioni di prova vengono fornite attraverso i canali del relativo programma. Per chiarimenti sulle modifiche puoi contattare il team.',
   },
 ];
 
 export default function BetaInfoPage() {
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-8">
+    <main lang="it" className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 text-3xl font-semibold">Informativa programma Beta</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-300">
-        Questa pagina riassume i diritti e i doveri degli utenti invitati alla Beta privata. Fa fede insieme ai Termini e
-        all’Informativa Privacy pubblicati sul sito.
+        Questa informativa riguarda i programmi di prova e non significa che l’intera applicazione sia riservata alla Beta privata. Si applica insieme ai <a className="underline" href="/legal/terms">Termini</a> e all’<a className="underline" href="/legal/privacy">Informativa Privacy</a>.
       </p>
 
       <div className="mt-8 space-y-8 text-sm text-neutral-700 dark:text-neutral-200">
@@ -44,6 +43,8 @@ export default function BetaInfoPage() {
           </section>
         ))}
       </div>
+
+      <p className="mt-8 text-sm"><a className="underline" href="/legal/privacy#eliminazione-account">Come richiedere l’eliminazione dell’account e dei dati associati</a></p>
 
       <section className="mt-10 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
         <p>
@@ -56,7 +57,7 @@ export default function BetaInfoPage() {
       </section>
 
       <p className="mt-10 text-xs uppercase tracking-wide text-neutral-500">
-        Ultimo aggiornamento: {new Date().toLocaleDateString('it-IT')}
+        Ultimo aggiornamento: <time dateTime="2026-09-17">17/09/2026</time>
       </p>
     </main>
   );
