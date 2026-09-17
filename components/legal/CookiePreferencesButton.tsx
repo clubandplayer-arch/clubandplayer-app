@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 
-export default function CookiePreferencesButton() {
+export default function CookiePreferencesButton({
+  label = 'Modifica preferenze cookie',
+  errorMessage = 'Il browser non consente di modificare le preferenze salvate. Controlla le impostazioni di archiviazione del sito.',
+}: { label?: string; errorMessage?: string } = {}) {
   const [error, setError] = useState(false);
 
   function reopenPreferences() {
@@ -18,9 +21,9 @@ export default function CookiePreferencesButton() {
   return (
     <div>
       <button type="button" onClick={reopenPreferences} className="rounded-md border px-3 py-2 underline">
-        Modifica preferenze cookie
+        {label}
       </button>
-      {error && <p role="alert">Il browser non consente di modificare le preferenze salvate. Controlla le impostazioni di archiviazione del sito.</p>}
+      {error && <p role="alert">{errorMessage}</p>}
     </div>
   );
 }

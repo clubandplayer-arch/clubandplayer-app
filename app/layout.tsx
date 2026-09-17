@@ -7,6 +7,7 @@ import { Inter, Righteous } from 'next/font/google';
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
+import SiteFooter from '@/components/layout/SiteFooter';
 import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
 import WebVitalsReporter from '@/components/analytics/WebVitalsReporter';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
@@ -52,12 +53,6 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await resolveRequestLocale();
   const messages = await loadMessages(locale);
-  const footerLinks = [
-    { href: '/legal/privacy', label: messages['common.privacy'] },
-    { href: '/legal/terms', label: messages['common.terms'] },
-    { href: '/legal/beta', label: messages['common.betaInfo'] },
-    { href: '/legal/child-safety', label: 'Child Safety' },
-  ];
   // JSON-LD (Organization)
   const jsonLdOrg = {
     '@context': 'https://schema.org',
@@ -121,20 +116,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Suspense fallback={null}>{children}</Suspense>
         </div>
 
-        <footer className="border-t border-neutral-200 bg-white/90 py-6 text-sm text-neutral-600">
-          <div className="container mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs uppercase tracking-wide text-neutral-500">
-              © {new Date().getFullYear()} Club and Player
-            </p>
-            <nav className="flex flex-wrap gap-4">
-              {footerLinks.map((link) => (
-                <a key={link.href} href={link.href} className="hover:text-neutral-900 underline-offset-2 hover:underline">
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-          </div>
-        </footer>
+        <SiteFooter year={new Date().getFullYear()} />
 
         {/* Sync sessione client->server (cookie) */}
         <Suspense fallback={null}>

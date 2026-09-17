@@ -5,6 +5,10 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
+const italianModule = { exports: {} };
+new Function('exports', ts.transpileModule(readFileSync('lib/i18n/legal/it.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText)(italianModule.exports);
 
 // Execute the actual components with a minimal browser/hook harness.
 function loadComponent(file, browser, state = false) {
@@ -19,7 +23,12 @@ function loadComponent(file, browser, state = false) {
   });
   const compiledModule = { exports: {} };
   new Function('require', 'module', 'exports', 'window', 'document', 'localStorage', 'process', outputText)(
-    (id) => id === 'react' ? hooks : require(id), compiledModule, compiledModule.exports,
+    (id) => {
+      if (id === 'react') return hooks;
+      if (id === '@/components/i18n/I18nProvider') return { useI18n: () => ({ locale: 'it', t: (key) => key }) };
+      if (id === '@/lib/i18n/legal') return { legalCopy: { it: italianModule.exports.default } };
+      return require(id);
+    }, compiledModule, compiledModule.exports,
     browser.window, browser.document, browser.storage,
     { env: { NEXT_PUBLIC_ANALYTICS_DOMAIN: 'clubandplayer.com' } },
   );
