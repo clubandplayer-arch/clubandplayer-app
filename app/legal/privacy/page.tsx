@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/legal/privacy' },
 };
 
-const LEGAL_EMAIL = 'privacy@clubandplayer.com';
+const LEGAL_EMAIL = 'support@clubandplayer.com';
 const BETA_EMAIL = 'beta@clubandplayer.com';
 
 export default function PrivacyPage() {
