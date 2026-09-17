@@ -8,6 +8,7 @@ import { MaterialIcon, type MaterialIconName } from '@/components/icons/Material
 import BrandLogo from '@/components/brand/BrandLogo';
 import type { UserRole } from '@/lib/auth/role';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { legalCopy } from '@/lib/i18n/legal';
 
 type Role = UserRole;
 
@@ -18,7 +19,8 @@ type Props = {
 };
 
 export default function LegalNavbar({ role }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const copy = legalCopy[locale].common;
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -26,12 +28,12 @@ export default function LegalNavbar({ role }: Props) {
 
   const navItems = useMemo<NavItem[]>(
     () => [
-      { label: 'Cerca', href: '/club-map', icon: 'globe' },
-      { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
-      { label: 'Messaggi', href: '/messages', icon: 'mail' },
-      { label: 'Profilo', href: profileHref, icon: 'person' },
+      { label: copy.search, href: '/club-map', icon: 'globe' },
+      { label: copy.opportunities, href: '/opportunities', icon: 'opportunities' },
+      { label: copy.messages, href: '/messages', icon: 'mail' },
+      { label: copy.profile, href: profileHref, icon: 'person' },
     ],
-    [profileHref],
+    [profileHref, copy],
   );
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(`${href}/`));
@@ -41,7 +43,7 @@ export default function LegalNavbar({ role }: Props) {
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
         <BrandLogo variant="header" href="/feed" priority />
 
-        <nav className="hidden flex-1 justify-center md:flex" aria-label="Navigazione principale">
+        <nav className="hidden flex-1 justify-center md:flex" aria-label={copy.navLabel}>
           <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
             {navItems.map((item) => {
               const active = isActive(item.href);
@@ -65,7 +67,7 @@ export default function LegalNavbar({ role }: Props) {
         <div className="ml-auto hidden items-center gap-2 md:flex">
           {role === 'club' ? (
             <Link href="/opportunities/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-              + Nuova opportunità
+              {copy.newOpportunity}
             </Link>
           ) : null}
 
@@ -78,7 +80,7 @@ export default function LegalNavbar({ role }: Props) {
           type="button"
           className="ml-auto inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 md:hidden"
           onClick={() => setIsMenuOpen((v) => !v)}
-          aria-label={isMenuOpen ? 'Chiudi menu di navigazione' : 'Apri menu di navigazione'}
+          aria-label={isMenuOpen ? copy.closeMenu : copy.openMenu}
           aria-expanded={isMenuOpen}
         >
           {isMenuOpen ? <NavCloseIcon fontSize="small" aria-hidden /> : <NavMenuIcon fontSize="small" aria-hidden />}
@@ -112,7 +114,7 @@ export default function LegalNavbar({ role }: Props) {
                   onClick={() => setIsMenuOpen(false)}
                   className="rounded-md border px-3 py-2 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
                 >
-                  + Nuova opportunità
+                  {copy.newOpportunity}
                 </Link>
               ) : null}
 

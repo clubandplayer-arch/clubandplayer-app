@@ -22,7 +22,7 @@ Questa nota descrive chi presidia la casella email configurata tramite `BRAND_RE
 ## Escalation rapida
 1. Email critica (es. impossibilità accesso) → risposta entro 2h, mention `@eng-oncall` in `#beta-triage`.
 2. Alert Sentry ripetuto (>3 eventi in 10 minuti) → aprire `#incidents` e allertare il PM Beta.
-3. Se il problema impatta i dati personali, coinvolgere subito `privacy@clubandplayer.com` e seguire la procedura DPIA.
+3. Se il problema impatta i dati personali, coinvolgere subito `support@clubandplayer.com` e seguire la procedura DPIA.
 
 ## SLA e turni post-Beta
 - **Copertura 7/7 in orario lavorativo (08:00–20:00 CET)** con risposta entro 4h alle email `BRAND_REPLY_TO` e presa in carico Sentry in Slack `#beta-triage` entro 30 minuti.

@@ -9,6 +9,12 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
+  // I documenti legali devono essere pubblici anche con un profilo
+  // incompleto o un ente in attesa di verifica, senza dipendere dall'auth API.
+  if (/^\/legal\/(?:child-safety|privacy|terms|beta)\/?$/.test(pathname)) {
+    return NextResponse.next();
+  }
+
   let role: 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest' = 'guest';
   let authenticated = false;
   let profileComplete = true;
