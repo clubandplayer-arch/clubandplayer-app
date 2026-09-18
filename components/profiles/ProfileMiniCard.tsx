@@ -98,6 +98,7 @@ export default function ProfileMiniCard() {
   const [loaded, setLoaded] = useState(false);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', province: '', region: '', country: '' });
   const [canonicalInterestLabel, setCanonicalInterestLabel] = useState('');
+  const [canonicalClubResidenceLabel, setCanonicalClubResidenceLabel] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -106,6 +107,29 @@ export default function ProfileMiniCard() {
         const raw = await r.json().catch(() => ({}));
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
+
+        if (j?.account_type === 'club') {
+          const residenceResponse = await fetch('/api/profiles/me/residence', { credentials: 'include', cache: 'no-store' });
+          const residencePayload = await residenceResponse.json().catch(() => ({}));
+          const residence = residencePayload?.residence;
+          if (residenceResponse.ok && residence?.residenceGeoAreaId) {
+            const ancestryResponse = await fetch(`/api/geo/areas/${encodeURIComponent(residence.residenceGeoAreaId)}/ancestors`, { cache: 'no-store' });
+            const ancestryPayload = await ancestryResponse.json().catch(() => ({}));
+            const geography = ancestryPayload?.data;
+            if (ancestryResponse.ok && geography?.area) {
+              const iso2 = geography.area.country?.iso2;
+              const country = iso2
+                ? new Intl.DisplayNames([locale], { type: 'region' }).of(iso2) ?? iso2
+                : '';
+              const hierarchy = [
+                geography.area.official_name,
+                ...(Array.isArray(geography.ancestors) ? [...geography.ancestors].reverse().map((area: { official_name?: string }) => area.official_name) : []),
+                country,
+              ].filter(Boolean);
+              setCanonicalClubResidenceLabel(Array.from(new Set(hierarchy)).join(', '));
+            }
+          }
+        }
 
         if (j?.account_type === 'athlete' || j?.account_type === 'staff') {
           const interestsResponse = await fetch('/api/profile-geography/interests', { credentials: 'include', cache: 'no-store' });
@@ -198,7 +222,7 @@ export default function ProfileMiniCard() {
   const interestLabel = [interest.city, interest.province, interest.country].filter(Boolean).join(', ');
   const playerInterestLabel = canonicalInterestLabel || interestLabel;
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
-  const clubGeoLabel = isClub ? interestLabel : '';
+  const clubGeoLabel = isClub ? canonicalClubResidenceLabel || interestLabel : '';
 
   // nazionalità con bandiera
   const rawCountry = (p?.country ?? '').trim();

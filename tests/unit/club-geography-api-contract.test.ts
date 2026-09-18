@@ -75,6 +75,20 @@ test('saving Club geography closes stale registration editors and reloads the re
   }
 });
 
+test('Club registration creation reactivates an archived identical membership instead of violating uniqueness', () => {
+  const registrationsRoute = readFileSync('app/api/clubs/registrations/route.ts', 'utf8');
+  assert.match(registrationsRoute, /\.upsert\(/);
+  assert.match(registrationsRoute, /onConflict:'club_profile_id,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id'/);
+  assert.doesNotMatch(registrationsRoute, /\.insert\(\{\.\.\.b,club_profile_id:club\.id\}\)/);
+});
+
+test('feed Club mini-card prefers canonical residence over stale legacy location fields', () => {
+  const miniCard = readFileSync('components/profiles/ProfileMiniCard.tsx', 'utf8');
+  assert.match(miniCard, /fetch\('\/api\/profiles\/me\/residence'/);
+  assert.match(miniCard, /residence\.residenceGeoAreaId/);
+  assert.match(miniCard, /canonicalClubResidenceLabel \|\| interestLabel/);
+});
+
 test('public Club profile renders canonical headquarters and never revives a stale legacy category', () => {
   const publicProfile = readFileSync('app/(dashboard)/clubs/[id]/page.tsx', 'utf8');
   assert.match(publicProfile, /loadPublicClubResidence\(profile\.id\)/);
