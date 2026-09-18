@@ -27,6 +27,48 @@ export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-09-01-d4';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
+
+async function loadClubIdsForCanonicalScope(
+  scope: CanonicalSearchGeographyScope,
+): Promise<string[]> {
+  const admin = getSupabaseAdminClientOrNull();
+  if (!admin) throw new Error('canonical Club discovery requires the server database client');
+
+  const { data: preferences, error: preferencesError } = await admin
+    .from('profile_preferences')
+    .select('profile_id,residence_country_id,residence_geo_area_id')
+    .not('residence_country_id', 'is', null);
+  if (preferencesError) throw preferencesError;
+
+  const canonicalProfileIds = new Set((preferences ?? []).map((row) => String(row.profile_id)));
+  const canonicalMatches = (preferences ?? [])
+    .filter((row) => row.residence_country_id === scope.countryId
+      && (!scope.geoAreaId || scope.areaIds.includes(String(row.residence_geo_area_id))))
+    .map((row) => String(row.profile_id));
+
+  // Keep already-published legacy Clubs discoverable until they save canonical
+  // residence, but never let stale legacy fields override a canonical value.
+  const countryValues = Array.from(new Set([
+    scope.countryIso2,
+    scope.countryName,
+    getCountryName(scope.countryIso2),
+  ].filter((value): value is string => Boolean(value?.trim()))));
+  let legacyQuery = admin.from('profiles').select('id')
+    .or('account_type.eq.club,type.eq.club')
+    .or(countryValues.map((value) => `country.ilike.${toIlikeExact(value)}`).join(','));
+  if (scope.geoAreaName && scope.geoAreaType) {
+    legacyQuery = legacyQuery.ilike(canonicalAreaLegacyField(scope.geoAreaType), scope.geoAreaName);
+  }
+  const { data: legacyClubs, error: legacyError } = await legacyQuery;
+  if (legacyError) throw legacyError;
+  const legacyOnlyMatches = (legacyClubs ?? [])
+    .map((row) => String(row.id))
+    .filter((id) => !canonicalProfileIds.has(id));
+
+  return Array.from(new Set([...canonicalMatches, ...legacyOnlyMatches]));
+}
+
 type Suggestion = {
   id: string;
   user_id?: string | null;
@@ -112,6 +154,7 @@ export async function GET(req: NextRequest) {
   try {
     step = 'auth';
     let explicitGeography: CanonicalSearchGeographyScope | null = null;
+    let explicitClubProfileIds: string[] | null = null;
     const auth = await resolveAuthContext(req);
     if (!auth) {
       return errorResponse({
@@ -147,6 +190,9 @@ export async function GET(req: NextRequest) {
           new SupabaseSearchGeographyCatalog(supabase),
           { expandDescendants: false },
         );
+        if (!kind || kind === 'club') {
+          explicitClubProfileIds = await loadClubIdsForCanonicalScope(explicitGeography);
+        }
       }
     } catch (error) {
       if (error instanceof SearchGeographyContractError) {
@@ -240,7 +286,8 @@ export async function GET(req: NextRequest) {
       const { data, error } = await query;
       if (error) throw error;
       return rankSuggestionCandidates(
-        (data || []).filter((row) => isProfileEligibleForFollowSuggestions(row)),
+        (data || []).filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'club'
+          || isProfileEligibleForFollowSuggestions(row)),
         geographyPlan,
         viewerSport,
       );
@@ -311,7 +358,7 @@ export async function GET(req: NextRequest) {
     step = 'candidates';
     const escapeLike = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
 
-    const buildFilters = () => {
+    const buildFilters = (forClubs = false) => {
       const filters: Array<Array<(q: any) => any>> = [];
       const sportFilter: Array<(q: any) => any> = [];
 
@@ -329,6 +376,13 @@ export async function GET(req: NextRequest) {
       }
 
       if (explicitGeography) {
+        if (forClubs) {
+          const ids = explicitClubProfileIds?.length
+            ? explicitClubProfileIds
+            : ['00000000-0000-0000-0000-000000000000'];
+          filters.push([(query) => query.in('id', ids), ...sportFilter]);
+          return filters;
+        }
         const countryValues = Array.from(new Set([
           explicitGeography.countryIso2,
           explicitGeography.countryName,
@@ -363,7 +417,7 @@ export async function GET(req: NextRequest) {
       return filters;
     };
 
-    const clubFilters = buildFilters();
+    const clubFilters = buildFilters(true);
     const playerFilters = buildFilters();
 
     if (kind === 'institution' || kind === 'club' || kind === 'player' || kind === 'staff') {

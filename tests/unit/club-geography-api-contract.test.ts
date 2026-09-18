@@ -108,6 +108,16 @@ test('public Club profile renders canonical headquarters and never revives a sta
   assert.match(publicProfile, /profile\.club_stadium_address/);
   assert.match(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? null/);
   assert.doesNotMatch(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? categoryLabel/);
+  assert.doesNotMatch(publicProfile, /isProfileComplete\(profileState\)/);
+});
+
+test('Club discovery filters canonical residences and trusts database publication status', () => {
+  const suggestions = readFileSync('app/api/follows/suggestions/route.ts', 'utf8');
+  assert.match(suggestions, /loadClubIdsForCanonicalScope/);
+  assert.match(suggestions, /profile_preferences/);
+  assert.match(suggestions, /scope\.areaIds\.includes/);
+  assert.match(suggestions, /buildFilters\(true\)/);
+  assert.match(suggestions, /normalizeAccountType\(row\?\.account_type \?\? row\?\.type\) === 'club'/);
 });
 
 test('Player Club-of-belonging card consumes the same active canonical registration identity', () => {
