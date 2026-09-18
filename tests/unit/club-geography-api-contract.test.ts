@@ -89,6 +89,16 @@ test('feed Club mini-card prefers canonical residence over stale legacy location
   assert.match(miniCard, /canonicalClubResidenceLabel \|\| interestLabel/);
 });
 
+test('feed Club mini-card reads Sport and category from the active primary registration', () => {
+  const miniCard = readFileSync('components/profiles/ProfileMiniCard.tsx', 'utf8');
+  assert.match(miniCard, /fetch\('\/api\/clubs\/registrations'/);
+  assert.match(miniCard, /find\(\(registration\) => registration\.is_primary\)/);
+  assert.match(miniCard, /primaryClubRegistration\?\.sports/);
+  assert.match(miniCard, /primaryClubRegistration\?\.category\?\.canonical_name \?\? null/);
+  assert.doesNotMatch(miniCard, /\{p\?\.club_league_category && \(/);
+  assert.doesNotMatch(miniCard, /\{p\.club_league_category\}/);
+});
+
 test('public Club profile renders canonical headquarters and never revives a stale legacy category', () => {
   const publicProfile = readFileSync('app/(dashboard)/clubs/[id]/page.tsx', 'utf8');
   assert.match(publicProfile, /loadPublicClubResidence\(profile\.id\)/);
