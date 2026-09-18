@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
   try {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
+      .select('id,account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
           },
           { onConflict: 'user_id' }
         )
-        .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
+        .select('id,account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
         .maybeSingle();
 
       if (created) {
@@ -166,7 +166,7 @@ export async function GET(req: NextRequest) {
           .from('profiles')
           .update(updates)
           .eq('user_id', user.id)
-          .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
+          .select('id,account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
           .maybeSingle();
 
         if (patched) {
@@ -189,6 +189,22 @@ export async function GET(req: NextRequest) {
     accountType = PLATFORM_ADMIN_ROLE;
     legacyType = PLATFORM_ADMIN_ROLE;
     completionProfile = { ...(completionProfile || {}), account_type: PLATFORM_ADMIN_ROLE, type: PLATFORM_ADMIN_ROLE, role: PLATFORM_ADMIN_ROLE_LABEL, is_admin: true };
+  }
+
+  // Club completion is based on canonical residence, which is stored outside
+  // profiles. Hydrate it after all role/profile fallbacks and before middleware
+  // consumes the result; otherwise a published Club is reported incomplete.
+  if (accountType === 'club' && completionProfile?.id) {
+    try {
+      const { data: preference } = await supabase
+        .from('profile_preferences')
+        .select('residence_country_id,residence_geo_area_id')
+        .eq('profile_id', String(completionProfile.id))
+        .maybeSingle();
+      completionProfile = { ...completionProfile, ...(preference ?? {}) };
+    } catch {
+      // Fail closed: completion remains false when canonical residence cannot be read.
+    }
   }
 
   const role: Role = accountType ?? 'guest';

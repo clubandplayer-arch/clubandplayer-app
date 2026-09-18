@@ -90,6 +90,12 @@ type InterestGeo = {
   country: string;
 };
 
+type ClubRegistration = {
+  is_primary?: boolean;
+  sports?: { code?: string | null; canonical_name?: string | null } | null;
+  category?: { canonical_name?: string | null } | null;
+};
+
 /* ---------- helpers bandiera/nome paese ---------- */
 
 export default function ProfileMiniCard() {
@@ -98,6 +104,8 @@ export default function ProfileMiniCard() {
   const [loaded, setLoaded] = useState(false);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', province: '', region: '', country: '' });
   const [canonicalInterestLabel, setCanonicalInterestLabel] = useState('');
+  const [canonicalClubResidenceLabel, setCanonicalClubResidenceLabel] = useState('');
+  const [primaryClubRegistration, setPrimaryClubRegistration] = useState<ClubRegistration | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -106,6 +114,39 @@ export default function ProfileMiniCard() {
         const raw = await r.json().catch(() => ({}));
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
+
+        if (j?.account_type === 'club') {
+          const [residenceResponse, registrationsResponse] = await Promise.all([
+            fetch('/api/profiles/me/residence', { credentials: 'include', cache: 'no-store' }),
+            fetch('/api/clubs/registrations', { credentials: 'include', cache: 'no-store' }),
+          ]);
+          const registrationsPayload = await registrationsResponse.json().catch(() => ({}));
+          if (registrationsResponse.ok && Array.isArray(registrationsPayload?.data)) {
+            const activeRegistrations = registrationsPayload.data as ClubRegistration[];
+            setPrimaryClubRegistration(
+              activeRegistrations.find((registration) => registration.is_primary) ?? activeRegistrations[0] ?? null,
+            );
+          }
+          const residencePayload = await residenceResponse.json().catch(() => ({}));
+          const residence = residencePayload?.residence;
+          if (residenceResponse.ok && residence?.residenceGeoAreaId) {
+            const ancestryResponse = await fetch(`/api/geo/areas/${encodeURIComponent(residence.residenceGeoAreaId)}/ancestors`, { cache: 'no-store' });
+            const ancestryPayload = await ancestryResponse.json().catch(() => ({}));
+            const geography = ancestryPayload?.data;
+            if (ancestryResponse.ok && geography?.area) {
+              const iso2 = geography.area.country?.iso2;
+              const country = iso2
+                ? new Intl.DisplayNames([locale], { type: 'region' }).of(iso2) ?? iso2
+                : '';
+              const hierarchy = [
+                geography.area.official_name,
+                ...(Array.isArray(geography.ancestors) ? [...geography.ancestors].reverse().map((area: { official_name?: string }) => area.official_name) : []),
+                country,
+              ].filter(Boolean);
+              setCanonicalClubResidenceLabel(Array.from(new Set(hierarchy)).join(', '));
+            }
+          }
+        }
 
         if (j?.account_type === 'athlete' || j?.account_type === 'staff') {
           const interestsResponse = await fetch('/api/profile-geography/interests', { credentials: 'include', cache: 'no-store' });
@@ -197,8 +238,14 @@ export default function ProfileMiniCard() {
   const name = isInstitution && isEmailName ? t('profile.institution') : rawName || (isClub ? 'Club' : isInstitution ? t('profile.institution') : t('profile.welcome'));
   const interestLabel = [interest.city, interest.province, interest.country].filter(Boolean).join(', ');
   const playerInterestLabel = canonicalInterestLabel || interestLabel;
-  const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
-  const clubGeoLabel = isClub ? interestLabel : '';
+  const registrationSport = primaryClubRegistration?.sports;
+  const sportLabel = registrationSport
+    ? localizeSport(registrationSport.code ?? registrationSport.canonical_name ?? null, t)
+      ?? registrationSport.canonical_name
+      ?? '—'
+    : normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
+  const clubCategoryLabel = primaryClubRegistration?.category?.canonical_name ?? null;
+  const clubGeoLabel = isClub ? canonicalClubResidenceLabel || interestLabel : '';
 
   // nazionalità con bandiera
   const rawCountry = (p?.country ?? '').trim();
@@ -335,16 +382,16 @@ export default function ProfileMiniCard() {
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('club.details')}</div>
           </div>
           <dl className="space-y-2 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
-            {p?.sport && (
+            {sportLabel && (
               <div className="flex flex-col gap-0.5">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('opportunities.sport')}</dt>
                 <dd className="font-medium text-gray-900">{sportLabel}</dd>
               </div>
             )}
-            {p?.club_league_category && (
+            {clubCategoryLabel && (
               <div className="flex flex-col gap-0.5">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('club.category')}</dt>
-                <dd className="font-medium text-gray-900">{p.club_league_category}</dd>
+                <dd className="font-medium text-gray-900">{clubCategoryLabel}</dd>
               </div>
             )}
             {p?.club_stadium && (

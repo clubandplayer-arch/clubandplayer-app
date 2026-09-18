@@ -75,6 +75,30 @@ test('saving Club geography closes stale registration editors and reloads the re
   }
 });
 
+test('Club registration creation reactivates an archived identical membership instead of violating uniqueness', () => {
+  const registrationsRoute = readFileSync('app/api/clubs/registrations/route.ts', 'utf8');
+  assert.match(registrationsRoute, /\.upsert\(/);
+  assert.match(registrationsRoute, /onConflict:'club_profile_id,sport_id,sport_discipline_id,sport_variant_id,sports_organization_id,sports_organization_category_id'/);
+  assert.doesNotMatch(registrationsRoute, /\.insert\(\{\.\.\.b,club_profile_id:club\.id\}\)/);
+});
+
+test('feed Club mini-card prefers canonical residence over stale legacy location fields', () => {
+  const miniCard = readFileSync('components/profiles/ProfileMiniCard.tsx', 'utf8');
+  assert.match(miniCard, /fetch\('\/api\/profiles\/me\/residence'/);
+  assert.match(miniCard, /residence\.residenceGeoAreaId/);
+  assert.match(miniCard, /canonicalClubResidenceLabel \|\| interestLabel/);
+});
+
+test('feed Club mini-card reads Sport and category from the active primary registration', () => {
+  const miniCard = readFileSync('components/profiles/ProfileMiniCard.tsx', 'utf8');
+  assert.match(miniCard, /fetch\('\/api\/clubs\/registrations'/);
+  assert.match(miniCard, /find\(\(registration\) => registration\.is_primary\)/);
+  assert.match(miniCard, /primaryClubRegistration\?\.sports/);
+  assert.match(miniCard, /primaryClubRegistration\?\.category\?\.canonical_name \?\? null/);
+  assert.doesNotMatch(miniCard, /\{p\?\.club_league_category && \(/);
+  assert.doesNotMatch(miniCard, /\{p\.club_league_category\}/);
+});
+
 test('public Club profile renders canonical headquarters and never revives a stale legacy category', () => {
   const publicProfile = readFileSync('app/(dashboard)/clubs/[id]/page.tsx', 'utf8');
   assert.match(publicProfile, /loadPublicClubResidence\(profile\.id\)/);
@@ -84,6 +108,16 @@ test('public Club profile renders canonical headquarters and never revives a sta
   assert.match(publicProfile, /profile\.club_stadium_address/);
   assert.match(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? null/);
   assert.doesNotMatch(publicProfile, /primaryRegistration\?\.category\?\.canonical_name \?\? categoryLabel/);
+  assert.doesNotMatch(publicProfile, /isProfileComplete\(profileState\)/);
+});
+
+test('Club discovery filters canonical residences and trusts database publication status', () => {
+  const suggestions = readFileSync('app/api/follows/suggestions/route.ts', 'utf8');
+  assert.match(suggestions, /loadClubIdsForCanonicalScope/);
+  assert.match(suggestions, /profile_preferences/);
+  assert.match(suggestions, /scope\.areaIds\.includes/);
+  assert.match(suggestions, /buildFilters\(true\)/);
+  assert.match(suggestions, /normalizeAccountType\(row\?\.account_type \?\? row\?\.type\) === 'club'/);
 });
 
 test('Player Club-of-belonging card consumes the same active canonical registration identity', () => {
