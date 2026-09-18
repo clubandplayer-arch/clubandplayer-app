@@ -56,7 +56,9 @@ export async function middleware(req: NextRequest) {
 
 
   if (authenticated && role !== 'guest' && !profileComplete) {
-    if (pathname !== completionPath) {
+    // Logout must always remain reachable, including while onboarding or when
+    // a completion read temporarily fails closed.
+    if (pathname !== completionPath && pathname !== '/logout') {
       return NextResponse.redirect(new URL(completionPath, url));
     }
   }
