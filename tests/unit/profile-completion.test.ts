@@ -15,6 +15,7 @@ const completeClub = {
   region: 'Sicilia',
   province: 'Siracusa',
   city: 'Carlentini',
+  has_active_club_registration: true,
 } as const;
 
 test('uses the same club-name rule for saving and completion', () => {
@@ -31,6 +32,7 @@ test('uses the same club-name rule for saving and completion', () => {
 test('publishes only a club with a valid name and all mandatory fields', () => {
   assert.equal(isProfileComplete(completeClub), true);
   assert.equal(isProfileComplete({ ...completeClub, city: null }), false);
+  assert.equal(isProfileComplete({ ...completeClub, has_active_club_registration: false }), false);
   assert.equal(isProfileComplete({ ...completeClub, full_name: 'Giacomo', display_name: 'Giacomo' }), false);
 });
 
@@ -46,6 +48,10 @@ test('canonical Club geography replaces Italy-only legacy province requirements'
   };
   assert.deepEqual(getMissingRequiredProfileFields(canonicalClub), []);
   assert.equal(isProfileComplete(canonicalClub), true);
+  assert.deepEqual(
+    getMissingRequiredProfileFields({ ...canonicalClub, residence_geo_area_id: null }),
+    ['area geografica'],
+  );
 
   assert.deepEqual(
     getMissingRequiredProfileFields({ ...canonicalClub, residence_country_id: null }),

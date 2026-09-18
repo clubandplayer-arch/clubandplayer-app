@@ -48,7 +48,7 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
           fallbackAuthorLabel ?? 'Profilo',
         )
     : fallbackAuthorLabel;
-  const authorId = authorProfile?.id ?? post.author_profile_id ?? post.authorId ?? null;
+  const authorId = authorProfile?.id ?? post.author_profile_id ?? null;
   const isClubAuthor = authorAccountType === 'club';
   const isInstitutionAuthor = authorAccountType === 'institution';
   const isAdminAuthor = authorAccountType === 'admin' || authorProfile?.is_admin === true;

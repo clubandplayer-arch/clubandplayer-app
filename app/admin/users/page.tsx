@@ -12,6 +12,8 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Rifiutato',
 };
 
+type StatusFilter = 'all' | 'pending' | 'active' | 'rejected' | 'orphan';
+
 type ProfileRow = {
   id: string;
   user_id: string | null;
@@ -33,11 +35,11 @@ export default function AdminUsersPage() {
   const [rows, setRows] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'active' | 'rejected' | 'orphan'>('pending');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [error, setError] = useState<string | null>(null);
   const provinceAbbreviations = useProvinceAbbreviations();
 
-  const load = async (status: 'pending' | 'active' | 'rejected' | 'orphan') => {
+  const load = async (status: StatusFilter) => {
     setLoading(true);
     setError(null);
     const res = await fetch(`/api/admin/users?status=${status}`, { cache: 'no-store' });
@@ -88,9 +90,9 @@ export default function AdminUsersPage() {
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-8">
-      <h1 className="heading-h2 mb-4 text-2xl font-bold">Approva utenti</h1>
+      <h1 className="heading-h2 mb-4 text-2xl font-bold">Gestione utenti</h1>
       <p className="mb-6 text-sm text-neutral-600">
-        Solo gli admin possono accedere. Approva o rifiuta i profili in attesa per sbloccare l&apos;accesso.
+        Consulta tutte le registrazioni e gestisci gli eventuali profili in attesa. I nuovi account attivi sono visibili nel filtro Tutti.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -98,9 +100,10 @@ export default function AdminUsersPage() {
           Stato
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             className="ml-2 rounded-md border px-2 py-1 text-sm"
           >
+            <option value="all">Tutti</option>
             <option value="pending">In attesa</option>
             <option value="active">Attivi</option>
             <option value="rejected">Rifiutati</option>
