@@ -49,6 +49,24 @@ export async function GET() {
   }
 
   const profiles = data ?? [];
+  const profileIds = profiles.map((profile) => String(profile.id));
+  const { data: preferences, error: preferencesError } = profileIds.length
+    ? await context.admin
+        .from('profile_preferences')
+        .select('profile_id,residence_country_id')
+        .in('profile_id', profileIds)
+    : { data: [], error: null };
+  if (preferencesError) return NextResponse.json({ error: preferencesError.message }, { status: 500 });
+  const countryIds = Array.from(new Set((preferences ?? []).map((row) => row.residence_country_id).filter(Boolean))) as string[];
+  const { data: countries, error: countriesError } = countryIds.length
+    ? await context.admin.from('countries').select('id,iso2').in('id', countryIds)
+    : { data: [], error: null };
+  if (countriesError) return NextResponse.json({ error: countriesError.message }, { status: 500 });
+  const countryIso2ById = new Map((countries ?? []).map((country) => [String(country.id), String(country.iso2)]));
+  const countryIso2ByProfileId = new Map((preferences ?? []).map((preference) => [
+    String(preference.profile_id),
+    preference.residence_country_id ? countryIso2ById.get(String(preference.residence_country_id)) ?? null : null,
+  ]));
   const duplicateGroups = new Map<string, string[]>();
   for (const profile of profiles) {
     const key = normalizeClubNameForDuplicateCheck(profile.full_name || profile.display_name);
@@ -57,7 +75,6 @@ export async function GET() {
   }
 
   const registryIds = profiles.map((profile) => profile.registry_master_id).filter(Boolean) as string[];
-  const profileIds = profiles.map((profile) => String(profile.id));
   const { data: registryRows, error: registryError } = schemaReady && registryIds.length
     ? await context.admin
         .from('registry_clubs_master')
@@ -82,7 +99,8 @@ export async function GET() {
     const registryMasterId = profile.registry_master_id || fallbackRegistry?.master_id || null;
     const registry = registryMasterId ? registryById.get(String(registryMasterId)) ?? fallbackRegistry : null;
     const reasons = new Set<string>();
-    const reviewReason = getClubNameReviewReason(name);
+    const countryIso2 = countryIso2ByProfileId.get(String(profile.id));
+    const reviewReason = getClubNameReviewReason(name, countryIso2);
     if (reviewReason && profile.club_name_review_status !== 'approved') reasons.add(reviewReason);
     if (profile.club_name_review_status === 'pending' && profile.club_name_review_reason) reasons.add(profile.club_name_review_reason);
     if (duplicates.length) reasons.add(`Possibile duplicato di ${duplicates.length} profilo/i`);
@@ -95,7 +113,7 @@ export async function GET() {
     // history tab, while rejected names remain because rejection adds a reason.
     if (!shouldIncludeClubInQualityList(reasons.size, profile.club_name_review_status)) return [];
 
-    return [{ ...profile, registry_master_id: registryMasterId, name, reasons: Array.from(reasons), duplicate_profile_ids: duplicates, registry }];
+    return [{ ...profile, registry_master_id: registryMasterId, country_iso2: countryIso2 ?? null, name, reasons: Array.from(reasons), duplicate_profile_ids: duplicates, registry }];
   });
 
   return NextResponse.json({
@@ -103,7 +121,7 @@ export async function GET() {
     summary: {
       total_clubs: profiles.length,
       anomalies: rows.filter((row) => row.reasons.length > 0).length,
-      suspicious_names: rows.filter((row) => row.club_name_review_status === 'pending' || (row.club_name_review_status !== 'approved' && Boolean(getClubNameReviewReason(row.name)))).length,
+      suspicious_names: rows.filter((row) => row.club_name_review_status === 'pending' || (row.club_name_review_status !== 'approved' && Boolean(getClubNameReviewReason(row.name, row.country_iso2)))).length,
       duplicate_groups: Array.from(duplicateGroups.values()).filter((ids) => ids.length > 1).length,
       unlinked_registry: rows.filter((profile) => !profile.registry_master_id).length,
     },

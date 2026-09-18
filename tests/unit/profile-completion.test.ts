@@ -15,21 +15,17 @@ const completeClub = {
   residence_geo_area_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
 } as const;
 
-test('uses the same club-name rule for saving and completion', () => {
-  for (const name of ['Giacomo', 'giacomo', 'GIACOMO', 'Mario Rossi']) {
-    assert.equal(isValidProfileClubName(name), false);
-    assert.match(getProfileClubNameValidationError(name) ?? '', /denominazione della società/);
-    assert.deepEqual(
-      getMissingRequiredProfileFields({ ...completeClub, full_name: name, display_name: name }),
-      ['nome società'],
-    );
-  }
+test('uses the same syntax-only club-name rule for saving and completion', () => {
+  assert.equal(isValidProfileClubName('Osasuna'), true);
+  assert.equal(getProfileClubNameValidationError('Osasuna'), null);
+  assert.deepEqual(getMissingRequiredProfileFields({ ...completeClub, full_name: 'Osasuna', display_name: 'Osasuna' }), []);
+  assert.equal(isValidProfileClubName('Club <script>'), false);
 });
 
 test('publishes only a club with a valid name and all mandatory fields', () => {
   assert.equal(isProfileComplete(completeClub), true);
   assert.equal(isProfileComplete({ ...completeClub, residence_geo_area_id: null }), false);
-  assert.equal(isProfileComplete({ ...completeClub, full_name: 'Giacomo', display_name: 'Giacomo' }), false);
+  assert.equal(isProfileComplete({ ...completeClub, full_name: 'Osasuna', display_name: 'Osasuna' }), true);
 });
 
 test('Club completion requires only a valid name and complete canonical residence', () => {
@@ -88,8 +84,8 @@ test('normalizes and explains every publication lifecycle state', () => {
 });
 
 test('flags weak club names and normalizes likely duplicates', () => {
-  assert.match(getClubNameReviewReason('Giovani Talenti Carlentini Europa') ?? '', /riferimento societario/);
-  assert.equal(getClubNameReviewReason('ASD Carlentini'), null);
+  assert.match(getClubNameReviewReason('Giovani Talenti Carlentini Europa', 'IT') ?? '', /riferimento societario/);
+  assert.equal(getClubNameReviewReason('ASD Carlentini', 'IT'), null);
   assert.equal(normalizeClubNameForDuplicateCheck('A.S.D. Carlentini'), normalizeClubNameForDuplicateCheck('ASD Carlentini'));
 });
 
