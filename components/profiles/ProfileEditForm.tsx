@@ -254,6 +254,7 @@ export default function ProfileEditForm() {
   const [residenceDirty, setResidenceDirty] = useState(false);
   const [residenceWritable, setResidenceWritable] = useState(false);
   const [clubGeographyRevision, setClubGeographyRevision] = useState(0);
+  const [activeClubRegistrationCount, setActiveClubRegistrationCount] = useState<number | null>(null);
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
@@ -556,7 +557,8 @@ export default function ProfileEditForm() {
     interest_municipality_id: isOrganization ? clubLocation.municipalityId : null,
     residence_country_id: isClub ? residenceCountryId : null,
     residence_geo_area_id: isClub ? residenceGeoAreaId : null,
-  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile, residenceCountryId, residenceGeoAreaId]);
+    has_active_club_registration: isClub ? (activeClubRegistrationCount ?? 0) > 0 : null,
+  }), [activeClubRegistrationCount, athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile, residenceCountryId, residenceGeoAreaId]);
   const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
@@ -761,12 +763,16 @@ export default function ProfileEditForm() {
 
       const missingFields = getMissingRequiredProfileFields(isClub ? {
         ...basePayload,
-        sport: 'registrazioni club',
         residence_country_id: residenceCountryId,
         residence_geo_area_id: residenceGeoAreaId,
+        has_active_club_registration: (activeClubRegistrationCount ?? 0) > 0,
       } : basePayload);
-      if (missingFields.length > 0) {
-        throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
+      // La geografia deve essere salvata prima di poter creare un'iscrizione.
+      // Consentiamo quindi il salvataggio intermedio del solo profilo, ma non
+      // consideriamo il Club completo finché l'iscrizione non esiste.
+      const blockingMissingFields = missingFields.filter((field) => field !== 'almeno un’iscrizione sportiva');
+      if (blockingMissingFields.length > 0) {
+        throw new Error(`Completa i campi obbligatori: ${blockingMissingFields.join(', ')}.`);
       }
 
       // Club geography is written only by update_my_club_geography. Sending any
@@ -1473,7 +1479,10 @@ export default function ProfileEditForm() {
           <GeographicInterestsForm title={t('profile.interestArea')} />
         )}
 
-        {isClub && <ClubRegistrationsSection geographyDirty={residenceDirty} geographyRevision={clubGeographyRevision} />}
+        {isClub && <ClubRegistrationsSection
+          geographyDirty={residenceDirty} geographyRevision={clubGeographyRevision}
+          onRegistrationCountChange={setActiveClubRegistrationCount}
+        />}
         {isClub && <ClubHonorsSection />}
 
         {/* Social */}

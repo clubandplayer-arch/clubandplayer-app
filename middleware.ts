@@ -39,13 +39,17 @@ export async function middleware(req: NextRequest) {
   // - con ruolo assegnato => bacheca
   // - senza ruolo => onboarding scelta ruolo obbligatoria
   if (authenticated && (pathname === '/login' || pathname === '/signup')) {
-    const target = role === 'guest' ? '/onboarding/choose-role' : '/feed';
+    const target = role === 'guest'
+      ? '/onboarding/choose-role'
+      : !profileComplete
+        ? completionPath
+        : '/feed';
     return NextResponse.redirect(new URL(target, url));
   }
 
   // Utente autenticato senza ruolo: onboarding obbligatorio su qualunque path /onboarding/*
   if (authenticated && role !== 'guest' && pathname === '/onboarding/choose-role') {
-    return NextResponse.redirect(new URL('/feed', url));
+    return NextResponse.redirect(new URL(profileComplete ? '/feed' : completionPath, url));
   }
 
   if (authenticated && role === 'guest' && pathname.startsWith('/onboarding/')) {

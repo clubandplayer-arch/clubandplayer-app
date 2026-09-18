@@ -100,7 +100,9 @@ export function PostCard({
           fallbackAuthorLabel ?? 'Profilo',
         )
     : fallbackAuthorLabel;
-  const authorId = authorProfile?.id ?? post.author_profile_id ?? post.authorId ?? null;
+  // post.authorId is an auth.users id, not a profiles id. Falling back to it
+  // generated valid-looking /clubs/:id links that could only return 404.
+  const authorId = authorProfile?.id ?? post.author_profile_id ?? null;
   const isClubAuthor = authorAccountType === 'club';
   const isInstitutionAuthor = authorAccountType === 'institution';
   const isAdminAuthor = authorAccountType === 'admin' || authorProfile?.is_admin === true;

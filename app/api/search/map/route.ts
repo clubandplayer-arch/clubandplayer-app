@@ -530,7 +530,10 @@ export async function GET(req: NextRequest) {
         if (!row || !row.id) return false;
         if (user?.id && (row.user_id === user.id || row.id === user.id)) return false;
         if (requestedUserId && (row.user_id === requestedUserId || row.id === requestedUserId)) return false;
-        if (!isProfileComplete(row)) return false;
+        // Public Club rows have already passed the database publication
+        // contract, which also checks canonical geography and registrations.
+        // The synchronous helper cannot inspect those related tables.
+        if (row.account_type !== 'club' && !isProfileComplete(row)) return false;
         if (row.latitude == null || row.longitude == null) return false;
         return true;
       });

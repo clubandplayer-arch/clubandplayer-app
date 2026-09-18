@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
   try {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
+      .select('id,account_type,type,status,profile_visibility_status,full_name,display_name,birth_year,country,sport,role,region,province,city,interest_region_id,interest_province_id,interest_municipality_id')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -101,6 +101,27 @@ export async function GET(req: NextRequest) {
     status = normStatus((prof as any)?.status);
 
     if (!accountType) accountType = normRole(legacyType);
+
+    if (accountType === 'club' && prof?.id) {
+      const [{ data: preference }, { count: registrationCount }] = await Promise.all([
+        supabase
+          .from('profile_preferences')
+          .select('residence_country_id,residence_geo_area_id')
+          .eq('profile_id', prof.id)
+          .maybeSingle(),
+        supabase
+          .from('club_sport_registrations')
+          .select('id', { head: true, count: 'exact' })
+          .eq('club_profile_id', prof.id)
+          .eq('is_active', true),
+      ]);
+      completionProfile = {
+        ...completionProfile,
+        residence_country_id: preference?.residence_country_id ?? null,
+        residence_geo_area_id: preference?.residence_geo_area_id ?? null,
+        has_active_club_registration: (registrationCount ?? 0) > 0,
+      };
+    }
   } catch {
     // ignore
   }
@@ -137,7 +158,7 @@ export async function GET(req: NextRequest) {
           },
           { onConflict: 'user_id' }
         )
-        .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
+        .select('id,account_type,type,status,profile_visibility_status,full_name,display_name,birth_year,country,sport,role,region,province,city,interest_region_id,interest_province_id,interest_municipality_id')
         .maybeSingle();
 
       if (created) {

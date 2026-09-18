@@ -18,9 +18,10 @@ const EMPTY_SPORT: CanonicalSportFilterValue = { sportId: '', disciplineId: '', 
 type Props = {
   geographyDirty?: boolean;
   geographyRevision?: number;
+  onRegistrationCountChange?: (count: number) => void;
 };
 
-export default function ClubRegistrationsSection({ geographyDirty = false, geographyRevision = 0 }: Props) {
+export default function ClubRegistrationsSection({ geographyDirty = false, geographyRevision = 0, onRegistrationCountChange }: Props) {
   const { t } = useI18n();
   const [rows, setRows] = useState<Row[]>([]);
   const [countryId, setCountryId] = useState('');
@@ -34,8 +35,13 @@ export default function ClubRegistrationsSection({ geographyDirty = false, geogr
   const load = useCallback(async () => {
     const response = await fetch('/api/clubs/registrations', { credentials: 'include', cache: 'no-store' });
     const payload = await response.json();
-    if (response.ok) { setRows(payload.data ?? []); setCountryId(payload.countryId ?? ''); }
-  }, []);
+    if (response.ok) {
+      const registrations = payload.data ?? [];
+      setRows(registrations);
+      setCountryId(payload.countryId ?? '');
+      onRegistrationCountChange?.(registrations.length);
+    }
+  }, [onRegistrationCountChange]);
   useEffect(() => {
     void load().then(() => {
       setOpen(false);
