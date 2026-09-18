@@ -5,7 +5,7 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
-const allowedStatuses = new Set(['pending', 'active', 'rejected', 'orphan']);
+const allowedStatuses = new Set(['all', 'pending', 'active', 'rejected', 'orphan']);
 const emailRegex = /\S+@\S+\.\S+/;
 
 const ACCOUNT_TYPE_ATHLETE = new Set(['athlete', 'player']);
@@ -17,9 +17,12 @@ export const GET = withAuth(async (req, { supabase, user }) => {
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status');
-  const filterStatus = status && allowedStatuses.has(status) ? status : 'pending';
+  // Gli account vengono approvati automaticamente dal 2026-08-09. Usare
+  // "pending" come filtro implicito nasconde quindi proprio le registrazioni
+  // valide e appena create dalla schermata amministrativa.
+  const filterStatus = status && allowedStatuses.has(status) ? status : 'all';
   const includeOrphans = filterStatus === 'orphan';
-  const statusFilter = includeOrphans ? null : filterStatus;
+  const statusFilter = includeOrphans || filterStatus === 'all' ? null : filterStatus;
   const debug = searchParams.get('debug') === '1';
   const adminClient = getSupabaseAdminClientOrNull();
   const dbClient = adminClient ?? supabase;
