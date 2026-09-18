@@ -29,10 +29,6 @@ function hasText(value: unknown) {
   return text(value).length > 0;
 }
 
-function hasValue(value: unknown) {
-  return value !== null && value !== undefined && text(value).length > 0;
-}
-
 function hasBirthYear(value: unknown) {
   const year = typeof value === 'number' ? value : Number(text(value));
   return Number.isInteger(year) && year >= 1900 && year <= new Date().getFullYear();
@@ -61,17 +57,8 @@ export function getMissingRequiredProfileFields(profile?: ProfileCompletionProfi
 
   if (accountType === 'club') {
     if ((!hasText(profile?.full_name) && !hasText(profile?.display_name)) || !isValidProfileClubName(text(profile?.full_name || profile?.display_name))) missing.push('nome società');
-    if (!hasText(profile?.sport)) missing.push('sport principale');
-    const hasCanonicalCountry = hasText(profile?.residence_country_id);
-    if (!hasCanonicalCountry && !hasText(profile?.country)) missing.push('nazione');
-    // Canonical Club geography supports country-only and variable-depth area
-    // hierarchies. Legacy region/province/city requirements apply only until a
-    // canonical country has been selected.
-    if (!hasCanonicalCountry) {
-      if (!hasText(profile?.region) && !hasValue(profile?.interest_region_id)) missing.push('regione');
-      if (!hasText(profile?.province) && !hasValue(profile?.interest_province_id)) missing.push('provincia');
-      if (!hasText(profile?.city) && !hasValue(profile?.interest_municipality_id)) missing.push('città');
-    }
+    if (!hasText(profile?.residence_country_id)) missing.push('Paese di residenza');
+    if (!hasText(profile?.residence_geo_area_id)) missing.push('area di residenza');
     return missing;
   }
 

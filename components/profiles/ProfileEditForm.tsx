@@ -546,7 +546,7 @@ export default function ProfileEditForm() {
     display_name: fullName,
     birth_year: birthYear === '' ? null : birthYear,
     country: normalizeCountryCode(country),
-    sport: isClub ? 'registrazioni club' : athleteSport,
+    sport: athleteSport,
     role: isOrganization || isFan ? null : athleteRole,
     region: isOrganization ? (clubLocation.regionName || clubLocationFallback.region || null) : profile?.region ?? null,
     province: isOrganization ? (clubLocation.provinceName || clubLocationFallback.province || null) : profile?.province ?? null,
@@ -761,7 +761,6 @@ export default function ProfileEditForm() {
 
       const missingFields = getMissingRequiredProfileFields(isClub ? {
         ...basePayload,
-        sport: 'registrazioni club',
         residence_country_id: residenceCountryId,
         residence_geo_area_id: residenceGeoAreaId,
       } : basePayload);
