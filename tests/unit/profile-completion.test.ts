@@ -65,6 +65,19 @@ test('database publication uses the same minimal Club requirements', () => {
   assert.match(migration, /\{3,\}/);
 });
 
+test('database migration preserves existing public Clubs until they adopt canonical residence', () => {
+  const migration = readFileSync('supabase/migrations/20261222120000_club_minimum_completion_requirements.sql', 'utf8');
+  assert.match(migration, /create table if not exists public\.club_completion_grandfathered_profiles/);
+  assert.match(migration, /profile\.profile_visibility_status = 'published'/);
+  assert.match(migration, /on conflict \(profile_id\) do nothing/);
+  assert.match(migration, /or exists \([\s\S]*club_completion_grandfathered_profiles grandfathered/);
+  assert.match(migration, /if new\.residence_country_id is not null and new\.residence_geo_area_id is not null then[\s\S]*delete from public\.club_completion_grandfathered_profiles/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /revoke all on public\.club_completion_grandfathered_profiles from public, anon, authenticated/);
+  assert.doesNotMatch(migration, /update public\.profiles[\s\S]*profile_visibility_status\s*=/);
+  assert.doesNotMatch(migration, /delete from public\.profiles/);
+});
+
 test('normalizes and explains every publication lifecycle state', () => {
   assert.equal(normalizeProfileVisibilityStatus('published'), 'published');
   assert.equal(normalizeProfileVisibilityStatus('suspended'), 'suspended');

@@ -1,4 +1,30 @@
 begin;
+
+-- Preserve the visibility of Clubs that were already public before canonical
+-- residence became mandatory. This is deliberately a private rollout ledger,
+-- not application data exposed through the API.
+create table if not exists public.club_completion_grandfathered_profiles (
+  profile_id uuid primary key references public.profiles(id) on delete cascade,
+  grandfathered_at timestamptz not null default now()
+);
+
+alter table public.club_completion_grandfathered_profiles enable row level security;
+revoke all on public.club_completion_grandfathered_profiles from public, anon, authenticated;
+
+insert into public.club_completion_grandfathered_profiles(profile_id)
+select profile.id
+from public.profiles profile
+where lower(coalesce(profile.account_type, profile.type, '')) = 'club'
+  and profile.profile_visibility_status = 'published'
+  and not exists (
+    select 1
+    from public.profile_preferences preference
+    where preference.profile_id = profile.id
+      and preference.residence_country_id is not null
+      and preference.residence_geo_area_id is not null
+  )
+on conflict (profile_id) do nothing;
+
 create or replace function public.set_profile_visibility_status()
 returns trigger
 language plpgsql
@@ -122,12 +148,19 @@ begin
       public_name <> ''
       and (has_club_signal or new.registry_master_id is not null or new.club_name_review_status = 'approved')
       and new.club_name_review_status <> 'rejected'
-      and exists (
-        select 1
-        from public.profile_preferences preference
-        where preference.profile_id = new.id
-          and preference.residence_country_id is not null
-          and preference.residence_geo_area_id is not null
+      and (
+        exists (
+          select 1
+          from public.profile_preferences preference
+          where preference.profile_id = new.id
+            and preference.residence_country_id is not null
+            and preference.residence_geo_area_id is not null
+        )
+        or exists (
+          select 1
+          from public.club_completion_grandfathered_profiles grandfathered
+          where grandfathered.profile_id = new.id
+        )
       )
     when account_kind in ('athlete', 'staff') then
       public_name <> '' and new.birth_year between 1900 and extract(year from current_date)::integer
@@ -152,6 +185,11 @@ security definer
 set search_path = public
 as $$
 begin
+  if new.residence_country_id is not null and new.residence_geo_area_id is not null then
+    delete from public.club_completion_grandfathered_profiles
+    where profile_id = new.profile_id;
+  end if;
+
   update public.profiles
   set updated_at = now()
   where id = new.profile_id
@@ -170,6 +208,6 @@ execute function public.refresh_club_visibility_from_residence();
 comment on function public.set_profile_visibility_status() is
   'Publish Clubs from a valid name and complete canonical residence; other Club fields are optional.';
 comment on function public.refresh_club_visibility_from_residence() is
-  'Re-evaluate Club publication when its canonical residence changes.';
+  'Graduate legacy public Clubs to canonical completion and re-evaluate publication when residence changes.';
 
 commit;
