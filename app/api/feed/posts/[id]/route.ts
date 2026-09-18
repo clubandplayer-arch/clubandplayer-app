@@ -95,15 +95,25 @@ function normalizeProfileRow(raw: any) {
     avatar_url: raw.avatar_url ?? null,
     account_type: raw.account_type ?? raw.type ?? null,
     type: raw.type ?? raw.account_type ?? null,
+    is_admin: raw.is_admin ?? null,
+    status: raw.status ?? null,
+    profile_visibility_status: raw.profile_visibility_status ?? null,
   };
+}
+
+function isPublishedAuthor(profile: ReturnType<typeof normalizeProfileRow>) {
+  if (!profile?.id) return false;
+  const accountType = String(profile.account_type ?? profile.type ?? '').toLowerCase();
+  if (accountType === 'admin' || profile.is_admin === true) return true;
+  return profile.status === 'active' && profile.profile_visibility_status === 'published';
 }
 
 async function fetchAuthorProfile(client: any, authorId?: string | null) {
   if (!authorId) return null;
 
   const [{ data: byUserId }, { data: byProfileId }] = await Promise.all([
-    client.from('profiles').select('id, user_id, full_name, display_name, avatar_url, account_type, type').eq('user_id', authorId).maybeSingle(),
-    client.from('profiles').select('id, user_id, full_name, display_name, avatar_url, account_type, type').eq('id', authorId).maybeSingle(),
+    client.from('profiles').select('id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin, status, profile_visibility_status').eq('user_id', authorId).maybeSingle(),
+    client.from('profiles').select('id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin, status, profile_visibility_status').eq('id', authorId).maybeSingle(),
   ]);
 
   return normalizeProfileRow(byUserId ?? byProfileId ?? null);
@@ -159,7 +169,7 @@ async function fetchPostWithFallback(client: any, id: string) {
   return client.from('posts').select(SELECT_BASE).eq('id', id).maybeSingle();
 }
 
-export const GET = withAuth(async (req: NextRequest, { supabase }) => {
+export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const id = req.nextUrl.pathname.split('/').pop();
   if (!id) return validationError('Id mancante');
 
@@ -187,6 +197,10 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   }
 
   const authorProfile = await fetchAuthorProfile(readClient, data?.author_id);
+  const isOwner = data?.author_id === user.id || data?.author_id === authorProfile?.id;
+  if (!isOwner && !isPublishedAuthor(authorProfile)) {
+    return notFoundError('Post non trovato');
+  }
 
   return successResponse({ item: normalizeRow({ ...data, media, author_profile: authorProfile }) });
 });

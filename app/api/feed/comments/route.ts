@@ -1,6 +1,7 @@
 import { type NextRequest } from 'next/server';
 import {
   dbError,
+  notAuthorized,
   notAuthenticated,
   notReady,
   rateLimited,
@@ -77,6 +78,13 @@ function profileMentionAliases(profile: { display_name?: string | null; full_nam
     }
   }
   return aliases;
+}
+
+function isPublishedInteractionProfile(profile: any) {
+  if (!profile?.id) return false;
+  const accountType = String(profile.account_type ?? profile.type ?? '').toLowerCase();
+  if (accountType === 'admin' || profile.is_admin === true) return true;
+  return profile.status === 'active' && profile.profile_visibility_status === 'published';
 }
 
 async function fetchFollowersForMentions(client: any, targetProfileId: string) {
@@ -250,7 +258,7 @@ export async function GET(req: NextRequest) {
   if (authorIds.length > 0) {
     const { data: profilesByUser } = await supabase
       .from('profiles')
-      .select('id, user_id, full_name, display_name, avatar_url, account_type, status')
+      .select('id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin, status, profile_visibility_status')
       .in('user_id', authorIds);
 
     const storeProfile = (p: any) => {
@@ -268,7 +276,7 @@ export async function GET(req: NextRequest) {
     if (missingByUserId.length) {
       const { data: profilesById } = await supabase
         .from('profiles')
-        .select('id, user_id, full_name, display_name, avatar_url, account_type, status')
+        .select('id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin, status, profile_visibility_status')
         .in('id', missingByUserId);
 
       (profilesById ?? []).forEach(storeProfile);
@@ -284,7 +292,7 @@ export async function GET(req: NextRequest) {
   );
   const clubVerificationMap = await buildClubVerificationMap(supabase, clubProfileIds);
 
-  const comments = (data ?? []).map((c) => ({
+  const comments = (data ?? []).filter((c) => isPublishedInteractionProfile(authors[c.author_id || ''])).map((c) => ({
     ...c,
     author: (() => {
       const author = authors[c.author_id || ''] ?? null;
@@ -324,6 +332,15 @@ export async function POST(req: NextRequest) {
 
   if (!body) {
     return validationError('Commento vuoto');
+  }
+
+  const { data: actorProfile } = await supabase
+    .from('profiles')
+    .select('id, account_type, type, is_admin, status, profile_visibility_status')
+    .eq('user_id', auth.user.id)
+    .maybeSingle();
+  if (!isPublishedInteractionProfile(actorProfile)) {
+    return notAuthorized('Completa e pubblica il profilo prima di commentare.');
   }
 
   const { data, error } = await supabase
@@ -477,7 +494,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, user_id, full_name, display_name, avatar_url, account_type, status')
+    .select('id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin, status, profile_visibility_status')
     .eq('user_id', auth.user.id)
     .maybeSingle();
 

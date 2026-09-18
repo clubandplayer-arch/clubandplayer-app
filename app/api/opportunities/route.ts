@@ -284,12 +284,15 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data: profileByUser } = await supabase
     .from('profiles')
-    .select('id, user_id, display_name, full_name')
+    .select('id, user_id, display_name, full_name, status, profile_visibility_status')
     .eq('user_id', user.id)
     .maybeSingle();
 
   const clubProfile = profileByUser ?? null;
   if (!clubProfile) return invalidPayload('club_profile_not_found');
+  if (clubProfile.status !== 'active' || clubProfile.profile_visibility_status !== 'published') {
+    return invalidPayload('club_profile_must_be_published');
+  }
 
   const clubId = clubProfile.id;
 

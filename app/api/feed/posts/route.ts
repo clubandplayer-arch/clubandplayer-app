@@ -105,6 +105,8 @@ type ProfileRow = {
   type?: string | null;
   is_verified?: boolean | null;
   is_admin?: boolean | null;
+  status?: string | null;
+  profile_visibility_status?: string | null;
 };
 
 function normalizeProfileRow(raw: any): ProfileRow | null {
@@ -119,7 +121,16 @@ function normalizeProfileRow(raw: any): ProfileRow | null {
     type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
     is_verified: (raw as any)?.is_verified ?? null,
     is_admin: (raw as any)?.is_admin ?? null,
+    status: (raw as any)?.status ?? null,
+    profile_visibility_status: (raw as any)?.profile_visibility_status ?? null,
   };
+}
+
+function isPublishedFeedAuthor(profile?: ProfileRow | null) {
+  if (!profile?.id) return false;
+  const accountType = String(profile.account_type ?? profile.type ?? '').toLowerCase();
+  if (accountType === 'admin' || profile.is_admin === true) return true;
+  return profile.status === 'active' && profile.profile_visibility_status === 'published';
 }
 
 function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
@@ -634,6 +645,11 @@ export async function GET(req: NextRequest) {
       )
       .map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
 
+  // A post without a published author creates an inconsistent feed entry: it
+  // is visible, but its author profile is intentionally unavailable. Keep the
+  // feed and public-profile lifecycle atomic by hiding those rows.
+  rows = rows.filter((row: any) => isPublishedFeedAuthor(row?.author_profile));
+
   if (currentProfileId) {
     const { data: blockedRows } = await supabase
       .from('profile_blocks')
@@ -722,7 +738,7 @@ function isKindConstraintError(err: any) {
   );
 }
 
-const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin';
+const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin, status, profile_visibility_status';
 
 const SELECT_WITH_MEDIA =
   'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
@@ -1099,12 +1115,15 @@ export async function POST(req: NextRequest) {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('account_type, type')
+        .select('id, account_type, type, status, profile_visibility_status, is_admin')
         .eq('user_id', auth.user.id)
         .maybeSingle();
       actorRole =
         normRole((profile as any)?.account_type) ||
         normRole((profile as any)?.type);
+      if (!isPublishedFeedAuthor(profile as ProfileRow | null)) {
+        return notAuthorized('Completa e pubblica il profilo prima di creare post.');
+      }
     } catch {
       actorRole = null;
     }
