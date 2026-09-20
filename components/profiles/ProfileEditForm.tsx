@@ -296,7 +296,7 @@ export default function ProfileEditForm() {
     sportId: '', disciplineId: '', variantId: '', legacySport: 'Calcio',
   });
   const [athleteRole, setAthleteRole] = useState('');
-  const [pastExperiences, setPastExperiences] = useState<PastExperience[]>([{ ...EMPTY_PAST_EXPERIENCE }]);
+  const [pastExperiences, setPastExperiences] = useState<PastExperience[]>([]);
   const [pastExperienceClubOptions, setPastExperienceClubOptions] = useState<string[]>([]);
   const [pastExperienceClubQuery, setPastExperienceClubQuery] = useState('');
   const [notifyEmail, setNotifyEmail] = useState(true);
@@ -338,7 +338,7 @@ export default function ProfileEditForm() {
     const normalized = list
       .map((value: unknown) => sanitizePastExperience((value || {}) as Record<string, unknown>))
       .filter((item: PastExperience) => !isPastExperienceEmpty(item));
-    setPastExperiences(normalized.length > 0 ? normalized : [{ ...EMPTY_PAST_EXPERIENCE }]);
+    setPastExperiences(normalized);
   }
 
   async function loadProfile() {
@@ -520,7 +520,7 @@ export default function ProfileEditForm() {
     if (p.account_type === 'athlete' || p.account_type === 'staff') {
       await loadPastExperiences();
     } else {
-      setPastExperiences([{ ...EMPTY_PAST_EXPERIENCE }]);
+      setPastExperiences([]);
     }
   }
 
@@ -901,10 +901,7 @@ export default function ProfileEditForm() {
   };
 
   const removePastExperience = (index: number) => {
-    setPastExperiences((prev) => {
-      const next = prev.filter((_, currentIndex) => currentIndex !== index);
-      return next.length > 0 ? next : [{ ...EMPTY_PAST_EXPERIENCE }];
-    });
+    setPastExperiences((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
   };
 
   if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">{t('common.loading')}</div>;
@@ -1436,17 +1433,15 @@ export default function ProfileEditForm() {
                       </div>
                     </div>
 
-                    {pastExperiences.length > 1 && (
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-red-600 hover:underline"
-                          onClick={() => removePastExperience(index)}
-                        >
-                          {t('profile.removeExperience')}
-                        </button>
-                      </div>
-                    )}
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-red-600 hover:underline"
+                        onClick={() => removePastExperience(index)}
+                      >
+                        {t('profile.removeExperience')}
+                      </button>
+                    </div>
                   </div>
                 );
               })}

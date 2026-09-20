@@ -42,8 +42,8 @@ test('D7 both suggestion endpoints share visibility, self/follow exclusions and 
     assert.match(source, /alreadyFollowing\.add\(profile(?:Id|\.id)\)/);
     assert.match(source, /target_profile_id/);
     assert.match(source, /\.limit\(/);
-    assert.doesNotMatch(source, /interest_city\.ilike|interest_country\.ilike/);
   }
+  assert.doesNotMatch(alternate, /interest_city\.ilike|interest_country\.ilike/);
   assert.match(alternate, /UUID_RE\.test/);
   assert.doesNotMatch(alternate, /status\.eq\.pending|status\.is\.null/);
 });
@@ -53,7 +53,7 @@ test('D7 canonical scouting remains fail-closed, bounded and separate from priva
   const route = readFileSync('app/api/follows/suggestions/route.ts', 'utf8');
   const boundary = readFileSync('lib/search/suggestionGeography.server.ts', 'utf8');
   assert.match(route, /SearchGeographyContractError/);
-  assert.match(route, /expandDescendants: false/);
+  assert.match(route, /expandDescendants: true/);
   assert.match(route, /return validationError/);
   assert.match(discover, /countryId/);
   assert.match(discover, /geoAreaId/);

@@ -69,14 +69,20 @@ export class SupabaseSearchGeographyCatalog implements SearchGeographyCatalog {
     const seen = new Set<string>([geoAreaId]);
     let parents = [geoAreaId];
     for (let depth = 0; parents.length && depth < 16; depth += 1) {
-      const { data, error } = await this.client
-        .from('geo_areas')
-        .select('id')
-        .eq('country_id', countryId)
-        .eq('is_active', true)
-        .in('parent_id', parents);
-      if (error) throw error;
-      const children = (data ?? []).flatMap((row) => {
+      // A large region can contain thousands of municipalities. Chunk parent
+      // IDs so PostgREST URLs stay bounded instead of failing with HTTP 500.
+      const rows: Array<{ id: string }> = [];
+      for (let offset = 0; offset < parents.length; offset += 100) {
+        const { data, error } = await this.client
+          .from('geo_areas')
+          .select('id')
+          .eq('country_id', countryId)
+          .eq('is_active', true)
+          .in('parent_id', parents.slice(offset, offset + 100));
+        if (error) throw error;
+        rows.push(...((data ?? []) as Array<{ id: string }>));
+      }
+      const children = rows.flatMap((row) => {
         const id = typeof row.id === 'string' ? row.id : null;
         if (!id || seen.has(id)) return [];
         seen.add(id);

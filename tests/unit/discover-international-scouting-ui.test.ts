@@ -21,7 +21,7 @@ test('D6 suggestions validates canonical scouting filters and keeps queries coun
   assert.match(validation, /geoAreaId: z\.string\(\)\.uuid\(\)\.optional\(\)/);
   assert.match(route, /parseSearchGeography\(url\.searchParams\)/);
   assert.match(route, /resolveCanonicalSearchGeography/);
-  assert.match(route, /expandDescendants: false/);
+  assert.match(route, /expandDescendants: true/);
   assert.match(route, /country\.ilike/);
   assert.match(route, /canonicalAreaLegacyField/);
   assert.match(route, /scoutingCountryId/);
