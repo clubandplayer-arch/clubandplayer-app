@@ -12,6 +12,10 @@ const profileForm = readFileSync(
   "components/profiles/ProfileEditForm.tsx",
   "utf8",
 );
+const canonicalGeographyAdapter = readFileSync(
+  "lib/search/canonicalGeography.server.ts",
+  "utf8",
+);
 
 test("Discover broadens personalized results and resolves explicit areas for every profile type", () => {
   assert.match(
@@ -28,6 +32,8 @@ test("Discover broadens personalized results and resolves explicit areas for eve
   assert.match(suggestions, /profile_geo_area_interests/);
   assert.match(suggestions, /interest_\$\{legacyField\}/);
   assert.match(suggestions, /expandDescendants: true/);
+  assert.doesNotMatch(suggestions, /\.in\('geo_area_id', scope\.areaIds\)/);
+  assert.match(canonicalGeographyAdapter, /parents\.slice\(offset, offset \+ 100\)/);
 });
 
 test("Discover retains published legacy people that predate newer completion fields", () => {

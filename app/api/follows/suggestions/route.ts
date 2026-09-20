@@ -35,12 +35,10 @@ async function loadProfileIdsForCanonicalScope(
   const admin = getSupabaseAdminClientOrNull();
   if (!admin) throw new Error('canonical profile discovery requires the server database client');
 
-  let areaInterestsQuery = admin
+  const areaInterestsQuery = admin
     .from('profile_geo_area_interests')
-    .select('profile_id,area:geo_areas!inner(country_id)');
-  areaInterestsQuery = scope.geoAreaId
-    ? areaInterestsQuery.in('geo_area_id', scope.areaIds)
-    : areaInterestsQuery.eq('area.country_id', scope.countryId);
+    .select('profile_id,geo_area_id,area:geo_areas!inner(country_id)')
+    .eq('area.country_id', scope.countryId);
 
   const [preferencesResult, countryInterestsResult, areaInterestsResult] = await Promise.all([
     admin
@@ -66,7 +64,15 @@ async function loadProfileIdsForCanonicalScope(
   const canonicalCountryInterestMatches = scope.geoAreaId
     ? []
     : (countryInterestsResult.data ?? []).map((row) => String(row.profile_id));
-  const canonicalAreaInterestMatches = (areaInterestsResult.data ?? []).map((row) => String(row.profile_id));
+  const scopedAreaIds = new Set(scope.areaIds);
+  const canonicalAreaInterestMatches = (areaInterestsResult.data ?? [])
+    .filter((row: any) => {
+      const area = Array.isArray(row.area) ? row.area[0] : row.area;
+      return scope.geoAreaId
+        ? scopedAreaIds.has(String(row.geo_area_id))
+        : area?.country_id === scope.countryId;
+    })
+    .map((row) => String(row.profile_id));
 
   // Keep published legacy profiles discoverable while canonical residence is
   // rolled out. A country-only canonical preference may still use its legacy
