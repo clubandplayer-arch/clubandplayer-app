@@ -98,3 +98,19 @@ export function isProfileEligibleForFollowSuggestions(profile?: ProfileCompletio
   if (accountType === 'institution') return isValidProfileClubName(name);
   return isProfileComplete(profile);
 }
+
+/**
+ * Discovery is also a migration surface: a profile published before newer
+ * mandatory fields were introduced must remain searchable. Publication and
+ * account status are enforced by the caller; this boundary only rejects
+ * malformed account types, missing/invalid public names and admin accounts.
+ */
+export function isProfileEligibleForPublicDiscovery(profile?: ProfileCompletionProfile | null) {
+  const accountType = normalizeCompletionAccountType(profile);
+  const name = text(profile?.full_name || profile?.display_name);
+
+  if (!accountType || accountType === 'admin' || !name || /\S+@\S+\.\S+/u.test(name)) return false;
+  return accountType === 'club' || accountType === 'institution'
+    ? isValidProfileClubName(name)
+    : isValidProfilePersonName(name);
+}

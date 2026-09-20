@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { isProfileEligibleForPublicDiscovery } from "../../lib/profiles/completion";
+
 const suggestions = readFileSync(
   "app/api/follows/suggestions/route.ts",
   "utf8",
@@ -14,7 +16,7 @@ const profileForm = readFileSync(
 test("Discover broadens personalized results and resolves explicit areas for every profile type", () => {
   assert.match(
     suggestions,
-    /explicitProfileIds = await loadClubIdsForCanonicalScope/,
+    /explicitProfileIds = await loadProfileIdsForCanonicalScope/,
   );
   assert.match(
     suggestions,
@@ -22,6 +24,26 @@ test("Discover broadens personalized results and resolves explicit areas for eve
   );
   assert.match(suggestions, /filters\.push\(\[\.\.\.sportFilter\]\)/);
   assert.match(suggestions, /!preference\.residence_geo_area_id/);
+  assert.match(suggestions, /profile_country_interests/);
+  assert.match(suggestions, /profile_geo_area_interests/);
+  assert.match(suggestions, /interest_\$\{legacyField\}/);
+  assert.match(suggestions, /expandDescendants: true/);
+});
+
+test("Discover retains published legacy people that predate newer completion fields", () => {
+  assert.equal(isProfileEligibleForPublicDiscovery({
+    account_type: "staff",
+    full_name: "Gabriele Basso",
+    country: "IT",
+  }), true);
+  assert.equal(isProfileEligibleForPublicDiscovery({
+    account_type: "athlete",
+    full_name: "Gaetano Baratta",
+  }), true);
+  assert.equal(isProfileEligibleForPublicDiscovery({
+    account_type: "staff",
+    full_name: "invalid@example.com",
+  }), false);
 });
 
 test("Players and staff can remove their only past experience", () => {
