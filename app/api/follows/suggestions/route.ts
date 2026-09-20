@@ -41,21 +41,21 @@ async function loadClubIdsForCanonicalScope(
     .not('residence_country_id', 'is', null);
   if (preferencesError) throw preferencesError;
 
-  const canonicalProfileIds = new Set((preferences ?? []).map((row) => String(row.profile_id)));
+  const preferenceByProfileId = new Map((preferences ?? []).map((row) => [String(row.profile_id), row]));
   const canonicalMatches = (preferences ?? [])
     .filter((row) => row.residence_country_id === scope.countryId
       && (!scope.geoAreaId || scope.areaIds.includes(String(row.residence_geo_area_id))))
     .map((row) => String(row.profile_id));
 
-  // Keep already-published legacy Clubs discoverable until they save canonical
-  // residence, but never let stale legacy fields override a canonical value.
+  // Keep published legacy profiles discoverable while canonical residence is
+  // rolled out. A country-only canonical preference may still use its legacy
+  // area, but a complete canonical residence always wins over legacy fields.
   const countryValues = Array.from(new Set([
     scope.countryIso2,
     scope.countryName,
     getCountryName(scope.countryIso2),
   ].filter((value): value is string => Boolean(value?.trim()))));
   let legacyQuery = admin.from('profiles').select('id')
-    .or('account_type.eq.club,type.eq.club')
     .or(countryValues.map((value) => `country.ilike.${toIlikeExact(value)}`).join(','));
   if (scope.geoAreaName && scope.geoAreaType) {
     legacyQuery = legacyQuery.ilike(canonicalAreaLegacyField(scope.geoAreaType), scope.geoAreaName);
@@ -64,7 +64,13 @@ async function loadClubIdsForCanonicalScope(
   if (legacyError) throw legacyError;
   const legacyOnlyMatches = (legacyClubs ?? [])
     .map((row) => String(row.id))
-    .filter((id) => !canonicalProfileIds.has(id));
+    .filter((id) => {
+      const preference = preferenceByProfileId.get(id);
+      if (!preference) return true;
+      return Boolean(scope.geoAreaId)
+        && preference.residence_country_id === scope.countryId
+        && !preference.residence_geo_area_id;
+    });
 
   return Array.from(new Set([...canonicalMatches, ...legacyOnlyMatches]));
 }
@@ -154,7 +160,7 @@ export async function GET(req: NextRequest) {
   try {
     step = 'auth';
     let explicitGeography: CanonicalSearchGeographyScope | null = null;
-    let explicitClubProfileIds: string[] | null = null;
+    let explicitProfileIds: string[] | null = null;
     const auth = await resolveAuthContext(req);
     if (!auth) {
       return errorResponse({
@@ -190,9 +196,7 @@ export async function GET(req: NextRequest) {
           new SupabaseSearchGeographyCatalog(supabase),
           { expandDescendants: false },
         );
-        if (!kind || kind === 'club') {
-          explicitClubProfileIds = await loadClubIdsForCanonicalScope(explicitGeography);
-        }
+        explicitProfileIds = await loadClubIdsForCanonicalScope(explicitGeography);
       }
     } catch (error) {
       if (error instanceof SearchGeographyContractError) {
@@ -358,7 +362,7 @@ export async function GET(req: NextRequest) {
     step = 'candidates';
     const escapeLike = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
 
-    const buildFilters = (forClubs = false) => {
+    const buildFilters = (_forClubs = false) => {
       const filters: Array<Array<(q: any) => any>> = [];
       const sportFilter: Array<(q: any) => any> = [];
 
@@ -376,26 +380,10 @@ export async function GET(req: NextRequest) {
       }
 
       if (explicitGeography) {
-        if (forClubs) {
-          const ids = explicitClubProfileIds?.length
-            ? explicitClubProfileIds
-            : ['00000000-0000-0000-0000-000000000000'];
-          filters.push([(query) => query.in('id', ids), ...sportFilter]);
-          return filters;
-        }
-        const countryValues = Array.from(new Set([
-          explicitGeography.countryIso2,
-          explicitGeography.countryName,
-          getCountryName(explicitGeography.countryIso2),
-        ].filter((value): value is string => Boolean(value))));
-        const explicitFilters: Array<(q: any) => any> = [
-          (query) => query.or(countryValues.map((value) => `country.ilike.${escapeLike(value)}`).join(',')),
-        ];
-        if (explicitGeography.geoAreaName && explicitGeography.geoAreaType) {
-          const field = canonicalAreaLegacyField(explicitGeography.geoAreaType);
-          explicitFilters.push((query) => query.ilike(field, escapeLike(explicitGeography!.geoAreaName!)));
-        }
-        filters.push([...explicitFilters, ...sportFilter]);
+        const ids = explicitProfileIds?.length
+          ? explicitProfileIds
+          : ['00000000-0000-0000-0000-000000000000'];
+        filters.push([(query) => query.in('id', ids), ...sportFilter]);
         return filters;
       }
 
@@ -407,13 +395,10 @@ export async function GET(req: NextRequest) {
         ]);
       }
 
-      if (!geographyFilters.length && sportFilter.length) filters.push([...sportFilter]);
-
-      const shouldAllowFallbackAll =
-        geoScope === 'country' && sportScope === 'all';
-      if (!filters.length || shouldAllowFallbackAll) {
-        filters.push([]);
-      }
+      // Personalized geography affects ordering, but must not collapse an
+      // otherwise healthy discovery page to one (or zero) profiles. Broaden
+      // the pool after exact matches while preserving the selected sport.
+      filters.push([...sportFilter]);
       return filters;
     };
 
