@@ -20,9 +20,9 @@ Il comportamento non nasce dal selettore o dall'ID del Paese. È la query di
 4. residenza legacy;
 5. Paese/area di interesse legacy.
 
-Questi insiemi vengono uniti senza conservare nel risultato il motivo del match.
-Di conseguenza un Club con sede in Spagna e interesse per l'Italia appartiene sia
-al risultato Spagna sia al risultato Italia. Il problema è una regressione
+Questi insiemi venivano uniti senza conservare nel risultato il motivo del match.
+Di conseguenza un Club con sede in Spagna e interesse per l'Italia apparteneva sia
+al risultato Spagna sia al risultato Italia. Il problema era una regressione
 introdotta dal commit `65a407d` del 20 settembre 2026: prima il filtro dei Club
 usava soltanto la sede/residenza, mentre il refactor ha esteso la stessa unione di
 residenza e interessi a tutti i tipi di profilo.
@@ -65,21 +65,28 @@ esclusioni della richiesta Discover. La combinazione più probabile per il risul
 vuoto è `countryId=Francia` **AND** `sportScope=mine`; l'audit dati allegato separa
 questa ipotesi dalle esclusioni e dai problemi di completezza.
 
-## Impatto per tipo profilo
+## Chiarimento di dominio e impatto per tipo profilo
 
-| Tipo | Stessa lista geografica condivisa | Può apparire in più Paesi per gli interessi | Altri filtri |
+| Tipo | Criterio corretto | Può apparire in più Paesi per gli interessi | Altri filtri |
 | --- | --- | --- | --- |
-| Club | sì | **sì, ed è il comportamento segnalato** | sport, follow/self, visibilità, completezza |
-| Ente | sì | sì | sport, follow/self, visibilità, completezza |
-| Player | sì | **sì** | sport, follow/self, visibilità, completezza |
-| Staff | sì | **sì** | sport, follow/self, visibilità, completezza |
+| Club | sede | no | sport, follow/self, visibilità, completezza |
+| Ente | sede | no | sport, follow/self, visibilità, completezza |
+| Player | zona di interesse | sì, intenzionalmente | sport, follow/self, visibilità, completezza |
+| Staff | zona di interesse | sì, intenzionalmente | sport, follow/self, visibilità, completezza |
 
-Quindi la stessa causa coinvolge anche Player e Staff. Per le persone, tuttavia,
-serve una decisione di prodotto: in altre superfici di ricerca il territorio di
-Player e Staff rappresenta volutamente la zona di interesse/scouting, non la
-nazionalità o la residenza. Il bug certo è avere applicato implicitamente questa
-semantica anche ai Club, mentre UI e aspettativa utente fanno leggere il filtro
-come sede del Club.
+Le 4.299 righe del report non rappresentano 4.299 anomalie: gran parte dei Player
+compare contemporaneamente come `legacy_interest` e `legacy_residence` perché i
+vecchi dati duplicavano lo stesso valore nei due campi. Gli esempi forniti sono
+sufficienti a confermare la causa, senza dover esaminare manualmente tutte le
+righe.
+
+La regola di prodotto è ora esplicita:
+
+- **Club/Ente** sono indicizzati per sede;
+- **Player/Staff** sono indicizzati esclusivamente per zona di interesse;
+- per Player/Staff la nazionalità serve alla bandiera e non è un criterio di
+  ricerca geografica. Non esiste più un concetto di residenza da usare in questo
+  filtro.
 
 ## Audit dati riproducibile
 
@@ -96,21 +103,14 @@ produzione. Il report:
 
 Il runbook non effettua scritture e non contiene ID di produzione hardcoded.
 
-## Decisione consigliata prima della correzione
+## Correzione applicata
 
-Separare esplicitamente le semantiche:
+L'endpoint usa ora due insiemi distinti:
 
-- **Club/Ente:** il filtro Paese/area deve usare soltanto sede canonica, con
-  fallback legacy esclusivamente per profili non ancora migrati;
-- **Player/Staff:** decidere se il filtro significa “residenza” oppure “zona in cui
-  cerca opportunità”. Se significa scouting, mantenere gli interessi ma rinominare
-  copy e motivazione del match; se significa residenza, usare la stessa regola dei
-  Club;
-- aggiungere al contratto API un `matchReason` non sensibile (per esempio
-  `residence` o `scouting_interest`) oppure endpoint separati, evitando un'unione
-  invisibile di concetti diversi;
-- rendere evidente o disattivabile `Solo il mio sport`, perché può far apparire
-  vuoto un Paese che contiene Club visibili sulla mappa.
+- `loadOrganizationIdsForCanonicalScope`: sede canonica e fallback sede legacy,
+  senza interessi;
+- `loadPeopleIdsForInterestScope`: Paesi/aree di interesse canonici e fallback
+  `interest_*` legacy, senza residenza o nazionalità.
 
-Nessuna correzione dati o modifica del comportamento è inclusa in questo audit:
-prima va confermata la semantica desiderata per Player e Staff.
+Il filtro sport resta indipendente e può ancora restringere i risultati rispetto
+alla mappa; non è una contaminazione geografica.

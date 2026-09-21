@@ -113,11 +113,18 @@ where account_type = 'club'
   and canonical_residence_country = 'FR'
 order by profile_name;
 
--- D. Does a profile match the same explicit country by multiple independent
--- sources? The endpoint deduplicates these IDs and hides the source from the UI.
+-- D. Conflicting sources only. Do not list the thousands of harmless Player rows
+-- where legacy_interest and legacy_residence contain the same historical value:
+-- Player/Staff are intentionally indexed by interest and nationality is display-only.
 select matched_country, profile_id, account_type, profile_name,
   array_agg(distinct match_source order by match_source) as match_sources
 from discover_geography_match_audit
 group by matched_country, profile_id, account_type, profile_name
 having count(distinct match_source) > 1
+  and (
+    account_type in ('club', 'institution')
+    or count(distinct match_source) filter (
+      where match_source in ('canonical_country_interest', 'canonical_area_interest', 'legacy_interest')
+    ) > 1
+  )
 order by matched_country, account_type, profile_name;

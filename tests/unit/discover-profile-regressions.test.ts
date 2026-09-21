@@ -17,20 +17,21 @@ const canonicalGeographyAdapter = readFileSync(
   "utf8",
 );
 
-test("Discover broadens personalized results and resolves explicit areas for every profile type", () => {
+test("Discover separates organization headquarters from Player and Staff interest areas", () => {
   assert.match(
     suggestions,
-    /explicitProfileIds = await loadProfileIdsForCanonicalScope/,
+    /loadOrganizationIdsForCanonicalScope/,
   );
+  assert.match(suggestions, /loadPeopleIdsForInterestScope/);
   assert.match(
     suggestions,
     /filters\.push\(\[\(query\) => query\.in\('id', ids\), \.\.\.sportFilter\]\)/,
   );
   assert.match(suggestions, /filters\.push\(\[\.\.\.sportFilter\]\)/);
-  assert.match(suggestions, /!preference\.residence_geo_area_id/);
   assert.match(suggestions, /profile_country_interests/);
   assert.match(suggestions, /profile_geo_area_interests/);
-  assert.match(suggestions, /interest_\$\{legacyField\}/);
+  assert.match(suggestions, /interest_\$\{canonicalAreaLegacyField/);
+  assert.match(suggestions, /forOrganizations \? explicitOrganizationIds : explicitPeopleIds/);
   assert.match(suggestions, /expandDescendants: true/);
   assert.doesNotMatch(suggestions, /\.in\('geo_area_id', scope\.areaIds\)/);
   assert.match(canonicalGeographyAdapter, /parents\.slice\(offset, offset \+ 100\)/);
