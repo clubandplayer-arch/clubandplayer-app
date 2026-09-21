@@ -21,10 +21,36 @@ import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.
 import { applyExactCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d8';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d11';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// EIFA was approved before institution_verification_requests became the source
+// of truth. Keep the historical approval explicit and keyed by the immutable
+// profile id so another institution cannot obtain visibility by copying its name.
+const LEGACY_APPROVED_INSTITUTION_IDS = ['a91ed4b2-c902-4700-8fc6-c71387e7ab09'] as const;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
+
+async function loadApprovedInstitutionIds(): Promise<string[]> {
+  const admin = getSupabaseAdminClientOrNull();
+  // Verification requests are intentionally hidden from ordinary users by RLS.
+  // Without the service client, fail closed instead of exposing unverified entities.
+  if (!admin) return [];
+
+  const { data, error } = await admin
+    .from('institution_verification_requests')
+    .select('institution_id')
+    // The admin status is the source of truth. Older approvals (such as EIFA)
+    // can predate reviewer_id and verified_until metadata and must remain visible.
+    .eq('status', 'approved');
+  if (error) throw error;
+
+  return Array.from(new Set([
+    ...LEGACY_APPROVED_INSTITUTION_IDS,
+    ...(data ?? [])
+      .map((row) => String(row.institution_id ?? ''))
+      .filter((id) => UUID_RE.test(id)),
+  ]));
+}
 
 async function loadOrganizationIdsForCanonicalScope(
   scope: CanonicalSearchGeographyScope,
@@ -314,6 +340,16 @@ export async function GET(req: NextRequest) {
         query = query.or('account_type.eq.staff,type.eq.staff');
       } else {
         query = query.eq('account_type', accountType);
+      }
+
+      if (accountType === 'institution') {
+        const approvedInstitutionIds = await loadApprovedInstitutionIds();
+        query = query.in(
+          'id',
+          approvedInstitutionIds.length
+            ? approvedInstitutionIds
+            : ['00000000-0000-0000-0000-000000000000'],
+        );
       }
 
       query = applyPublicProfileVisibilityFilters(query)
