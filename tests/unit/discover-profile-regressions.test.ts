@@ -16,6 +16,11 @@ const canonicalGeographyAdapter = readFileSync(
   "lib/search/canonicalGeography.server.ts",
   "utf8",
 );
+const discoverPage = readFileSync(
+  "app/(dashboard)/discover/page.tsx",
+  "utf8",
+);
+const followValidation = readFileSync("lib/validation/follow.ts", "utf8");
 
 test("Discover separates organization headquarters from Player and Staff interest areas", () => {
   assert.match(
@@ -51,6 +56,17 @@ test("Discover retains published legacy people that predate newer completion fie
     account_type: "staff",
     full_name: "invalid@example.com",
   }), false);
+});
+
+test("Discover global catalog includes followed and foreign historical profiles", () => {
+  assert.match(discoverPage, /limit: '200'/);
+  assert.match(discoverPage, /includeFollowed: 'true'/);
+  assert.match(followValidation, /numberFromParam\(4, 1, 200\)/);
+  assert.match(suggestions, /new Set\(includeFollowed \? \[\] : excludedUuid\)/);
+  assert.match(discoverPage, /selectCountry: t\('map\.allCountries'\)/);
+  assert.match(suggestions, /An empty country means every country/);
+  assert.doesNotMatch(suggestions, /suggestionFiltersForScope\(geographyPlan, geoScope\)/);
+  assert.match(suggestions, /isProfileEligibleForPublicDiscovery/);
 });
 
 test("Players and staff can remove their only past experience", () => {

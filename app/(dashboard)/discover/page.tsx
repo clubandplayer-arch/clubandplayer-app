@@ -130,7 +130,13 @@ export default function DiscoverPage() {
     const controller = new AbortController();
 
     const fetchSuggestions = async (kind: TabKey) => {
-      const params = new URLSearchParams({ kind, limit: '50', geoScope, sportScope });
+      const params = new URLSearchParams({
+        kind,
+        limit: '200',
+        geoScope,
+        sportScope,
+        includeFollowed: 'true',
+      });
       if (countryId) params.set('countryId', countryId);
       if (geoAreaId) params.set('geoAreaId', geoAreaId);
       const res = await fetch(`/api/follows/suggestions?${params.toString()}`, {
@@ -230,6 +236,7 @@ export default function DiscoverPage() {
         </div>
         <CanonicalGeographySelector
           idPrefix="discover-scouting-geography"
+          labels={{ selectCountry: t('map.allCountries') }}
           countryId={countryId}
           geoAreaId={geoAreaId}
           onCountryChange={(nextCountryId) => {

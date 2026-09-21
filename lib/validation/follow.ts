@@ -21,12 +21,13 @@ export const FollowStateQuerySchema = z.object({
 });
 
 export const FollowSuggestionsQuerySchema = z.object({
-  limit: numberFromParam(4, 1, 50),
+  limit: numberFromParam(4, 1, 200),
   kind: z
     .enum(['institution', 'club', 'player', 'staff'])
     .optional(),
   geoScope: z.enum(['country', 'region', 'province', 'city']).optional(),
   sportScope: z.enum(['mine', 'all']).optional(),
+  includeFollowed: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
   countryId: z.string().uuid().optional(),
   geoAreaId: z.string().uuid().optional(),
   country_id: z.string().uuid().optional(),

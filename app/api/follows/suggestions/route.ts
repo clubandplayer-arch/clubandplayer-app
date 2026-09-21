@@ -16,15 +16,12 @@ import {
   SearchGeographyContractError,
   type CanonicalSearchGeographyScope,
 } from '@/lib/search/canonicalGeographyContract';
-import { rankSuggestionCandidates, suggestionFiltersForScope } from '@/lib/search/suggestionGeography';
-import {
-  applySuggestionGeographyFilter,
-  loadViewerSuggestionGeography,
-} from '@/lib/search/suggestionGeography.server';
+import { rankSuggestionCandidates } from '@/lib/search/suggestionGeography';
+import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.server';
 import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d5';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d6';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
@@ -141,7 +138,12 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return validationError('Parametri non validi', parsed.error.flatten());
   }
-  const { limit, kind, geoScope = 'province', sportScope = 'mine' }: FollowSuggestionsQueryInput = parsed.data;
+  const {
+    limit,
+    kind,
+    sportScope = 'mine',
+    includeFollowed = false,
+  }: FollowSuggestionsQueryInput = parsed.data;
   const debugMode = url.searchParams.get('debug') === '1';
   let step = 'init';
   const debugInfo = {
@@ -271,7 +273,9 @@ export async function GET(req: NextRequest) {
     debugInfo.excludedIdsSample = excludedIdsRaw.slice(0, 5);
     debugInfo.invalidIdsSample = invalidIds.slice(0, 5);
 
-    const alreadyFollowing = new Set(excludedUuid);
+    // Discover is also a browsable catalog: followed profiles must remain
+    // visible there. Other suggestion consumers retain the exclusion default.
+    const alreadyFollowing = new Set(includeFollowed ? [] : excludedUuid);
     alreadyFollowing.add(profileId);
 
     const baseSelect =
@@ -427,17 +431,9 @@ export async function GET(req: NextRequest) {
         return filters;
       }
 
-      const geographyFilters = suggestionFiltersForScope(geographyPlan, geoScope);
-      for (const geographyFilter of geographyFilters) {
-        filters.push([
-          (query) => applySuggestionGeographyFilter(query, geographyFilter),
-          ...sportFilter,
-        ]);
-      }
-
-      // Personalized geography affects ordering, but must not collapse an
-      // otherwise healthy discovery page to one (or zero) profiles. Broaden
-      // the pool after exact matches while preserving the selected sport.
+      // An empty country means every country. Personalized geography is used by
+      // rankSuggestionCandidates for ordering only; it must never fill the
+      // result window with a local bucket before foreign profiles are considered.
       filters.push([...sportFilter]);
       return filters;
     };
