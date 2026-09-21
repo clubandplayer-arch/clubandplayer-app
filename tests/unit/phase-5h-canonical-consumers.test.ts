@@ -16,8 +16,10 @@ test("global search validates canonical sport filters and preserves legacy fallb
 
 test("Discover and WhoToFollow prefer viewer canonical sport with legacy fallback", () => {
   assert.match(discover, /viewerSportId/);
-  assert.match(discover, /applyCanonicalSportFilters/);
+  assert.match(discover, /applyExactCanonicalSportFilters/);
   assert.match(discover, /sportId: viewerSportId/);
+  assert.match(discover, /disciplineId: profile\.sport_discipline_id/);
+  assert.match(discover, /variantId: profile\.sport_variant_id/);
   assert.match(discover, /profile\.sport/);
   assert.match(discover, /else if \(sportScope === 'mine' && profile\.sport\)/);
   assert.match(who, /sportQuery = profile\.sport_id/);
