@@ -135,7 +135,6 @@ export default function DiscoverPage() {
         limit: '200',
         geoScope,
         sportScope,
-        includeFollowed: 'true',
       });
       if (countryId) params.set('countryId', countryId);
       if (geoAreaId) params.set('geoAreaId', geoAreaId);

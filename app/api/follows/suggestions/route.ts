@@ -21,7 +21,7 @@ import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.
 import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d6';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d7';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
@@ -142,7 +142,6 @@ export async function GET(req: NextRequest) {
     limit,
     kind,
     sportScope = 'mine',
-    includeFollowed = false,
   }: FollowSuggestionsQueryInput = parsed.data;
   const debugMode = url.searchParams.get('debug') === '1';
   let step = 'init';
@@ -273,9 +272,8 @@ export async function GET(req: NextRequest) {
     debugInfo.excludedIdsSample = excludedIdsRaw.slice(0, 5);
     debugInfo.invalidIdsSample = invalidIds.slice(0, 5);
 
-    // Discover is also a browsable catalog: followed profiles must remain
-    // visible there. Other suggestion consumers retain the exclusion default.
-    const alreadyFollowing = new Set(includeFollowed ? [] : excludedUuid);
+    // "Chi seguire" proposes only profiles that the viewer does not follow yet.
+    const alreadyFollowing = new Set(excludedUuid);
     alreadyFollowing.add(profileId);
 
     const baseSelect =

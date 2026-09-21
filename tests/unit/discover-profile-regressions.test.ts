@@ -58,11 +58,13 @@ test("Discover retains published legacy people that predate newer completion fie
   }), false);
 });
 
-test("Discover global catalog includes followed and foreign historical profiles", () => {
+test("Discover global suggestions include foreign historical profiles but exclude followed profiles", () => {
   assert.match(discoverPage, /limit: '200'/);
-  assert.match(discoverPage, /includeFollowed: 'true'/);
   assert.match(followValidation, /numberFromParam\(4, 1, 200\)/);
-  assert.match(suggestions, /new Set\(includeFollowed \? \[\] : excludedUuid\)/);
+  assert.doesNotMatch(discoverPage, /includeFollowed/);
+  assert.doesNotMatch(followValidation, /includeFollowed/);
+  assert.match(suggestions, /const alreadyFollowing = new Set\(excludedUuid\)/);
+  assert.match(suggestions, /alreadyFollowing\.add\(profileId\)/);
   assert.match(discoverPage, /selectCountry: t\('map\.allCountries'\)/);
   assert.match(suggestions, /An empty country means every country/);
   assert.doesNotMatch(suggestions, /suggestionFiltersForScope\(geographyPlan, geoScope\)/);

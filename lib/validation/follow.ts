@@ -27,7 +27,6 @@ export const FollowSuggestionsQuerySchema = z.object({
     .optional(),
   geoScope: z.enum(['country', 'region', 'province', 'city']).optional(),
   sportScope: z.enum(['mine', 'all']).optional(),
-  includeFollowed: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
   countryId: z.string().uuid().optional(),
   geoAreaId: z.string().uuid().optional(),
   country_id: z.string().uuid().optional(),

@@ -123,12 +123,11 @@ con “Tutti i Paesi” e “Tutti gli sport”:
 1. l'assenza del Paese non significava realmente “tutti”: l'endpoint eseguiva
    prima i bucket geografici personalizzati e un bucket locale poteva esaurire il
    limite prima di interrogare i Club esteri;
-2. i profili già seguiti venivano esclusi dai suggerimenti. Per esempio Leontina
-   FC, visibile nel riquadro “Profili che segui”, non poteva contemporaneamente
-   apparire nel catalogo Discover.
+2. i profili già seguiti venivano esclusi correttamente dai suggerimenti. Per
+   esempio Leontina FC, visibile nel riquadro “Profili che segui”, non deve
+   contemporaneamente apparire in “Chi seguire”. La sua assenza non era un bug.
 
-Discover ora richiede esplicitamente un catalogo fino a 200 risultati che include
-anche i profili seguiti. Senza Paese, la query considera direttamente tutti i
-Paesi (applicando eventualmente solo lo sport) e usa le preferenze geografiche
-per ordinare, non per escludere. I consumer dell'endpoint dedicati ai semplici
-suggerimenti continuano invece a escludere i profili già seguiti per default.
+Discover ora richiede fino a 200 suggerimenti. Senza Paese, la query considera
+direttamente tutti i Paesi (applicando eventualmente solo lo sport) e usa le
+preferenze geografiche per ordinare, non per escludere. “Chi seguire” continua a
+escludere sempre il profilo corrente e tutte le utenze già seguite.
