@@ -78,3 +78,39 @@ export function applyCanonicalSportFilters(
   if (filters.variantId) next = next.eq("sport_variant_id", filters.variantId);
   return next;
 }
+
+/**
+ * Matches one selectable sport, rather than every selection in the same
+ * canonical sport family. Null discipline/variant values are significant:
+ * Football, Futsal and the numbered football variants can share sport_id,
+ * while remaining distinct choices for discovery purposes.
+ */
+export function applyExactCanonicalSportFilters(
+  query: any,
+  filters: CanonicalSportFilters,
+  legacySport?: string | null,
+) {
+  if (legacySport?.trim()) {
+    const quotedLegacySport = `"${legacySport.trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    const canonicalParts = [
+      `sport_id.eq.${filters.sportId}`,
+      filters.disciplineId
+        ? `sport_discipline_id.eq.${filters.disciplineId}`
+        : "sport_discipline_id.is.null",
+      filters.variantId
+        ? `sport_variant_id.eq.${filters.variantId}`
+        : "sport_variant_id.is.null",
+    ];
+    return query.or(
+      `and(${canonicalParts.join(",")}),and(sport_id.is.null,sport.ilike.${quotedLegacySport})`,
+    );
+  }
+
+  let next = query.eq("sport_id", filters.sportId);
+  next = filters.disciplineId
+    ? next.eq("sport_discipline_id", filters.disciplineId)
+    : next.is("sport_discipline_id", null);
+  return filters.variantId
+    ? next.eq("sport_variant_id", filters.variantId)
+    : next.is("sport_variant_id", null);
+}

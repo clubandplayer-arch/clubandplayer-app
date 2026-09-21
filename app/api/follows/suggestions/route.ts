@@ -18,10 +18,10 @@ import {
 } from '@/lib/search/canonicalGeographyContract';
 import { rankSuggestionCandidates } from '@/lib/search/suggestionGeography';
 import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.server';
-import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
+import { applyExactCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d7';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d8';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
@@ -409,9 +409,13 @@ export async function GET(req: NextRequest) {
 
       if (sportScope === 'mine' && viewerSportId) {
         sportFilter.push((q) =>
-          applyCanonicalSportFilters(
+          applyExactCanonicalSportFilters(
             q,
-            { sportId: viewerSportId, disciplineId: null, variantId: null },
+            {
+              sportId: viewerSportId,
+              disciplineId: profile.sport_discipline_id,
+              variantId: profile.sport_variant_id,
+            },
             profile.sport,
           ),
         );
