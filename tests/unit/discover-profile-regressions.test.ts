@@ -80,6 +80,8 @@ test("Discover exposes institutions approved by the admin, including historical 
   assert.match(approvalLoader, /\.eq\('status', 'approved'\)/);
   assert.doesNotMatch(approvalLoader, /\.not\('reviewer_id', 'is', null\)/);
   assert.doesNotMatch(approvalLoader, /\.gt\('verified_until'/);
+  assert.match(approvalLoader, /LEGACY_APPROVED_INSTITUTION_IDS/);
+  assert.match(suggestions, /a91ed4b2-c902-4700-8fc6-c71387e7ab09/);
   assert.match(suggestions, /if \(accountType === 'institution'\)/);
   assert.match(suggestions, /approvedInstitutionIds\.length/);
 });

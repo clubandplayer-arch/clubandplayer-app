@@ -21,8 +21,12 @@ import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.
 import { applyExactCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d10';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d11';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// EIFA was approved before institution_verification_requests became the source
+// of truth. Keep the historical approval explicit and keyed by the immutable
+// profile id so another institution cannot obtain visibility by copying its name.
+const LEGACY_APPROVED_INSTITUTION_IDS = ['a91ed4b2-c902-4700-8fc6-c71387e7ab09'] as const;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
 
@@ -40,11 +44,12 @@ async function loadApprovedInstitutionIds(): Promise<string[]> {
     .eq('status', 'approved');
   if (error) throw error;
 
-  return Array.from(new Set(
-    (data ?? [])
+  return Array.from(new Set([
+    ...LEGACY_APPROVED_INSTITUTION_IDS,
+    ...(data ?? [])
       .map((row) => String(row.institution_id ?? ''))
       .filter((id) => UUID_RE.test(id)),
-  ));
+  ]));
 }
 
 async function loadOrganizationIdsForCanonicalScope(
