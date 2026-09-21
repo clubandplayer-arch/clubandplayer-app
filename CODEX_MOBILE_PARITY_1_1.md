@@ -1,5 +1,11 @@
 # Codex Mobile — Guida Unificata di Replica Parity 1:1
 
+> **Addendum Discover aggiornato (21 settembre 2026):** per la parity corrente di
+> Scopri profili / Chi seguire leggere prima
+> `CODEX_MOBILE_DISCOVER_GEOGRAPHY_PARITY.md`. L'addendum definisce la separazione
+> sede Club/Enti vs interessi Player/Staff, Tutti i Paesi, compatibilità storica e
+> l'esclusione obbligatoria dei profili già seguiti.
+
 ## Obiettivo
 Replicare **semanticamente 1:1** sul progetto mobile tutti i comportamenti introdotti sul web nei branch descritti negli audit/sommari allegati.
 
@@ -217,4 +223,3 @@ Replicare **semanticamente 1:1** sul progetto mobile tutti i comportamenti intro
 - [ ] Search API trova staff anche con ruoli concreti (es. Presidente).
 - [ ] Search UI mostra tab/sezione/count/badge Staff corretti.
 - [ ] Build TypeScript pulita (fix Vercel incluso).
-

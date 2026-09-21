@@ -21,7 +21,7 @@ export const FollowStateQuerySchema = z.object({
 });
 
 export const FollowSuggestionsQuerySchema = z.object({
-  limit: numberFromParam(4, 1, 50),
+  limit: numberFromParam(4, 1, 200),
   kind: z
     .enum(['institution', 'club', 'player', 'staff'])
     .optional(),

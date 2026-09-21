@@ -16,104 +16,95 @@ import {
   SearchGeographyContractError,
   type CanonicalSearchGeographyScope,
 } from '@/lib/search/canonicalGeographyContract';
-import { rankSuggestionCandidates, suggestionFiltersForScope } from '@/lib/search/suggestionGeography';
-import {
-  applySuggestionGeographyFilter,
-  loadViewerSuggestionGeography,
-} from '@/lib/search/suggestionGeography.server';
+import { rankSuggestionCandidates } from '@/lib/search/suggestionGeography';
+import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.server';
 import { applyCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-01-d4';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d7';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
 
-async function loadProfileIdsForCanonicalScope(
+async function loadOrganizationIdsForCanonicalScope(
   scope: CanonicalSearchGeographyScope,
 ): Promise<string[]> {
   const admin = getSupabaseAdminClientOrNull();
-  if (!admin) throw new Error('canonical profile discovery requires the server database client');
+  if (!admin) throw new Error('canonical organization discovery requires the server database client');
 
-  const areaInterestsQuery = admin
-    .from('profile_geo_area_interests')
-    .select('profile_id,geo_area_id,area:geo_areas!inner(country_id)')
-    .eq('area.country_id', scope.countryId);
+  const { data: preferences, error: preferencesError } = await admin
+    .from('profile_preferences')
+    .select('profile_id,residence_country_id,residence_geo_area_id')
+    .not('residence_country_id', 'is', null);
+  if (preferencesError) throw preferencesError;
 
-  const [preferencesResult, countryInterestsResult, areaInterestsResult] = await Promise.all([
-    admin
-      .from('profile_preferences')
-      .select('profile_id,residence_country_id,residence_geo_area_id')
-      .not('residence_country_id', 'is', null),
-    admin
-      .from('profile_country_interests')
-      .select('profile_id')
-      .eq('country_id', scope.countryId),
-    areaInterestsQuery,
-  ]);
-  for (const result of [preferencesResult, countryInterestsResult, areaInterestsResult]) {
-    if (result.error) throw result.error;
-  }
-
-  const preferences = preferencesResult.data ?? [];
-  const preferenceByProfileId = new Map((preferences ?? []).map((row) => [String(row.profile_id), row]));
+  const canonicalProfileIds = new Set((preferences ?? []).map((row) => String(row.profile_id)));
   const canonicalMatches = (preferences ?? [])
     .filter((row) => row.residence_country_id === scope.countryId
       && (!scope.geoAreaId || scope.areaIds.includes(String(row.residence_geo_area_id))))
     .map((row) => String(row.profile_id));
-  const canonicalCountryInterestMatches = scope.geoAreaId
-    ? []
-    : (countryInterestsResult.data ?? []).map((row) => String(row.profile_id));
-  const scopedAreaIds = new Set(scope.areaIds);
-  const canonicalAreaInterestMatches = (areaInterestsResult.data ?? [])
-    .filter((row: any) => {
-      const area = Array.isArray(row.area) ? row.area[0] : row.area;
-      return scope.geoAreaId
-        ? scopedAreaIds.has(String(row.geo_area_id))
-        : area?.country_id === scope.countryId;
-    })
-    .map((row) => String(row.profile_id));
-
-  // Keep published legacy profiles discoverable while canonical residence is
-  // rolled out. A country-only canonical preference may still use its legacy
-  // area, but a complete canonical residence always wins over legacy fields.
+  // Organizations are indexed by headquarters. Nationality and scouting
+  // interests must never make a Club/Institution appear in another country.
   const countryValues = Array.from(new Set([
     scope.countryIso2,
     scope.countryName,
     getCountryName(scope.countryIso2),
   ].filter((value): value is string => Boolean(value?.trim()))));
   let legacyResidenceQuery = admin.from('profiles').select('id')
+    .or('account_type.eq.club,account_type.eq.institution,type.eq.club,type.eq.institution')
     .or(countryValues.map((value) => `country.ilike.${toIlikeExact(value)}`).join(','));
-  let legacyInterestQuery = admin.from('profiles').select('id')
-    .or(countryValues.map((value) => `interest_country.ilike.${toIlikeExact(value)}`).join(','));
   if (scope.geoAreaName && scope.geoAreaType) {
     const legacyField = canonicalAreaLegacyField(scope.geoAreaType);
     legacyResidenceQuery = legacyResidenceQuery.ilike(legacyField, scope.geoAreaName);
-    legacyInterestQuery = legacyInterestQuery.ilike(`interest_${legacyField}`, scope.geoAreaName);
   }
-  const [legacyResidenceResult, legacyInterestResult] = await Promise.all([
-    legacyResidenceQuery,
-    legacyInterestQuery,
-  ]);
+  const legacyResidenceResult = await legacyResidenceQuery;
   if (legacyResidenceResult.error) throw legacyResidenceResult.error;
-  if (legacyInterestResult.error) throw legacyInterestResult.error;
   const legacyResidenceMatches = (legacyResidenceResult.data ?? [])
     .map((row) => String(row.id))
-    .filter((id) => {
-      const preference = preferenceByProfileId.get(id);
-      if (!preference) return true;
-      return Boolean(scope.geoAreaId)
-        && preference.residence_country_id === scope.countryId
-        && !preference.residence_geo_area_id;
-    });
-  const legacyInterestMatches = (legacyInterestResult.data ?? []).map((row) => String(row.id));
+    .filter((id) => !canonicalProfileIds.has(id));
+
+  return Array.from(new Set([...canonicalMatches, ...legacyResidenceMatches]));
+}
+
+async function loadPeopleIdsForInterestScope(scope: CanonicalSearchGeographyScope): Promise<string[]> {
+  const admin = getSupabaseAdminClientOrNull();
+  if (!admin) throw new Error('canonical people discovery requires the server database client');
+
+  const [countryInterestsResult, areaInterestsResult] = await Promise.all([
+    admin.from('profile_country_interests').select('profile_id').eq('country_id', scope.countryId),
+    admin.from('profile_geo_area_interests')
+      .select('profile_id,geo_area_id,area:geo_areas!inner(country_id)')
+      .eq('area.country_id', scope.countryId),
+  ]);
+  if (countryInterestsResult.error) throw countryInterestsResult.error;
+  if (areaInterestsResult.error) throw areaInterestsResult.error;
+
+  const canonicalCountryMatches = scope.geoAreaId
+    ? []
+    : (countryInterestsResult.data ?? []).map((row) => String(row.profile_id));
+  const scopedAreaIds = new Set(scope.areaIds);
+  const canonicalAreaMatches = (areaInterestsResult.data ?? [])
+    .filter((row: any) => scope.geoAreaId
+      ? scopedAreaIds.has(String(row.geo_area_id))
+      : (Array.isArray(row.area) ? row.area[0] : row.area)?.country_id === scope.countryId)
+    .map((row) => String(row.profile_id));
+
+  const countryValues = Array.from(new Set([
+    scope.countryIso2, scope.countryName, getCountryName(scope.countryIso2),
+  ].filter((value): value is string => Boolean(value?.trim()))));
+  let legacyQuery = admin.from('profiles').select('id')
+    .or('account_type.eq.athlete,account_type.eq.staff,type.eq.athlete,type.eq.player,type.eq.staff')
+    .or(countryValues.map((value) => `interest_country.ilike.${toIlikeExact(value)}`).join(','));
+  if (scope.geoAreaName && scope.geoAreaType) {
+    legacyQuery = legacyQuery.ilike(`interest_${canonicalAreaLegacyField(scope.geoAreaType)}`, scope.geoAreaName);
+  }
+  const { data: legacyRows, error: legacyError } = await legacyQuery;
+  if (legacyError) throw legacyError;
 
   return Array.from(new Set([
-    ...canonicalMatches,
-    ...canonicalCountryInterestMatches,
-    ...canonicalAreaInterestMatches,
-    ...legacyResidenceMatches,
-    ...legacyInterestMatches,
+    ...canonicalCountryMatches,
+    ...canonicalAreaMatches,
+    ...(legacyRows ?? []).map((row) => String(row.id)),
   ]));
 }
 
@@ -147,7 +138,11 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return validationError('Parametri non validi', parsed.error.flatten());
   }
-  const { limit, kind, geoScope = 'province', sportScope = 'mine' }: FollowSuggestionsQueryInput = parsed.data;
+  const {
+    limit,
+    kind,
+    sportScope = 'mine',
+  }: FollowSuggestionsQueryInput = parsed.data;
   const debugMode = url.searchParams.get('debug') === '1';
   let step = 'init';
   const debugInfo = {
@@ -202,7 +197,8 @@ export async function GET(req: NextRequest) {
   try {
     step = 'auth';
     let explicitGeography: CanonicalSearchGeographyScope | null = null;
-    let explicitProfileIds: string[] | null = null;
+    let explicitOrganizationIds: string[] | null = null;
+    let explicitPeopleIds: string[] | null = null;
     const auth = await resolveAuthContext(req);
     if (!auth) {
       return errorResponse({
@@ -238,7 +234,10 @@ export async function GET(req: NextRequest) {
           new SupabaseSearchGeographyCatalog(supabase),
           { expandDescendants: true },
         );
-        explicitProfileIds = await loadProfileIdsForCanonicalScope(explicitGeography);
+        [explicitOrganizationIds, explicitPeopleIds] = await Promise.all([
+          loadOrganizationIdsForCanonicalScope(explicitGeography),
+          loadPeopleIdsForInterestScope(explicitGeography),
+        ]);
       }
     } catch (error) {
       if (error instanceof SearchGeographyContractError) {
@@ -273,6 +272,7 @@ export async function GET(req: NextRequest) {
     debugInfo.excludedIdsSample = excludedIdsRaw.slice(0, 5);
     debugInfo.invalidIdsSample = invalidIds.slice(0, 5);
 
+    // "Chi seguire" proposes only profiles that the viewer does not follow yet.
     const alreadyFollowing = new Set(excludedUuid);
     alreadyFollowing.add(profileId);
 
@@ -403,7 +403,7 @@ export async function GET(req: NextRequest) {
     step = 'candidates';
     const escapeLike = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
 
-    const buildFilters = (_forClubs = false) => {
+    const buildFilters = (forOrganizations = false) => {
       const filters: Array<Array<(q: any) => any>> = [];
       const sportFilter: Array<(q: any) => any> = [];
 
@@ -421,24 +421,17 @@ export async function GET(req: NextRequest) {
       }
 
       if (explicitGeography) {
-        const ids = explicitProfileIds?.length
-          ? explicitProfileIds
+        const matchingIds = forOrganizations ? explicitOrganizationIds : explicitPeopleIds;
+        const ids = matchingIds?.length
+          ? matchingIds
           : ['00000000-0000-0000-0000-000000000000'];
         filters.push([(query) => query.in('id', ids), ...sportFilter]);
         return filters;
       }
 
-      const geographyFilters = suggestionFiltersForScope(geographyPlan, geoScope);
-      for (const geographyFilter of geographyFilters) {
-        filters.push([
-          (query) => applySuggestionGeographyFilter(query, geographyFilter),
-          ...sportFilter,
-        ]);
-      }
-
-      // Personalized geography affects ordering, but must not collapse an
-      // otherwise healthy discovery page to one (or zero) profiles. Broaden
-      // the pool after exact matches while preserving the selected sport.
+      // An empty country means every country. Personalized geography is used by
+      // rankSuggestionCandidates for ordering only; it must never fill the
+      // result window with a local bucket before foreign profiles are considered.
       filters.push([...sportFilter]);
       return filters;
     };
