@@ -71,12 +71,15 @@ test("Discover global suggestions include foreign historical profiles but exclud
   assert.match(suggestions, /isProfileEligibleForPublicDiscovery/);
 });
 
-test("Discover exposes only institutions with a current manual approval", () => {
-  assert.match(suggestions, /loadApprovedInstitutionIds/);
-  assert.match(suggestions, /\.from\('institution_verification_requests'\)/);
-  assert.match(suggestions, /\.eq\('status', 'approved'\)/);
-  assert.match(suggestions, /\.not\('reviewer_id', 'is', null\)/);
-  assert.match(suggestions, /\.gt\('verified_until', new Date\(\)\.toISOString\(\)\)/);
+test("Discover exposes institutions approved by the admin, including historical approvals", () => {
+  const approvalLoader = suggestions.slice(
+    suggestions.indexOf('async function loadApprovedInstitutionIds'),
+    suggestions.indexOf('async function loadOrganizationIdsForCanonicalScope'),
+  );
+  assert.match(approvalLoader, /\.from\('institution_verification_requests'\)/);
+  assert.match(approvalLoader, /\.eq\('status', 'approved'\)/);
+  assert.doesNotMatch(approvalLoader, /\.not\('reviewer_id', 'is', null\)/);
+  assert.doesNotMatch(approvalLoader, /\.gt\('verified_until'/);
   assert.match(suggestions, /if \(accountType === 'institution'\)/);
   assert.match(suggestions, /approvedInstitutionIds\.length/);
 });

@@ -21,7 +21,7 @@ import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.
 import { applyExactCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d9';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d10';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
@@ -35,9 +35,9 @@ async function loadApprovedInstitutionIds(): Promise<string[]> {
   const { data, error } = await admin
     .from('institution_verification_requests')
     .select('institution_id')
-    .eq('status', 'approved')
-    .not('reviewer_id', 'is', null)
-    .gt('verified_until', new Date().toISOString());
+    // The admin status is the source of truth. Older approvals (such as EIFA)
+    // can predate reviewer_id and verified_until metadata and must remain visible.
+    .eq('status', 'approved');
   if (error) throw error;
 
   return Array.from(new Set(
