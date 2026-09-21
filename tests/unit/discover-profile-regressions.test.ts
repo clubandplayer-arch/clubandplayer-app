@@ -71,6 +71,16 @@ test("Discover global suggestions include foreign historical profiles but exclud
   assert.match(suggestions, /isProfileEligibleForPublicDiscovery/);
 });
 
+test("Discover exposes only institutions with a current manual approval", () => {
+  assert.match(suggestions, /loadApprovedInstitutionIds/);
+  assert.match(suggestions, /\.from\('institution_verification_requests'\)/);
+  assert.match(suggestions, /\.eq\('status', 'approved'\)/);
+  assert.match(suggestions, /\.not\('reviewer_id', 'is', null\)/);
+  assert.match(suggestions, /\.gt\('verified_until', new Date\(\)\.toISOString\(\)\)/);
+  assert.match(suggestions, /if \(accountType === 'institution'\)/);
+  assert.match(suggestions, /approvedInstitutionIds\.length/);
+});
+
 test("Players and staff can remove their only past experience", () => {
   assert.match(profileForm, /useState<PastExperience\[\]>\(\[\]\)/);
   assert.match(profileForm, /setPastExperiences\(normalized\)/);

@@ -21,10 +21,31 @@ import { loadViewerSuggestionGeography } from '@/lib/search/suggestionGeography.
 import { applyExactCanonicalSportFilters } from '@/lib/search/canonicalSportFilters';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d8';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-21-d9';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toIlikeExact = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
+
+async function loadApprovedInstitutionIds(): Promise<string[]> {
+  const admin = getSupabaseAdminClientOrNull();
+  // Verification requests are intentionally hidden from ordinary users by RLS.
+  // Without the service client, fail closed instead of exposing unverified entities.
+  if (!admin) return [];
+
+  const { data, error } = await admin
+    .from('institution_verification_requests')
+    .select('institution_id')
+    .eq('status', 'approved')
+    .not('reviewer_id', 'is', null)
+    .gt('verified_until', new Date().toISOString());
+  if (error) throw error;
+
+  return Array.from(new Set(
+    (data ?? [])
+      .map((row) => String(row.institution_id ?? ''))
+      .filter((id) => UUID_RE.test(id)),
+  ));
+}
 
 async function loadOrganizationIdsForCanonicalScope(
   scope: CanonicalSearchGeographyScope,
@@ -314,6 +335,16 @@ export async function GET(req: NextRequest) {
         query = query.or('account_type.eq.staff,type.eq.staff');
       } else {
         query = query.eq('account_type', accountType);
+      }
+
+      if (accountType === 'institution') {
+        const approvedInstitutionIds = await loadApprovedInstitutionIds();
+        query = query.in(
+          'id',
+          approvedInstitutionIds.length
+            ? approvedInstitutionIds
+            : ['00000000-0000-0000-0000-000000000000'],
+        );
       }
 
       query = applyPublicProfileVisibilityFilters(query)
