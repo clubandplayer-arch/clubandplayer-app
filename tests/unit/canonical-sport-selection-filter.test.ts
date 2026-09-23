@@ -19,7 +19,7 @@ test('exact sport selection keeps base Football separate from its disciplines an
 
   assert.equal(
     expression,
-    `and(sport_id.eq.${FOOTBALL_ID},sport_discipline_id.is.null,sport_variant_id.is.null),and(sport_id.is.null,sport.ilike."Calcio")`,
+    `and(sport_id.eq.${FOOTBALL_ID},sport_discipline_id.is.null,sport_variant_id.is.null,sport.ilike."Calcio"),and(sport_id.is.null,sport.ilike."Calcio")`,
   );
 });
 
@@ -35,7 +35,7 @@ test('exact sport selection includes the complete discipline and variant tuple',
 
   assert.equal(
     expression,
-    `and(sport_id.eq.${FOOTBALL_ID},sport_discipline_id.eq.${FUTSAL_ID},sport_variant_id.eq.${EIGHT_A_SIDE_ID}),and(sport_id.is.null,sport.ilike."Calcio a 8")`,
+    `and(sport_id.eq.${FOOTBALL_ID},sport_discipline_id.eq.${FUTSAL_ID},sport_variant_id.eq.${EIGHT_A_SIDE_ID},sport.ilike."Calcio a 8"),and(sport_id.is.null,sport.ilike."Calcio a 8")`,
   );
 });
 
