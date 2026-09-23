@@ -15,6 +15,7 @@ import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesS
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ClubStaffToggleButton from '@/components/clubs/ClubStaffToggleButton';
+import ClubRosterToggleButton from '@/components/clubs/ClubRosterToggleButton';
 import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import FanVoteButton from '@/components/fan-votes/FanVoteButton';
 import type { ProfileLinks } from '@/types/profile';
@@ -642,6 +643,7 @@ export default function PlayerPublicProfilePage() {
 
   const viewedAccountType = String(profile?.account_type ?? profile?.type ?? '').toLowerCase();
   const canManageStaff = viewerRole === 'club' && viewedAccountType === 'staff' && !isMe;
+  const canManageRoster = viewerRole === 'club' && viewedAccountType !== 'staff' && !isMe;
 
   return (
     <main className="mx-auto min-w-0 max-w-5xl space-y-6 px-4 py-6">
@@ -699,6 +701,15 @@ export default function PlayerPublicProfilePage() {
               <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('player.staffManagement')}</h2>
               <div className="mt-3">
                 <ClubStaffToggleButton staffProfileId={profile.id} visible={canManageStaff} />
+              </div>
+            </section>
+          ) : null}
+
+          {canManageRoster ? (
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('player.rosterManagement')}</h2>
+              <div className="mt-3">
+                <ClubRosterToggleButton playerProfileId={profile.id} visible={canManageRoster} />
               </div>
             </section>
           ) : null}

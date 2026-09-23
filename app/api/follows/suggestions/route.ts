@@ -444,8 +444,8 @@ export async function GET(req: NextRequest) {
       const sportFilter: Array<(q: any) => any> = [];
 
       if (sportScope === 'mine' && viewerSportId) {
-        sportFilter.push((q) =>
-          applyExactCanonicalSportFilters(
+        sportFilter.push((q) => {
+          const canonicalQuery = applyExactCanonicalSportFilters(
             q,
             {
               sportId: viewerSportId,
@@ -453,11 +453,24 @@ export async function GET(req: NextRequest) {
               variantId: profile.sport_variant_id,
             },
             profile.sport,
-          ),
-        );
+          );
+
+          // The legacy label remains the user-facing selected sport and is
+          // deliberately kept in sync when the canonical tuple is written.
+          // Requiring it as well prevents partially backfilled tuples (for
+          // example Football without its eight-a-side variant) from leaking
+          // other disciplines into "My sport only" results.
+          return profile.sport?.trim()
+            ? canonicalQuery.ilike('sport', escapeLike(profile.sport.trim()))
+            : canonicalQuery;
+        });
       } else if (sportScope === 'mine' && profile.sport) {
-        const value = `%${escapeLike(profile.sport.trim())}%`;
+        const value = escapeLike(profile.sport.trim());
         sportFilter.push((q) => q.ilike('sport', value));
+      } else if (sportScope === 'mine') {
+        // "My sport" must never silently degrade to "All sports" when an
+        // older/incomplete profile has no sport selection yet.
+        sportFilter.push((q) => q.eq('id', '00000000-0000-0000-0000-000000000000'));
       }
 
       if (explicitGeography) {
