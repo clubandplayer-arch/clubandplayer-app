@@ -101,6 +101,12 @@ export function applyExactCanonicalSportFilters(
         ? `sport_variant_id.eq.${filters.variantId}`
         : "sport_variant_id.is.null",
     ];
+    // A legacy label can be more specific than an incompletely migrated UUID
+    // chain (for example "Calcio a 8" stored with only the generic Football
+    // sport_id). In that case the UUID tuple alone would also match Calcio,
+    // Futsal and the other variants. Keep the exact label as part of the
+    // canonical branch until discipline/variant backfills are complete.
+    canonicalParts.push(`sport.ilike.${quotedLegacySport}`);
     return query.or(
       `and(${canonicalParts.join(",")}),and(sport_id.is.null,sport.ilike.${quotedLegacySport})`,
     );
